@@ -4,7 +4,8 @@ var CONFIG = {
   // ---- Itadaki / Fortune Street style economy (scaled ×~6.7 to this game's money) ----
   baseSalary: 1700, salaryPerLevel: 1000, salaryPropPct: 0.10, maxLevel: 20,   // Salary = B + 1000×Lv + 10% shop value
   shopBase: [900, 1060, 1220, 1380, 1540],     // base shop value pattern × district factor
-  distStep: 0.25, domination: 1.5,              // value ×(1 + 0.25×(shops owned−1)), all shops in district ×1.5
+  distStep: 0.25, domination: 1.5,
+  chainStep: 0.2, chainMax: 1.8,                // adjacent shops of the same owner (Itadaki chain): ×(1 + 0.2×(chain−1)) max ×1.8, building +1 size per linked shop              // value ×(1 + 0.25×(shops owned−1)), all shops in district ×1.5
   capPerShop: 1,                                // max value = base × (1 + shops owned) (×1.5 domination)
   investCap: 6000,                              // max investment per landing (Fortune Street: 999 per turn)
   yieldScale: 6.67,                             // price = value × (0.2 − 0.15·0.2^(0.005·value/scale))

@@ -133,12 +133,20 @@
     var c = this.ownedIn(t.owner, t.district), n = this.s.districts[t.district].tiles.length;
     return (1 + C.distStep * (c - 1)) * (c >= n ? C.domination : 1);
   };
+  P.chainTiles = function (t) { // shops of the same owner connected along the road
+    if (t.type !== 'shop' || t.owner < 0) return [];
+    var self = this, seen = {}, q = [t.id], out = []; seen[t.id] = 1;
+    while (q.length) { var c = self.tile(q.shift()); out.push(c.id); c.n.forEach(function (n) { var u = self.tile(n); if (!seen[n] && u.type === 'shop' && u.owner === t.owner) { seen[n] = 1; q.push(n); } }); }
+    return out;
+  };
+  P.chainLen = function (t) { return this.chainTiles(t).length; };
+  P.chainMult = function (t) { var c = this.chainLen(t); return c < 2 ? 1 : Math.min(C.chainMax, 1 + C.chainStep * (c - 1)); };
   P.dominated = function (t) { return t.owner >= 0 && this.ownedIn(t.owner, t.district) >= this.s.districts[t.district].tiles.length; };
   P.rawValue = function (t) { return (t.base + (t.invest || 0) + t.bonusVal) * (1 + t.bonusPct); };
   P.buyPrice = function (t) { return t.base; };
   P.baseValue = function (t) { return Math.round(this.rawValue(t)); };
-  P.shopValue = function (t) { if (t.type !== 'shop' || t.owner < 0) return 0; return Math.round(this.rawValue(t) * this.distMult(t)); };
-  P.valueAfterInvest = function (t, add) { return Math.round((t.base + (t.invest || 0) + add + t.bonusVal) * (1 + t.bonusPct) * this.distMult(t)); };
+  P.shopValue = function (t) { if (t.type !== 'shop' || t.owner < 0) return 0; return Math.round(this.rawValue(t) * this.distMult(t) * this.chainMult(t)); };
+  P.valueAfterInvest = function (t, add) { return Math.round((t.base + (t.invest || 0) + add + t.bonusVal) * (1 + t.bonusPct) * this.distMult(t) * this.chainMult(t)); };
   P.maxCapital = function (t) { // remaining capital that can be invested in this shop
     if (t.owner < 0) return 0;
     var c = this.ownedIn(t.owner, t.district), cap = t.base * (C.capPerShop * c + 1) * (this.dominated(t) ? C.domination : 1);
@@ -149,7 +157,8 @@
     if (t.type !== 'shop' || t.owner < 0) { t.level = 0; return; }
     var r = (t.base + (t.invest || 0)) / t.base, L = 1;
     C.levelRatio.forEach(function (x, i) { if (r >= x) L = i + 1; });
-    t.level = Math.min(8, L);
+    t.baseLevel = Math.min(8, L);
+    t.level = Math.min(8, L + Math.max(0, this.chainLen(t) - 1));
   };
   P.refreshDistrictLevels = function (d) { var self = this; this.s.districts[d].tiles.forEach(function (id) { self.refreshLevel(self.s.tiles[id]); }); };
   P.eventMod = function (t) {
@@ -201,7 +210,7 @@
     D0.adj = clamp(D0.adj * (1 + pct), 0.3, 4);
     this.updateStock(d, why);
   };
-  P.valueChanged = function (d) { this.refreshDistrictLevels(d); this.updateStock(d, 'มูลค่าเขตเปลี่ยน'); };
+  P.valueChanged = function (d) { var self = this; this.s.tiles.forEach(function (t) { self.refreshLevel(t); }); this.s.districts.forEach(function (x, i) { self.updateStock(i, i === d ? 'มูลค่าเขตเปลี่ยน' : null); }); };
   P.buyFee = function (p) { return (!this.rules().tax || p.flags.stockFeeZero) ? 0 : C.stock.buyFee; };
   P.sellFee = function () { return this.rules().tax ? C.stock.sellFee : 0; };
   P.sharesAvail = function () { return 1e9; };

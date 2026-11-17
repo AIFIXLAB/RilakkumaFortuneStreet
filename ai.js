@@ -87,7 +87,8 @@
     confirmBuy: function (g, p, t, price) {
       var r = reserve(g, p) * (p.ai.persona === 'Tycoon' ? 0.6 : 1);
       if (p.ai.persona === 'Investor' && g.ownedIn(p.id, t.district) === 0 && g.r() < 0.3) return false;
-      return p.cash - price >= r * 0.5;
+      var linked = t.n.some(function (id) { var u = g.tile(id); return u.type === 'shop' && u.owner === p.id; });
+      return p.cash - price >= r * (linked ? 0.3 : 0.5);
     },
     chooseInvest: function (g, p, t, o) {
       var r = reserve(g, p), spare = p.cash - r;

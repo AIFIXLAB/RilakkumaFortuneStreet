@@ -14,7 +14,7 @@
         if (t.owner < 0) return p.cash >= g.buyPrice(t) ? 250 + g.ownedIn(p.id, t.district) * 120 : 0;
         if (t.owner === p.id) return 120 + (g.maxCapital(t) > 0 && p.cash > 1500 ? 260 : 0);
         return -g.shopRent(t) * (1 + (g.shopRent(t) > p.cash ? 3 : 0)) / 2;
-      case 'chance': return 90; case 'lucky': return 140; case 'superlucky': return 220; case 'tax': return -150;
+      case 'chance': return 90; case 'rollon': return 150; case 'switch': return 20; case 'road': return 0; case 'lucky': return 140; case 'superlucky': return 220; case 'tax': return -150;
       case 'casino': return 30; case 'broker': return 60; case 'vacant': return t.special ? (t.spOwner === p.id || t.spOwner < 0 ? 10 : -300) : 50;
       case 'suit': return (p.suits[t.suit] ? 10 : 160) + 90; case 'rest': return 50; case 'festival': return 60; case 'event': return 60; case 'warp': return 40;
     }

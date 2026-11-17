@@ -393,7 +393,7 @@
     var s = this.s, p = this.cp(), io = this.io;
     if (s.over) return;
     if (p.bankrupt) { await this.nextPlayer(); return; }
-    s.phase = 'preRoll'; s.forcedDice = null; s.teleportBank = false; p.flags.stockFeeZero = false; p.flags.investedTurn = 0;
+    s.phase = 'preRoll'; p.flags.rollOn = 0; s.forcedDice = null; s.teleportBank = false; p.flags.stockFeeZero = false; p.flags.investedTurn = 0;
     if (io.autosave) io.autosave(s);
     if (io.turnStart) await io.turnStart(p);
     await io.preRoll(p); // human: waits for roll button (may use items/sell); AI: decides & uses items
@@ -509,6 +509,24 @@
       case 'vacant': await this.landVacant(p, t); break;
       case 'warp': { var from = p.pos; p.pos = t.warpTo; p.prev = null; this.log('🌀 ' + p.name + ' วาร์ปไปอีกเกาะ'); if (io.teleport) await io.teleport(p, from, p.pos); break; }
       case 'rest': await this.gain(p, C.restBonus, 'พักผ่อน'); break;
+      case 'switch': {
+        // reverse direction: next turn walks back the way we came
+        var self2 = this, fwd = t.n.filter(function (n) { return n !== p.prev && self2.tile(n).type !== 'road' && self2.tile(n).type !== 'bank'; })[0];
+        if (fwd !== undefined) p.prev = fwd;
+        this.log('🔄 ' + p.name + ' ตกช่องสลับ — เทิร์นหน้าเดินกลับทิศ!');
+        if (io.toast) io.toast('🔄 ' + p.name + ' สลับทิศเดิน!');
+        break;
+      }
+      case 'rollon': {
+        p.flags.rollOn = (p.flags.rollOn || 0) + 1; if (p.flags.rollOn > 3) { p.flags.rollOn = 0; break; }
+        this.log('🎲 ' + p.name + ' ตกช่องลูกเต๋า — ทอยอีกครั้ง!');
+        if (io.toast) io.toast('🎲 ' + p.name + ' ได้ทอยอีกครั้ง!');
+        var r2 = io.rollDice && !p.isAI ? await io.rollDice(p) : this.dice();
+        if (io.showDice && (p.isAI || !io.rollDice)) await io.showDice(p, r2);
+        this.log('🎲 ' + p.name + ' ทอยได้ ' + r2 + ' แต้ม');
+        await this.move(p, r2); if (!s.over && !p.bankrupt) await this.land(p);
+        break;
+      }
       case 'festival': {
         if (this.r() < 0.6) await this.gain(p, this.rand(3, 8) * 100, 'เทศกาล: ขายของได้', true);
         else { var others = this.alive().filter(function (q) { return q.id !== p.id; }); var each = 100; this.log('🎏 ' + p.name + ' เป็นเจ้าภาพงานเทศกาล จ่ายคนละ 100 G'); var paid = await this.lose(p, each * others.length, 'เจ้าภาพเทศกาล', true); if (paid) others.forEach(function (q) { q.cash += each; }); }
@@ -542,7 +560,7 @@
     if (this.noRent(t)) { this.log('🔧 ' + t.name + ' ปิดปรับปรุง — ไม่เก็บค่าเช่า'); rent = 0; }
     if (rent > 0) {
       var shielded = false;
-      if (p.flags.rentShield > 0) { p.flags.rentShield--; shielded = true; this.log('🛡️ ' + p.name + ' ใช้การ์ด Rent Shield'); }
+      if (p.flags.rentShield > 0) { p.flags.rentShield = 0; shielded = true; if (this.io.toast) this.io.toast('🛡️ ' + p.name + ' ใช้สกิลกันค่าเช่า!'); this.log('🛡️ ' + p.name + ' ใช้การ์ด Rent Shield'); }
       else { var used = await this.offerReactive(p, 'rent', { rent: rent, tile: t }); if (used) { shielded = true; this.log('🛡️ ' + p.name + ' ใช้ ' + used + ' ไม่ต้องจ่ายค่าเช่า'); } }
       if (!shielded) {
         if (p.flags.rentHalf) { rent = Math.round(rent / 2); p.flags.rentHalf = 0; this.log('⚖️ Rent Dispute ลดค่าเช่า 50%'); }
@@ -555,7 +573,7 @@
     if (p.cash >= cost) {
       var go = await io.confirmBuyout(p, t, cost);
       if (go) {
-        if (owner.flags.shopProtect) { owner.flags.shopProtect--; this.log('🛡️ ' + owner.name + ' มี Shop Protection — ซื้อกิจการไม่สำเร็จ'); if (io.info) await io.info(p, t, owner.name + ' ป้องกันการซื้อกิจการ'); return; }
+        if (owner.flags.shopProtect) { owner.flags.shopProtect = 0; this.log('🛡️ ' + owner.name + ' มี Shop Protection — ซื้อกิจการไม่สำเร็จ'); if (io.info) await io.info(p, t, owner.name + ' ป้องกันการซื้อกิจการ'); return; }
         var b1 = this.districtValue(t.district);
         p.cash -= cost; owner.cash += Math.round(cost * 0.6); p.flags.buyoutDisc = 0; this.txid('buyout');
         t.owner = p.id;
@@ -698,13 +716,21 @@
     this.log('🃏 ' + p.name + ' เปิดการ์ด #' + id + ' ' + c.name + ': ' + c.desc, 'card');
     if (this.io.showCard) await this.io.showCard(p, c, cell);
     if (c.neg) {
-      if (p.flags.insurance > 0) { p.flags.insurance--; this.log('🛡️ Insurance ป้องกันผลเสียของการ์ด'); if (this.io.toast) this.io.toast('🛡️ Insurance ป้องกันผลเสีย!'); return; }
+      if (p.flags.insurance > 0) { p.flags.insurance = 0; this.log('🛡️ Insurance ป้องกันผลเสียของการ์ด'); if (this.io.toast) this.io.toast('🛡️ Insurance ป้องกันผลเสีย!'); return; }
       var u = await this.offerReactive(p, 'negative', { card: c }); if (u) { this.log('🛡️ ป้องกันผลเสียด้วย ' + u); return; }
     }
     var fx = CARD_FX[id]; if (fx) await fx(this, p, c);
   };
 
   var CARD_FX = {};
+  // one-time skill: same kind never stacks — the new card replaces the old one
+  function buff(g, p, key, val) {
+    var b = (D.BUFFS || []).find(function (x) { return x[0] === key; }) || [key, '✨', key];
+    if (p.flags[key]) g.log('🔁 ' + p.name + ' ได้สกิล “' + b[2] + '” ซ้ำ — ใบใหม่แทนที่ใบเดิม (ไม่สะสม)');
+    else g.log('✨ ' + p.name + ' ได้สกิล ' + b[1] + ' ' + b[2] + ' (ใช้ได้ครั้งเดียว)');
+    p.flags[key] = val || 1;
+  }
+  Game.buff = buff;
   function gainFx(n) { return function (g, p, c) { return g.gain(p, n, c.name, true); }; }
   CARD_FX[1] = gainFx(500); CARD_FX[2] = gainFx(1000); CARD_FX[3] = gainFx(2000); CARD_FX[5] = gainFx(3000); CARD_FX[9] = gainFx(500);
   CARD_FX[4] = function (g, p, c) { return g.gain(p, g.rand(5, 30) * 100, c.name, true); };
@@ -722,15 +748,15 @@
   };
   CARD_FX[15] = async function (g, p) { var t = await g.pickOwnShop(p, 'เลือกร้านโปรโมชันค่าเช่า +20%'); if (t) g.addEffect({ kind: 'rentMult', tile: t.id, mult: 1.2, rounds: 2 }); };
   CARD_FX[16] = function (g, p, c) { if (g.shopsOf(p).length >= 2) return g.gain(p, 1000, c.name, true); g.log('ต้องมีร้านอย่างน้อย 2 แห่ง'); };
-  CARD_FX[17] = function (g, p) { p.flags.upgDisc = 0.2; p.flags.upgDiscUntil = g.s.round + 1; };
+  CARD_FX[17] = function (g, p) { buff(g, p, 'upgDisc', 0.2); p.flags.upgDiscUntil = g.s.round + 1; };
   CARD_FX[18] = function (g, p, c) { if (g.shopsOf(p).length) return g.gain(p, 500, c.name, true); g.log('ไม่มีร้าน — ไม่มีผล'); };
-  CARD_FX[19] = function (g, p) { p.flags.newBranch = 1; };
+  CARD_FX[19] = function (g, p) { buff(g, p, 'newBranch'); };
   CARD_FX[20] = async function (g, p) { var d = await g.pickDistrict(p, 'เลือกเขต Business Boom', true); var b = g.districtValue(d); g.shopsOf(p).forEach(function (t) { if (t.district === d) t.bonusPct += 0.05; }); g.valueChanged(d, b); };
   CARD_FX[21] = gainFx(500);
-  CARD_FX[22] = function (g, p) { p.flags.builderDisc = 1; };
-  CARD_FX[23] = function (g, p) { p.flags.freeUpgrade = 1; };
-  CARD_FX[24] = function (g, p) { p.flags.vacantDisc = 1000; };
-  CARD_FX[25] = function (g, p) { p.flags.maintHalf = g.s.round + 1; };
+  CARD_FX[22] = function (g, p) { buff(g, p, 'builderDisc'); };
+  CARD_FX[23] = function (g, p) { buff(g, p, 'freeUpgrade'); };
+  CARD_FX[24] = function (g, p) { buff(g, p, 'vacantDisc', 1000); };
+  CARD_FX[25] = function (g, p) { buff(g, p, 'maintHalf', g.s.round + 1); };
   CARD_FX[26] = function (g, p) { var ds = {}; g.shopsOf(p).forEach(function (t) { if (!(t.district in ds)) ds[t.district] = g.districtValue(t.district); t.bonusPct += 0.05; }); Object.keys(ds).forEach(function (d) { g.valueChanged(+d, ds[d]); }); };
   CARD_FX[27] = function (g, p) { g.addEffect({ kind: 'smartInvest', owner: p.id, rounds: 1 }); };
   CARD_FX[28] = async function (g, p) { var l = g.shopsOf(p); if (!l.length) return; var t = l[Math.floor(g.r() * l.length)]; g.addEffect({ kind: 'noUpgrade', tile: t.id, rounds: 1 }); g.log('🚧 ' + t.name + ' อัปเกรดไม่ได้ 1 รอบ'); };
@@ -741,7 +767,7 @@
   CARD_FX[31] = function (g, p, c) { if (hotels(g, p).length) return g.gain(p, 1000, c.name, true); g.log('ยังไม่มีโรงแรม (Lv6+)'); };
   CARD_FX[32] = function (g) { g.addEffect({ kind: 'rentMult', hotels: true, mult: 1.15, rounds: 1 }); };
   CARD_FX[33] = gainFx(500);
-  CARD_FX[34] = function (g, p) { p.flags.hotelDisc = 1; };
+  CARD_FX[34] = function (g, p) { buff(g, p, 'hotelDisc'); };
   CARD_FX[35] = function (g, p, c) { if (hotels(g, p).length) return g.gain(p, 1500, c.name, true); g.log('ยังไม่มีโรงแรม'); };
   CARD_FX[36] = function (g, p) { var h = hotels(g, p); if (h.length) g.addEffect({ kind: 'noRent', tile: h[0].id, rounds: 1 }); };
   CARD_FX[37] = async function (g, p) { var d = await g.pickDistrict(p, 'เลือกเขต Travel Promotion', true); var b = g.districtValue(d); hotels(g, p).forEach(function (t) { if (t.district === d) t.bonusPct += 0.05; }); g.valueChanged(d, b); };
@@ -775,7 +801,7 @@
   CARD_FX[57] = async function (g, p) { await g.moveBack(p, 2); await g.land(p); };
   CARD_FX[58] = function (g, p) { return jumpTo(g, p, travelPoints(g), 'Fast Travel — เลือกจุดเดินทาง'); };
   CARD_FX[59] = function (g, p) { p.prev = null; };
-  CARD_FX[60] = function (g, p) { p.flags.freeRide = 1; };
+  CARD_FX[60] = function (g, p) { buff(g, p, 'freeRide'); };
   CARD_FX[61] = async function (g, p) {
     var mine = g.shopsOf(p); if (!mine.length) { g.log('ไม่มีร้านสำหรับแลกเปลี่ยน'); return; }
     var their = await g.pickRivalShop(p, 'Trade Offer — เลือกร้านคู่แข่งที่ต้องการ'); if (!their) return;
@@ -797,8 +823,8 @@
     var b1 = g.districtValue(t.district); best.cash -= bid; p.cash += bid; t.owner = best.id; g.txid('auction');
     g.log('🔨 ' + best.name + ' ชนะประมูล ' + t.name + ' ' + fmt(bid) + ' G'); g.valueChanged(t.district, b1);
   };
-  CARD_FX[63] = function (g, p) { p.flags.buyoutDisc = 0.1; };
-  CARD_FX[64] = function (g, p) { p.flags.rentHalf = 1; };
+  CARD_FX[63] = function (g, p) { buff(g, p, 'buyoutDisc', 0.1); };
+  CARD_FX[64] = function (g, p) { buff(g, p, 'rentHalf'); };
   CARD_FX[65] = async function (g, p) { var q = await g.pickPlayer(p, 'Friendly Deal — ขอ 500 G จาก'); if (!q) return; var ok = await g.io.confirmDeal(q, p.name + ' ขอเงิน 500 G (Friendly Deal)', -500); if (ok && q.cash >= 500) { q.cash -= 500; p.cash += 500; g.log('🤝 ' + q.name + ' ให้ ' + p.name + ' 500 G'); } else g.log(q.name + ' ปฏิเสธ'); };
   CARD_FX[66] = async function (g, p) {
     var t = await g.pickOwnShop(p, 'Shop Transfer — เลือกร้านที่จะเสนอขาย'); if (!t) return;
@@ -810,24 +836,24 @@
   };
   CARD_FX[67] = async function (g, p) { var t = await g.pickRivalShop(p, 'Business Competition — ร้านคู่แข่งค่าเช่า -10%'); if (t) g.addEffect({ kind: 'rentMult', tile: t.id, mult: 0.9, rounds: 1 }); };
   CARD_FX[68] = function (g, p, c) { var ok = g.shopsOf(p).some(function (t) { return g.s.districts[t.district].tiles.some(function (id) { var o = g.tile(id).owner; return o >= 0 && o !== p.id; }); }); if (ok) return g.gain(p, 500, c.name, true); };
-  CARD_FX[69] = function (g, p) { p.flags.buyoutDisc = 0.1; };
+  CARD_FX[69] = function (g, p) { buff(g, p, 'buyoutDisc', 0.1); };
   CARD_FX[70] = function (g, p) { g.s.players.forEach(function (q) { if (q.id !== p.id) q.flags.buyoutDisc = 0; }); };
-  CARD_FX[71] = function (g, p) { p.flags.rentShield = (p.flags.rentShield || 0) + 1; };
-  CARD_FX[72] = function (g, p) { p.flags.taxHalf = 1; };
+  CARD_FX[71] = function (g, p) { buff(g, p, 'rentShield'); };
+  CARD_FX[72] = function (g, p) { buff(g, p, 'taxHalf'); };
   CARD_FX[73] = function (g, p) { var ids = g.shopsOf(p).map(function (t) { return t.id; }); g.s.effects = g.s.effects.filter(function (e) { return !((e.kind === 'noRent' || e.kind === 'noUpgrade') && ids.indexOf(e.tile) >= 0); }); };
-  CARD_FX[74] = function (g, p) { p.flags.insurance = (p.flags.insurance || 0) + 1; };
+  CARD_FX[74] = function (g, p) { buff(g, p, 'insurance'); };
   CARD_FX[75] = function (g, p) { var v = Math.min(1000, Math.max(0, p.cash)); p.cash -= v; p.safe += v; g.log('🔐 ฝากเงิน ' + fmt(v) + ' G ในบัญชีคุ้มครอง'); };
   CARD_FX[76] = function (g, p) { p.shares.forEach(function (n, d) { if (n) g.addEffect({ kind: 'priceLock', district: d, rounds: 1 }); }); };
-  CARD_FX[77] = function (g, p) { p.flags.shopProtect = (p.flags.shopProtect || 0) + 1; };
-  CARD_FX[78] = function (g, p) { p.flags.maintFree = 1; };
-  CARD_FX[79] = function (g, p) { p.flags.taxExempt = 1; };
+  CARD_FX[77] = function (g, p) { buff(g, p, 'shopProtect'); };
+  CARD_FX[78] = function (g, p) { buff(g, p, 'maintFree'); };
+  CARD_FX[79] = function (g, p) { buff(g, p, 'taxExempt'); };
   CARD_FX[80] = function (g, p, c) { if (p.cash < 1000) return g.gain(p, 1000, c.name, true); g.log('เงินสดมากกว่า 1,000 G — ไม่มีผล'); };
   CARD_FX[81] = gainFx(500);
   CARD_FX[82] = async function (g, p) { var d = await g.pickDistrict(p, 'Weekend Market — เลือกเขต', true); var list = g.s.districts[d].tiles.map(function (id) { return g.tile(id); }).filter(function (t) { return t.owner >= 0; }); for (var i = 0; i < list.length; i++) { var q = g.s.players[list[i].owner]; if (!q.bankrupt) await g.gain(q, 300, 'Weekend Market', false); } };
   CARD_FX[83] = function (g) { g.addEffect({ kind: 'rentMult', district: 3, mult: 1.2, rounds: 2 }); };
   CARD_FX[84] = function (g) { g.addEffect({ kind: 'rentMult', hotels: true, mult: 0.9, rounds: 1 }); };
   CARD_FX[85] = function (g) { g.addEffect({ kind: 'rentMult', hotels: true, mult: 1.1, rounds: 1 }); };
-  CARD_FX[86] = function (g, p) { p.flags.winterSale = 1; };
+  CARD_FX[86] = function (g, p) { buff(g, p, 'winterSale'); };
   CARD_FX[87] = function (g) { g.s.districts.forEach(function (d, i) { g.stockMove(i, 0.03, 'City Development'); }); };
   CARD_FX[88] = async function (g, p) { var d = await g.pickDistrict(p, 'Public Construction — เลือกเขต', true); var b = g.districtValue(d); g.shopsOf(p).forEach(function (t) { if (t.district === d) t.bonusPct += 0.05; }); g.valueChanged(d, b); };
   CARD_FX[89] = function (g, p, c) { if (g.shopsOf(p).length >= 3) return g.gain(p, 1000, c.name, true); };
@@ -835,15 +861,16 @@
   CARD_FX[91] = gainFx(500);
   CARD_FX[92] = function (g, p, c) { return g.lose(p, 300, c.name, true, true); };
   CARD_FX[93] = function (g, p, c) { return g.lose(p, 500, c.name, true); };
-  CARD_FX[94] = async function (g, p, c) { var r = g.rand(0, 3); if (r === 0) await g.gain(p, g.rand(3, 15) * 100, 'ของขวัญ', true); else if (r === 1) { g.giveShares(p, g.bestHeldDistrict(p), 5); } else if (r === 2) { p.flags.rentShield = (p.flags.rentShield || 0) + 1; g.log('🎁 ได้รับ Rent Shield'); } else { p.flags.insurance = (p.flags.insurance || 0) + 1; g.log('🎁 ได้รับ Insurance'); } };
+  CARD_FX[94] = async function (g, p, c) { var r = g.rand(0, 3); if (r === 0) await g.gain(p, g.rand(3, 15) * 100, 'ของขวัญ', true); else if (r === 1) { g.giveShares(p, g.bestHeldDistrict(p), 5); } else if (r === 2) { buff(g, p, 'rentShield'); } else { buff(g, p, 'insurance'); } };
   CARD_FX[95] = function (g, p) { var l = g.shopsOf(p); if (l.length) { var t = l[Math.floor(g.r() * l.length)]; g.addEffect({ kind: 'noRent', tile: t.id, rounds: 1 }); g.log('🔧 ' + t.name + ' เสีย — ไม่เก็บค่าเช่า 1 รอบ'); } };
   CARD_FX[97] = async function (g, p, c) { g.giveShares(p, g.bestHeldDistrict(p), 5); await g.gain(p, 500, c.name, true); };
   CARD_FX[98] = async function (g, p) { var a = g.dice(), b = g.dice(); var n = await g.choose(p, { title: 'Lucky Dice — เลือกผล', kind: 'num', options: [{ value: a, label: '🎲 ' + a, score: a }, { value: b, label: '🎲 ' + b, score: b }] }); return cardMove(g, p, n); };
-  CARD_FX[99] = function (g, p) { p.flags.insurance = (p.flags.insurance || 0) + 1; };
+  CARD_FX[99] = function (g, p) { buff(g, p, 'insurance'); };
   CARD_FX[100] = async function (g, p, c) { await g.gain(p, 1000, c.name, true); var t = await g.pickOwnShop(p, 'Fortune Day — ร้านมูลค่า +5%'); if (t) { var b = g.districtValue(t.district); t.bonusPct += 0.05; g.valueChanged(t.district, b); } };
 
   function SUITS_DONE(p) { return D.SUITS.every(function (s) { return p.suits[s]; }); }
   Game.suitsDone = SUITS_DONE;
+  P.activeBuffs = function (p) { var r = this.s.round; return (D.BUFFS || []).filter(function (b) { var v = p.flags[b[0]]; if (!v) return false; if (b[0] === 'upgDisc') return !p.flags.upgDiscUntil || p.flags.upgDiscUntil >= r; if (b[0] === 'maintHalf') return v >= r; return true; }); };
   Game.buildBoard = buildBoard;
   Game.fmt = fmt;
   Game.CARD_FX = CARD_FX;

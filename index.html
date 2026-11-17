@@ -82,7 +82,7 @@ button.small{font-size:15px;padding:6px 12px;min-height:38px;border-radius:14px;
 #boardWrap{position:absolute;left:8px;top:108px;width:930px;height:744px;border:4px solid var(--brown);border-radius:22px;overflow:hidden}
 #boardBg{position:absolute;inset:-30px;background-size:cover;background-position:center;opacity:.55;filter:blur(14px) saturate(1.1)}
 #boardWrap{touch-action:none}
-#board{transform-origin:0 0;box-shadow:0 0 0 3px rgba(255,255,255,.6)}
+#board{transform-origin:0 0;will-change:transform;-webkit-transform-style:flat;box-shadow:0 0 0 3px rgba(255,255,255,.6)}
 .ptile{position:absolute;z-index:3;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .ptile.owned{z-index:5}
 .ptile .bld{position:absolute;left:50%;bottom:22%;transform:translateX(-50%);pointer-events:none;filter:drop-shadow(0 2px 1px rgba(0,0,0,.25))}
@@ -278,7 +278,7 @@ button.pink{background:linear-gradient(#fff0f5,#ffb0c8 60%,#ff8fb3)} button.gree
 .sitem,.invitem,.slot,.mapcard,.charbtn,.eqslot{border-radius:22px;box-shadow:0 4px 0 rgba(107,66,38,.25)}
 .sitem{background:linear-gradient(#fff,#fff6e4)}
 /* modal */
-#modal{background:rgba(255,190,210,.35);backdrop-filter:blur(3px)}
+#modal{background:rgba(255,190,210,.45)}
 #modalBox{border-width:5px;border-radius:30px;padding-top:30px;overflow:visible}
 #modalBox::before,#modalBox::after{content:'';position:absolute;top:-22px;width:46px;height:46px;border-radius:50%;background:radial-gradient(circle at 50% 55%,#ffc2d4 0 30%,#fffaf0 33%);border:5px solid var(--brown);clip-path:inset(-10px -10px 50% -10px)}
 #modalBox::before{left:34px}#modalBox::after{right:34px}
@@ -395,6 +395,8 @@ button.pink{background:linear-gradient(#fff0f5,#ffb0c8 60%,#ff8fb3)} button.gree
 .coach .bub::before{content:'';position:absolute;left:-18px;bottom:30px;border:10px solid transparent;border-right-color:var(--brown);border-width:10px 18px 10px 0}
 .coach .bub b{color:#e0407a}
 .lessons{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#stage{-webkit-font-smoothing:antialiased}
+.piece{will-change:left,top}
 </style>
 </head>
 <body>

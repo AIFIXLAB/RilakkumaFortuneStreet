@@ -26,6 +26,7 @@
     return '<div class="spr" style="width:' + (b[2] * sc).toFixed(1) + 'px;height:' + (b[3] * sc).toFixed(1) + 'px;background-image:url(' + S.url + ');background-size:' + (S.W * sc).toFixed(1) + 'px ' + (S.H * sc).toFixed(1) + 'px;background-position:-' + (b[0] * sc).toFixed(1) + 'px -' + (b[1] * sc).toFixed(1) + 'px;' + (extraStyle || '') + '"></div>';
   }
   U.spr = spr;
+  function setHTML(el, html) { if (el && el._h !== html) { el._h = html; el.innerHTML = html; } }
   function hexA(hex, a) { var n = parseInt(hex.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')'; }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   function show(id) { document.querySelectorAll('.screen').forEach(function (e) { e.classList.toggle('on', e.id === id); }); if (id === 'menu') renderMenu(); if (window.Music) Music.setMood(id === 'game' ? 'game' : 'menu'); }
@@ -495,15 +496,16 @@
     s.tiles.forEach(function (t) {
       var el = document.getElementById('t' + t.id); if (!el) return;
       var r = tileHTML(t), big = t.type === 'bank' ? 1.9 : 1;
-      el.className = r.cls + (el.classList.contains('hl') ? ' hl' : '');
-      el.style.cssText = 'left:' + (t.x * SC - T * big / 2) + 'px;top:' + (t.y * SC - T * big / 2) + 'px;width:' + T * big + 'px;height:' + T * big + 'px;border-radius:' + T * 0.22 + 'px;' + r.style;
-      el.innerHTML = r.html;
+      var css = 'left:' + (t.x * SC - T * big / 2) + 'px;top:' + (t.y * SC - T * big / 2) + 'px;width:' + T * big + 'px;height:' + T * big + 'px;border-radius:' + T * 0.22 + 'px;' + r.style;
+      if (el._c !== r.cls) { el._c = r.cls; var keep = ['hl', 'dest', 'trail'].filter(function (k) { return el.classList.contains(k); }); el.className = r.cls; keep.forEach(function (k) { el.classList.add(k); }); }
+      if (el._s !== css) { el._s = css; el.style.cssText = css; }
+      setHTML(el, r.html);
     });
     // lots: buildings of owned shops in that district
     MAPS[s.mapIdx].districts.forEach(function (d, i) {
       var el = document.getElementById('lot' + i); if (!el) return;
       var owned = s.districts[i].tiles.map(function (id) { return s.tiles[id]; }).filter(function (t) { return t.owner >= 0; });
-      el.innerHTML = owned.map(function (t) { var o = s.players[t.owner]; return '<div class="lotb" style="border-color:' + o.color + '">' + spr(['lvl', t.level - 1], BT * 1.2, BT * 1.1) + '</div>'; }).join('');
+      setHTML(el, owned.map(function (t) { var o = s.players[t.owner]; return '<div class="lotb" style="border-color:' + o.color + '">' + spr(['lvl', t.level - 1], BT * 1.2, BT * 1.1) + '</div>'; }).join(''));
     });
   }
   function refreshLabels() {
@@ -512,7 +514,7 @@
       var el = document.getElementById('dl' + i); if (!el) return;
       var owners = d.tiles.map(function (id) { return s.tiles[id].owner; }), mono = owners[0] >= 0 && owners.every(function (o) { return o === owners[0]; });
       el.style.borderColor = mono ? s.players[owners[0]].color : d.color;
-      el.innerHTML = '<span style="background:' + d.color + '"></span>' + esc(d.th) + ' • ' + d.price + ' G' + (mono ? ' 👑' + esc(s.players[owners[0]].name) : '');
+      setHTML(el, '<span style="background:' + d.color + '"></span>' + esc(d.th) + ' • ' + d.price + ' G' + (mono ? ' 👑' + esc(s.players[owners[0]].name) : ''));
     });
   }
   function placePieces(skip) {
@@ -541,7 +543,7 @@
   function renderPlayers() {
     var g = U.g, s = g.s, cur = g.cp();
     var rank = s.players.slice().sort(function (a, b) { if (a.bankrupt !== b.bankrupt) return a.bankrupt ? 1 : -1; return g.netWorth(b) - g.netWorth(a); }).map(function (p) { return p.id; });
-    $('#pbar').innerHTML = s.players.map(function (p) {
+    setHTML($('#pbar'), s.players.map(function (p) {
       var rk = rank.indexOf(p.id) + 1;
       return '<div class="pcard ' + (p.id === cur.id && !s.over ? 'turn ' : '') + (p.bankrupt ? 'bk' : '') + '" data-p="' + p.id + '" style="--pc:' + p.color + ';--pcl:' + hexA(p.color, .35) + '">' + (rk === 1 && !p.bankrupt ? '<div class="crown">👑</div>' : '') +
         '<div class="pchar">' + spr(charSpec(p), 84, 92) + '</div>' +
@@ -551,15 +553,15 @@
         '<div class="lvl">Lv' + p.level + (p.isAI ? ' • AI ' + { beginner: 'Easy', normal: 'Normal', advanced: 'Adv' }[p.ai.level] : '') + '</div>' +
         '<div class="suits">' + SUITS.map(function (k) { return '<span class="' + (p.suits[k] ? 'on' : '') + '" style="' + (p.suits[k] ? 'color:' + SUIT_COLOR[k] : '') + '">' + SUIT_GLYPH[k] + '</span>'; }).join('') + '</div>' +
         '<div class="rankb">' + spr(['ui', 'rank' + rk], 92, 30) + '</div></div>';
-    }).join('');
+    }).join(''));
   }
   $('#pbar').onclick = function (e) { var c = e.target.closest('[data-p]'); if (c && !modalOpen) playerInfo(U.g.s.players[+c.dataset.p]); };
   function renderStocks() {
     var g = U.g, s = g.s, me = s.players[U.view];
-    $('#stockBox').innerHTML = '<div style="font-weight:900;font-size:14px;display:flex;justify-content:space-between"><span>📈 หุ้นเขตธุรกิจ</span><span class="muted">ราคา • ถือ</span></div>' + s.districts.map(function (d, i) {
+    setHTML($('#stockBox'), '<div style="font-weight:900;font-size:14px;display:flex;justify-content:space-between"><span>📈 หุ้นเขตธุรกิจ</span><span class="muted">ราคา • ถือ</span></div>' + s.districts.map(function (d, i) {
       var h = d.hist, ch = h.length > 1 ? d.price - h[h.length - 2] : 0;
       return '<div class="srow" data-d="' + i + '"><span class="dot" style="background:' + d.color + '"></span><span class="grow" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + d.name + '</span><b>' + d.price + '</b><span style="width:20px;color:' + (ch > 0 ? '#2c8a2c' : ch < 0 ? '#c0392b' : '#999') + '">' + (ch > 0 ? '▲' : ch < 0 ? '▼' : '•') + '</span><span style="width:34px;text-align:right">' + (me ? me.shares[i] : 0) + '</span></div>';
-    }).join('');
+    }).join(''));
   }
   $('#stockBox').onclick = function (e) { var r = e.target.closest('[data-d]'); if (r && !modalOpen) districtInfo(+r.dataset.d); };
   function renderItems() {
@@ -574,7 +576,7 @@
     var all = p.loadout.eq.map(function (sl, i) { return card(sl, i); });
     if (p.loadout.sc) all.push(card(p.loadout.sc, p.loadout.eq.length).replace('class="itemSlot', 'class="itemSlot sc'));
     var left = slots.filter(function (x) { return !x.used; }).length;
-    $('#itemBar').innerHTML = '<div class="ribbon">🎒 ไอเทม + การ์ดพิเศษ (' + left + '/' + slots.length + ')</div>' + (all.join('') || '<div class="muted" style="font-weight:700">ไม่ได้ติดตั้งไอเทม</div>');
+    setHTML($('#itemBar'), '<div class="ribbon">🎒 ไอเทม + การ์ดพิเศษ (' + left + '/' + slots.length + ')</div>' + (all.join('') || '<div class="muted" style="font-weight:700">ไม่ได้ติดตั้งไอเทม</div>'));
     $('#itemBar').dataset.pid = p.id;
   }
   $('#itemBar').onclick = function (e) {
@@ -625,7 +627,7 @@
     if (t.type === 'shop') return shopInfo(t);
     if (t.type === 'bank') return bankInfo(s.players[U.view] || g.cp());
     var info = TILE_INFO[t.ch], desc = {
-      suit: 'เดินผ่านหรือหยุดเพื่อเก็บสัญลักษณ์ ' + SUIT_GLYPH[t.suit] + ' — ครบ 4 แบบแล้วกลับธนาคารเพื่อรับเงินเดือน', chance: 'เปิดการ์ด 1 ใบจากตาราง 100 ช่อง', lucky: 'รับเงินจากกองภาษีเมือง 50% (ขั้นต่ำ ' + CONFIG.luckyMin + ' G) • กองตอนนี้ ' + fmt(s.taxPool) + ' G', superlucky: 'รับกองภาษีเมืองทั้งหมด (ขั้นต่ำ ' + CONFIG.superLuckyMin + ' G) • กองตอนนี้ ' + fmt(s.taxPool) + ' G',
+      suit: 'เดินผ่านหรือหยุดเพื่อเก็บสัญลักษณ์ ' + SUIT_GLYPH[t.suit] + ' — ครบ 4 แบบแล้วกลับธนาคารเพื่อรับเงินเดือน • หยุดตรงช่องนี้พอดีได้เปิดการ์ด!', chance: 'เปิดการ์ด 1 ใบจากตาราง 100 ช่อง', lucky: 'รับเงินจากกองภาษีเมือง 50% (ขั้นต่ำ ' + CONFIG.luckyMin + ' G) • กองตอนนี้ ' + fmt(s.taxPool) + ' G', superlucky: 'รับกองภาษีเมืองทั้งหมด (ขั้นต่ำ ' + CONFIG.superLuckyMin + ' G) • กองตอนนี้ ' + fmt(s.taxPool) + ' G',
       tax: 'จ่ายภาษี 300 G หรือ 3% ของเงินสด (สูงสุด 1,000 G)', casino: 'เล่นสล็อตแมชชีน (เดิมพัน 100–500 G รางวัลสูงสุด 2,500 G)', broker: 'ซื้อ/ขายหุ้นทุกเขต', vacant: t.special ? SPECIAL_BUILDINGS.find(function (b) { return b.id === t.special; }).desc + (t.spOwner >= 0 ? ' • เจ้าของ: ' + s.players[t.spOwner].name : '') : 'ซื้อที่ดินและสร้างอาคารพิเศษ: ด่านเก็บเงิน, ที่จอดรถ, สวนดอกไม้, ตลาด, โรงแรม, ออนเซ็น',
       warp: 'หยุดแล้ววาร์ปไปอีกฝั่งของแผนที่', rest: 'พักผ่อน รับ ' + CONFIG.restBonus + ' G', festival: 'งานเทศกาล — ขายของได้เงิน หรือเป็นเจ้าภาพจ่ายให้ทุกคน', event: 'เหตุการณ์ในเมืองแบบสุ่ม (การ์ดหมวด I)',
     }[t.type];
@@ -705,7 +707,7 @@
       return '📍 <b>' + esc(t.name) + '</b> ของ ' + esc(s.players[t.owner].name) + '<br><span style="color:#d0342c;font-size:16px">ต้องจ่าย ' + fmt(g.shopRent(t)) + ' G</span>';
     }
     if (t.type === 'bank') return '📍 <b>ธนาคาร</b><br>' + (Game.suitsDone(p) ? 'เลื่อนระดับ + เงินเดือน ' + fmt(g.salary(p)) + ' G!' : 'ซื้อหุ้น • เลือกทิศได้อิสระ');
-    if (t.type === 'suit') return '📍 สัญลักษณ์ ' + SUIT_GLYPH[t.suit] + (p.suits[t.suit] ? ' (มีแล้ว)' : ' (ใหม่!)');
+    if (t.type === 'suit') return '📍 สัญลักษณ์ ' + SUIT_GLYPH[t.suit] + (p.suits[t.suit] ? ' (มีแล้ว)' : ' (ใหม่!)') + '<br>🃏 หยุดพอดี = ได้เปิดการ์ด!';
     if (t.type === 'vacant' && t.special) { var b = SPECIAL_BUILDINGS.find(function (x) { return x.id === t.special; }); return '📍 ' + b.th + (t.spOwner >= 0 && t.spOwner !== p.id ? ' ของ ' + esc(s.players[t.spOwner].name) : ''); }
     return '📍 <b>' + esc((TILE_INFO[t.ch] || {}).name || t.name) + '</b>';
   }
@@ -1165,7 +1167,7 @@
     rentPay: ['จ่ายค่าเช่า 💸', 'ตกร้านคนอื่นต้องจ่ายค่าเช่า ร้านยิ่งลงทุนมากยิ่งแพง!<br>ถ้ามีเงินพอ ระบบจะถามว่าอยากซื้อกิจการร้านนั้นไหม (ต้องจ่าย 5 เท่าของมูลค่า)'],
     rentGet: ['มีคนมาตกร้านเรา! 💰', 'เราได้ค่าเช่าเต็ม ๆ เลย — นี่แหละเหตุผลที่ต้องลงทุนร้านให้แพง!<br>และผู้ถือหุ้นเขตนั้นได้ <b>ปันผล 20%</b> จากธนาคารด้วย'],
     bank: ['ธนาคาร & หุ้น 📈', 'ผ่านหรือหยุดที่ธนาคารซื้อหุ้นได้ (ครั้งละไม่เกิน 99 หุ้น)<br><b>ราคาหุ้นขึ้นเมื่อร้านในเขตถูกลงทุน</b> • ทุกครั้งที่มีคนจ่ายค่าเช่าในเขต ผู้ถือหุ้นได้ <b>ปันผล 20%</b><br>ทริค: ซื้อหุ้นเขตที่เราผูกขาด แล้วลงทุนร้านให้หุ้นพุ่ง!'],
-    suit: ['สัญลักษณ์ ♥ ♦ ♣ ♠', 'เดินผ่านช่องสัญลักษณ์เพื่อเก็บให้ <b>ครบ 4 แบบ</b> แล้วกลับธนาคาร<br>= <b>เลื่อนระดับ + รับเงินเดือน</b> (ยิ่งมีร้านมากเงินเดือนยิ่งเยอะ)'],
+    suit: ['สัญลักษณ์ ♥ ♦ ♣ ♠', 'เดินผ่านช่องสัญลักษณ์เพื่อเก็บให้ <b>ครบ 4 แบบ</b> แล้วกลับธนาคาร<br>= <b>เลื่อนระดับ + รับเงินเดือน</b> (ยิ่งมีร้านมากเงินเดือนยิ่งเยอะ)<br>ถ้า <b>หยุดตรงช่องสัญลักษณ์พอดี</b> จะได้เปิดการ์ดด้วย! 🃏'],
     promo: ['เลื่อนระดับ! 🎉', 'เงินเดือน = พื้นฐาน + เลเวล + 10% ของมูลค่าร้านทั้งหมด<br>เก็บสัญลักษณ์ใหม่แล้ววนกลับมารับอีกได้เรื่อย ๆ'],
     card: ['การ์ดเหตุการณ์ 🃏', 'ช่อง ? ให้เลือกการ์ด 1 ใบจากตาราง 100 ช่อง มีทั้งดีและร้าย<br>การ์ดที่เปิดจะเป็น <b>สีของเรา</b> — เรียงเป็นแถว 3 ช่องขึ้นไป (แนวนอน/ตั้ง/ทแยง) ได้ <b>โบนัส</b>!'],
     items: ['ไอเทมติดตัว 🎒', 'ด้านล่างคือไอเทมที่เลือกไว้ก่อนเกม ใช้ได้อย่างละ 1 ครั้ง<br>ไอเทมที่ขึ้น “แตะเพื่อใช้” กดได้ก่อนทอย ส่วนอื่นระบบจะถามเองเมื่อถึงจังหวะ'],

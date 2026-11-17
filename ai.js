@@ -16,7 +16,7 @@
         return -g.shopRent(t) * (1 + (g.shopRent(t) > p.cash ? 3 : 0)) / 2;
       case 'chance': return 90; case 'lucky': return 140; case 'superlucky': return 220; case 'tax': return -150;
       case 'casino': return 30; case 'broker': return 60; case 'vacant': return t.special ? (t.spOwner === p.id || t.spOwner < 0 ? 10 : -300) : 50;
-      case 'suit': return p.suits[t.suit] ? 10 : 160; case 'rest': return 50; case 'festival': return 60; case 'event': return 60; case 'warp': return 40;
+      case 'suit': return (p.suits[t.suit] ? 10 : 160) + 90; case 'rest': return 50; case 'festival': return 60; case 'event': return 60; case 'warp': return 40;
     }
     return 0;
   };

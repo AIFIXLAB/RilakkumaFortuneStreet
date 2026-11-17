@@ -485,7 +485,7 @@
     switch (t.type) {
       case 'bank': break; // handled in arriveBank
       case 'shop': await this.landShop(p, t); break;
-      case 'suit': break;
+      case 'suit': this.log('🃏 ' + p.name + ' หยุดตรงช่องสัญลักษณ์พอดี — ได้เปิดการ์ด!', 'card'); await this.drawChance(p); break;
       case 'chance': await this.drawChance(p); break;
       case 'lucky': { var amt = Math.max(C.luckyMin, Math.floor(s.taxPool * 0.5)); s.taxPool = Math.max(0, s.taxPool - amt); await this.gain(p, amt, 'ช่อง Lucky (กองภาษีเมือง)', true); break; }
       case 'superlucky': { var amt2 = Math.max(C.superLuckyMin, s.taxPool); s.taxPool = 0; await this.gain(p, amt2, 'ช่อง Super Lucky (กองภาษีทั้งหมด)', true); break; }

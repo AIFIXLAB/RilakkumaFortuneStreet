@@ -178,25 +178,30 @@
   }
   function guideModal() {
     var C = CONFIG;
-    var html = '<div style="max-width:900px;font-size:15px;font-weight:600;line-height:1.55">' +
-      '<b>🎯 เป้าหมาย:</b> สะสมทรัพย์สินรวม (เงินสด + ร้าน + หุ้น) ให้ถึงเป้าหมาย แล้ว <b>กลับถึงธนาคาร</b><br>' +
-      '<b>🃏 เงินเดือน:</b> เก็บสัญลักษณ์ ♥ ♦ ♣ ♠ ครบ แล้วผ่าน/หยุดธนาคาร → เลื่อนระดับ + เงินเดือน = 300 + Lv×100 + 2% ของมูลค่าทรัพย์สิน<br>' +
-      '<b>🏘️ เขตธุรกิจ (สไตล์ Fortune Street):</b> ร้านในเขตเดียวกันมี<b>ขอบสีเดียวกัน</b> และพื้นที่รอบ ๆ เป็นสีประจำเขต ถือหลายร้านในเขตเดียวกัน = โบนัส<br>' +
-      '<table style="border-collapse:collapse;margin:6px 0;font-weight:800"><tr style="background:#ffe2a8"><th style="padding:3px 10px">ร้านในเขต</th><th style="padding:3px 10px">มูลค่า/ค่าเช่า</th><th style="padding:3px 10px">ลงทุนได้สูงสุด</th></tr>' +
-      '<tr><td style="text-align:center">1 ร้าน</td><td style="text-align:center">+0%</td><td style="text-align:center">Lv ' + C.levelCapByCount[1] + '</td></tr><tr><td style="text-align:center">2 ร้าน</td><td style="text-align:center">+5%</td><td style="text-align:center">Lv ' + C.levelCapByCount[2] + '</td></tr><tr><td style="text-align:center">3 ร้าน</td><td style="text-align:center">+10%</td><td style="text-align:center">Lv ' + C.levelCapByCount[3] + '</td></tr><tr><td style="text-align:center">ครบเขต (ผูกขาด)</td><td style="text-align:center">+10% × Monopoly 1.20</td><td style="text-align:center">Lv 8 โรงแรมหรู</td></tr></table>' +
-      '<b>🏗️ อัปเกรด 8 ระดับ:</b> บ้านเล็ก → บ้านชั้นเดียว → สองชั้น → บ้านใหญ่ → บ้านหรู → โรงแรมเล็ก → กลาง → โรงแรมหรู (หยุดที่ร้านตัวเองหรือหยุดที่ธนาคาร)<br>' +
-      '<b>💰 ค่าเช่า:</b> ค่าเช่าพื้นฐาน × โบนัสเขต × Monopoly × เหตุการณ์ (เพดาน 5,000 G) → เจ้าของ 85% • ภาษีเมือง 5% • กองทุนปันผล 10%<br>' +
-      '<b>📈 หุ้น:</b> ซื้อที่ธนาคาร/Stock Broker (ค่าธรรมเนียม 1%), ขายต้นเทิร์น (2%). ราคาขึ้นเมื่อมูลค่าเขตเพิ่ม (±15% ต่อครั้ง). ผู้ถือหุ้นได้ปันผลทุกครั้งที่มีคนจ่ายค่าเช่าในเขตนั้น<br>' +
-      '<b>🤝 ซื้อกิจการ:</b> หลังจ่ายค่าเช่า สามารถซื้อร้านคู่แข่งได้ที่ 5 เท่าของมูลค่า<br>' +
-      '<b>🍀 ช่อง Lucky/Super Lucky:</b> รับเงินจากกองภาษีเมือง • <b>Tax:</b> จ่าย 300 G หรือ 3% ของเงินสด (สูงสุด 1,000) • <b>ภาษีทรัพย์สิน</b> 1% ทุก 5 เทิร์น (สูงสุด 500)<br>' +
-      '<b>🎒 อุปกรณ์:</b> ติดตั้งได้ 2 ชิ้น + การ์ดพิเศษ 1 ใบ ใช้ได้อย่างละ 1 ครั้งต่อเกม • <b>ล้มละลาย:</b> ระบบขายหุ้น → อาคาร → ร้าน อัตโนมัติ หากยังติดลบจะล้มละลาย</div>';
+    var html = '<div style="max-width:900px;font-size:15px;font-weight:600;line-height:1.6">' +
+      '<b>🎯 เป้าหมาย:</b> ทรัพย์สินรวม (เงินสด + มูลค่าร้าน + หุ้น) ถึงเป้าหมาย แล้ว <b>กลับเข้าธนาคาร</b> = ชนะ (ตั้งเป้าเองได้ในหน้าเลือกแผนที่)<br>' +
+      '<b>🎲 ทอยลูกเต๋า:</b> ลูกเต๋าหมุนอยู่ตลอด แตะเพื่อหยุดเอง • ตอนเดินจะมีตัวเลขก้าวที่เหลือบนหัว มี 📍 บอกจุดที่อาจตก กด <b>↩ ย้อน</b> เพื่อเดินถอยกลับได้ก่อนกด “หยุดตรงนี้”<br>' +
+      '<b>🏠 หัวใจของเกม = สร้างร้านแพง ๆ ให้คนอื่นมาตก!</b><br>' +
+      '• ซื้อร้านว่าง → ร้านเปลี่ยนเป็นกรอบสีของคุณ<br>' +
+      '• <b>ตกที่ร้านตัวเอง = ลงทุน</b> ใส่เงินในร้านใดก็ได้ของคุณในเขตเดียวกัน (สูงสุด ' + fmt(C.investCap) + ' G ต่อครั้ง) ร้านจะขยายจากบ้านเล็กเป็นโรงแรมหรู<br>' +
+      '• ถือหลายร้านในเขตเดียวกัน มูลค่าทุกร้าน ×(1 + 0.25 ต่อร้านที่เพิ่ม) และ <b>ผูกขาดทั้งเขต ×1.5</b> ทุนสูงสุดก็เพิ่มตาม<br>' +
+      '• ค่าเช่า = มูลค่าร้าน × อัตราผลตอบแทน (13%→20% ยิ่งร้านแพงยิ่งสูง) — คนที่ตกต้องจ่ายเต็ม ๆ!<br>' +
+      '• ซื้อกิจการคู่แข่งได้ที่ 5 เท่าของมูลค่า หลังจ่ายค่าเช่า<br>' +
+      '<b>📈 หุ้น:</b> ราคาหุ้น = มูลค่ารวมของเขต ÷ (23.275 × จำนวนร้าน) — ลงทุนร้านแล้วหุ้นขึ้น! ซื้อครั้งละไม่เกิน 99 หุ้นที่ธนาคาร/Stock Broker ซื้อ 10 หุ้นขึ้นไปราคาหุ้นขยับขึ้น<br>' +
+      '<b>💹 ปันผล:</b> ทุกครั้งที่มีคนจ่ายค่าเช่าในเขต ธนาคารจ่ายปันผล 20% ของค่าเช่าให้ผู้ถือหุ้นเขตนั้นตามสัดส่วน (รวมเจ้าของร้านเองด้วย ถ้าถือหุ้น)<br>' +
+      '<b>🃏 เงินเดือน:</b> เก็บ ♥ ♦ ♣ ♠ ครบ แล้วผ่าน/หยุดธนาคาร → เลื่อนระดับ + เงินเดือน = ' + fmt(C.baseSalary) + ' + ' + fmt(C.salaryPerLevel) + '×Lv + 10% ของมูลค่าร้าน<br>' +
+      '<b>⚖️ กติกาเลือกได้:</b> ภาษี เปิด/ปิด (ปิด = แบบเกมจริง) • มีคนล้มละลาย = จบเกม<br>' +
+      '<b>🌈 พิเศษ:</b> เปิดการ์ดให้สีตัวเองเรียงแถว 3+ ช่องรับโบนัส • ไอเทม/การ์ดพิเศษติดตัวใช้ได้อย่างละครั้ง</div>';
     return modal({ title: '📖 คู่มือการเล่น', width: 980, body: html, buttons: [{ t: 'เข้าใจแล้ว!', v: 1, cls: 'green' }] });
   }
 
   // =====================================================================
   // SETUP
   // =====================================================================
-  var LENGTHS = [{ n: 'Quick Match', t: 20000, r: 50, d: '~15–25 นาที • เป้า 20,000 G' }, { n: 'Standard', t: 30000, r: 100, d: '~30–45 นาที • เป้า 30,000 G' }, { n: 'Long Match', t: 45000, r: 100, d: '~45–90 นาที • เป้า 45,000 G' }];
+  var LENGTHS = [{ n: 'Quick', t: 25000, d: '~25 รอบ' }, { n: 'Standard', t: 40000, d: '~40 รอบ' }, { n: 'Long', t: 60000, d: '~50 รอบ' }, { n: 'Marathon', t: 100000, d: '~70 รอบ' }];
+  U.rules = { target: 40000, rounds: 100, tax: false, endOnBankrupt: true };
+  try { var rs = JSON.parse(localStorage.getItem('rfs_rules') || 'null'); if (rs) Object.assign(U.rules, rs); } catch (e) { }
+  function saveRules() { try { localStorage.setItem('rfs_rules', JSON.stringify(U.rules)); } catch (e) { } }
   function openSetup(vsAI) {
     var P = Meta.p;
     if (!U.sel.slots || vsAI) U.sel.slots = [{ type: 'human', name: P.name, char: P.equip.char }, { type: 'ai', lv: 1 }, { type: 'ai', lv: 1 }, { type: 'ai', lv: 1 }];
@@ -220,8 +225,29 @@
     document.querySelectorAll('[data-ty]').forEach(function (e) { e.onclick = function () { var a = e.dataset.ty.split(':'); var s = sel.slots[+a[0]]; s.type = a[1]; if (s.type === 'ai' && s.lv === undefined) s.lv = 1; if (s.type !== 'human') s.char = null; renderSetup(); }; });
     document.querySelectorAll('[data-lv]').forEach(function (e) { e.onclick = function () { var a = e.dataset.lv.split(':'); sel.slots[+a[0]].lv = +a[1]; renderSetup(); }; });
     document.querySelectorAll('[data-ch]').forEach(function (e) { e.onclick = function () { var i = +e.dataset.ch; if (sel.slots[i].type !== 'human' || i === 0) { if (i === 0) toast('เลือกตัวละครของคุณในหน้าถัดไป (Pre-Match Setup)'); return; } pickCharModal(i); }; });
-    $('#lenSeg').innerHTML = LENGTHS.map(function (l, i) { return '<div data-len="' + i + '" class="' + (sel.len === i ? 'on' : '') + '">' + l.n + '<div style="font-size:11px">' + l.d + '</div></div>'; }).join('');
-    document.querySelectorAll('[data-len]').forEach(function (e) { e.onclick = function () { sel.len = +e.dataset.len; renderSetup(); }; });
+    renderRules();
+  }
+  function renderRules() {
+    var R = U.rules, box = $('#rulesBox');
+    box.innerHTML = '<div class="row" style="align-items:center;gap:14px"><b style="font-size:18px">🎯 เป้าหมายทรัพย์สิน</b>' +
+      '<button class="small rbtn" data-tg="-5000">−5,000</button><button class="small rbtn" data-tg="-1000">−1,000</button>' +
+      '<input class="tgt" id="tgtIn" inputmode="numeric" value="' + fmt(R.target) + '">' +
+      '<button class="small rbtn" data-tg="1000">+1,000</button><button class="small rbtn" data-tg="5000">+5,000</button>' +
+      '<span class="muted" style="font-size:13px;font-weight:700">(เงินเริ่มต้น 10,000 G • ตั้งได้ 15,000–999,000)</span></div>' +
+      '<div class="row" style="margin-top:8px;align-items:center"><b>ปุ่มลัด:</b>' + LENGTHS.map(function (l) { return '<button class="small rbtn ' + (R.target === l.t ? 'on' : '') + '" data-tp="' + l.t + '">' + l.n + ' ' + fmt(l.t) + ' <span style="font-size:11px">' + l.d + '</span></button>'; }).join('') + '</div>' +
+      '<div class="row" style="margin-top:10px;align-items:center;gap:12px"><b>กติกา:</b>' +
+      '<div class="tog ' + (R.tax ? 'on' : '') + '" data-rule="tax"><i></i>มีภาษี (ช่องภาษี/ภาษีทรัพย์สิน/ค่าธรรมเนียมหุ้น)</div>' +
+      '<div class="tog ' + (R.endOnBankrupt ? 'on' : '') + '" data-rule="endOnBankrupt"><i></i>มีคนล้มละลาย = จบเกม (แบบเกมจริง)</div>' +
+      '<span>รอบสูงสุด</span>' + [50, 100, 200].map(function (n) { return '<button class="small rbtn ' + (R.rounds === n ? 'on' : '') + '" data-rd="' + n + '">' + n + '</button>'; }).join('') + '</div>';
+    var clampT = function (v) { return Math.max(15000, Math.min(999000, Math.round(v / 1000) * 1000)); };
+    box.querySelectorAll('[data-tg]').forEach(function (b) { b.onclick = function () { R.target = clampT(R.target + +b.dataset.tg); saveRules(); renderRules(); }; });
+    box.querySelectorAll('[data-tp]').forEach(function (b) { b.onclick = function () { R.target = +b.dataset.tp; saveRules(); renderRules(); }; });
+    box.querySelectorAll('[data-rd]').forEach(function (b) { b.onclick = function () { R.rounds = +b.dataset.rd; saveRules(); renderRules(); }; });
+    box.querySelectorAll('[data-rule]').forEach(function (b) { b.onclick = function () { R[b.dataset.rule] = !R[b.dataset.rule]; saveRules(); renderRules(); }; });
+    var inp = box.querySelector('#tgtIn');
+    inp.onfocus = function () { inp.value = R.target; inp.select(); };
+    inp.onchange = inp.onblur = function () { var v = parseInt(String(inp.value).replace(/[^0-9]/g, ''), 10); if (v) { R.target = clampT(v); saveRules(); } renderRules(); };
+    inp.onkeydown = function (e) { if (e.key === 'Enter') inp.blur(); };
   }
   function pickCharModal(i) {
     var taken = U.sel.slots.map(function (s, k) { return k !== i ? s.char : null; });
@@ -289,7 +315,7 @@
     var P = Meta.p, e = P.equip, v = Meta.validLoadout();
     if (e.eq.length !== new Set(e.eq).size) { toast('ห้ามติดตั้งอุปกรณ์ชิ้นเดียวกันซ้ำ'); return; }
     if (!P.chars[e.char]) { toast('ต้องเลือกตัวละครที่ปลดล็อกแล้ว'); return; }
-    var L = LENGTHS[U.sel.len], slots = U.sel.slots;
+    var R = U.rules, slots = U.sel.slots;
     var usedChars = [e.char]; slots.slice(1).forEach(function (s) { if (s.char) usedChars.push(s.char); });
     var pool = ['b0', 'b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7'].filter(function (k) { return usedChars.indexOf(k) < 0; });
     var aiNames = ['คุมะ AI', 'โคริ AI', 'คิอิโระ AI', 'ชาอิ AI', 'เนโกะ AI', 'ริสุ AI', 'เพนกิ AI', 'ชิกะ AI'];
@@ -304,8 +330,8 @@
         loadout: i === 0 ? { eq: v.eq, sc: v.sc } : null, owner: i === 0,
       });
     });
-    var s = Game.create({ mapIdx: U.sel.map, players: players, target: L.t, maxRounds: L.r, seed: Math.floor(Math.random() * 1e9) });
-    s.ownerIdx = 0; s.dice = P.equip.dice; s.lenName = L.n;
+    var s = Game.create({ mapIdx: U.sel.map, players: players, target: R.target, maxRounds: R.rounds, rules: { tax: R.tax, endOnBankrupt: R.endOnBankrupt }, seed: Math.floor(Math.random() * 1e9) });
+    s.ownerIdx = 0; s.dice = P.equip.dice; s.lenName = 'เป้า ' + fmt(R.target);
     startGame(s, true);
   };
 
@@ -329,11 +355,30 @@
       } catch (err) { if (err !== 'abort') { console.error(err); toast('⚠️ ' + (err && err.message || err)); } }
     })();
   }
+  // spinning die helper: faces change fast until stop() → returns the face shown
+  function spinner(el, size) {
+    var face = 1 + Math.floor(Math.random() * 6), iv = setInterval(function () { var n; do { n = 1 + Math.floor(Math.random() * 6); } while (n === face); face = n; el.innerHTML = spr(['ui', 'd' + face], size, size, 'transform:rotate(' + (Math.random() * 30 - 15) + 'deg)'); sfx('dice'); }, 75);
+    el.innerHTML = spr(['ui', 'd' + face], size, size);
+    return { stop: function () { clearInterval(iv); el.innerHTML = spr(['ui', 'd' + face], size, size); return face; } };
+  }
   async function orderIntro(g) {
-    var s = g.s;
-    var html = '<div class="row" style="gap:14px;justify-content:center">' + s.orderRolls.map(function (r, i) { var p = s.players[r.id]; return '<div style="text-align:center;border:4px solid ' + p.color + ';border-radius:18px;padding:8px;background:#fff;width:170px">' + spr(charSpec(p), 100, 100) + '<div style="font-weight:900">' + esc(p.name) + '</div>' + spr(['dice', 6 + r.roll], 50, 50) + '<div style="font-weight:900;font-size:20px">ลำดับที่ ' + (i + 1) + '</div></div>'; }).join('') + '</div><div style="text-align:center;margin-top:8px;font-weight:800">ทุกคนเริ่มที่ธนาคาร • เป้าหมาย ' + fmt(s.settings.target) + ' G • สูงสุด ' + s.settings.maxRounds + ' รอบ</div>';
-    sfx('dice');
-    await modal({ title: '🎲 ทอยลูกเต๋าจัดลำดับผู้เล่น', width: 820, body: html, buttons: [{ t: 'เริ่มเกม!', v: 1, cls: 'pink' }], close: false });
+    var s = g.s, res = {};
+    var html = '<div class="row" style="gap:14px;justify-content:center">' + s.players.map(function (p) { return '<div id="oc' + p.id + '" style="text-align:center;border:5px solid ' + p.color + ';border-radius:22px;padding:8px;background:#fff;width:180px">' + spr(charSpec(p), 100, 100) + '<div style="font-weight:700">' + esc(p.name) + '</div><div class="ordice" id="od' + p.id + '"></div><div id="ol' + p.id + '" style="font-weight:700;font-size:15px;min-height:44px">' + (p.isAI ? 'กำลังทอย...' : '<button class="pink small" id="ob' + p.id + '">✋ หยุด!</button>') + '</div></div>'; }).join('') + '</div><div style="text-align:center;margin-top:8px;font-weight:700">แตะ “หยุด!” หรือแตะลูกเต๋าเพื่อหยุดลูกเต๋าของคุณ • แต้มมากสุดได้เริ่มก่อน</div>';
+    await modal({ title: '🎲 ทอยลูกเต๋าจัดลำดับผู้เล่น', width: 840, body: html, close: false, buttons: [{ t: 'เริ่มเกม!', v: 1, cls: 'pink', dis: true }], mount: function (box) {
+      var btn = box.querySelector('.mbtns button'), left = s.players.length;
+      s.players.forEach(function (p) {
+        var sp = spinner(box.querySelector('#od' + p.id), 80);
+        var stop = function () { if (res[p.id]) return; res[p.id] = sp.stop(); sfx('card'); box.querySelector('#ol' + p.id).innerHTML = '<b style="font-size:22px">' + res[p.id] + ' แต้ม</b>'; if (--left === 0) { btn.disabled = false; finalize(); } };
+        if (p.isAI) setTimeout(stop, 700 + Math.random() * 1600);
+        else { box.querySelector('#ob' + p.id).onclick = stop; box.querySelector('#od' + p.id).onclick = stop; }
+      });
+      function finalize() {
+        var order = s.players.map(function (p) { return { id: p.id, roll: res[p.id], tb: Math.random() }; }).sort(function (a, b) { return b.roll - a.roll || b.tb - a.tb; });
+        s.order = order.map(function (o) { return o.id; }); s.orderRolls = order.map(function (o) { return { id: o.id, roll: o.roll }; }); s.cur = 0;
+        order.forEach(function (o, i) { var el = box.querySelector('#ol' + o.id); el.innerHTML += '<div style="color:#ff5d8f">ลำดับที่ ' + (i + 1) + '</div>'; });
+        refresh();
+      }
+    } });
   }
   function cardGridHTML(grid, hl) {
     var s = U.g.s, own = s.gridOwner || [];
@@ -567,11 +612,10 @@
   function shopInfo(t) {
     var g = U.g, s = g.s, d = s.districts[t.district], biz = BUSINESS.find(function (b) { return b.id === t.biz; });
     var owner = t.owner >= 0 ? s.players[t.owner] : null, c = owner ? g.ownedIn(owner.id, t.district) : 0, n = d.tiles.length;
-    var nextCost = owner && t.level < 8 ? fmt(g.upgradeCostRaw(t, t.level + 1)) + ' G' : '-';
-    var kv = '<div class="kv"><span>เขต</span><b style="color:' + d.color + '">' + d.th + '</b><span>ประเภทธุรกิจ</span><b>' + biz.name + '</b><span>เจ้าของ</span><b>' + (owner ? esc(owner.name) : 'ว่าง (ซื้อได้)') + '</b><span>ระดับ</span><b>' + (owner ? 'Lv' + t.level + ' ' + CONFIG.levelName[t.level] : '-') + '</b><span>ราคาซื้อ</span><b>' + fmt(g.buyPrice(t)) + ' G</b><span>มูลค่าปัจจุบัน</span><b>' + fmt(owner ? g.shopValue(t) : g.buyPrice(t)) + ' G</b><span>ค่าเช่า</span><b>' + (owner ? fmt(g.shopRent(t)) : fmt(Math.round(CONFIG.levelRent[1] * t.f))) + ' G</b><span>ค่าอัปเกรดระดับถัดไป</span><b>' + nextCost + '</b>' +
-      (owner ? '<span>โบนัสเขต (ถือ ' + c + '/' + n + ')</span><b>×' + g.distMult(t).toFixed(2) + (c >= n ? ' 👑 Monopoly' : '') + '</b><span>ลงทุนได้สูงสุด</span><b>Lv' + g.levelCap(t) + '</b><span>ราคาซื้อกิจการ (5x)</span><b>' + fmt(g.shopValue(t) * 5) + ' G</b>' : '') + '</div>';
-    var levels = '<div class="row" style="gap:2px;margin-top:8px">' + [1, 2, 3, 4, 5, 6, 7, 8].map(function (L) { return '<div style="text-align:center;opacity:' + (owner && L <= t.level ? 1 : .35) + '">' + spr(['lvl', L - 1], 52, 46) + '<div style="font-size:11px;font-weight:900">Lv' + L + '</div></div>'; }).join('') + '</div>';
-    modal({ title: t.name, width: 640, body: '<div class="row" style="align-items:flex-start;gap:16px"><div style="border:5px solid ' + d.color + ';border-radius:18px;padding:8px;background:#fff">' + spr(owner ? ['lvl', t.level - 1] : ['lvl', biz.spr], 150, 140) + '</div>' + kv + '</div>' + levels, buttons: [{ t: 'ดูหุ้นเขตนี้', v: 'd', cls: 'blue small' }, { t: 'ปิด', v: null }] })
+    var kv = '<div class="kv"><span>เขต</span><b style="color:' + d.color + '">' + d.th + '</b><span>ธุรกิจ</span><b>' + biz.name + '</b><span>เจ้าของ</span><b>' + (owner ? esc(owner.name) : 'ว่าง (ซื้อได้ ' + fmt(g.buyPrice(t)) + ' G)') + '</b>' +
+      (owner ? '<span>อาคาร</span><b>' + CONFIG.levelName[t.level] + '</b><span>มูลค่าร้าน</span><b>' + fmt(g.shopValue(t)) + ' G</b><span>ค่าเช่าเมื่อมีคนตก</span><b style="color:#d0342c;font-size:20px">' + fmt(g.shopRent(t)) + ' G</b><span>ทุนสูงสุดคงเหลือ</span><b>' + fmt(g.maxCapital(t)) + ' G</b><span>ถือในเขต</span><b>' + c + '/' + n + ' ร้าน ×' + g.distMult(t).toFixed(2) + (c >= n ? ' 👑 ผูกขาด' : '') + '</b><span>ราคาซื้อกิจการ (5×)</span><b>' + fmt(g.shopValue(t) * 5) + ' G</b>' : '<span>ค่าเช่าเริ่มต้น</span><b>' + fmt(Math.round(g.priceFor(t.base))) + ' G</b>') + '</div>';
+    var levels = '<div class="row" style="gap:2px;margin-top:8px;justify-content:center">' + [1, 2, 3, 4, 5, 6, 7, 8].map(function (L) { return '<div style="text-align:center;opacity:' + (owner && L <= t.level ? 1 : .3) + '">' + spr(['lvl', L - 1], 56, 50) + '<div style="font-size:10px;font-weight:700">' + fmt(Math.round(t.base * CONFIG.levelRatio[L - 1])) + '</div></div>'; }).join('') + '</div><div class="muted" style="text-align:center;font-size:12px;font-weight:700">ลงทุนจนมูลค่าฐานถึงตัวเลขด้านล่าง อาคารจะขยายเป็นขั้นถัดไป (ตกที่ร้านตัวเองเพื่อลงทุน)</div>';
+    modal({ title: esc(t.name), width: 680, body: '<div class="row" style="align-items:flex-start;gap:16px"><div style="border:6px solid ' + (owner ? owner.color : d.color) + ';border-radius:20px;padding:8px;background:#fff">' + spr(owner ? ['lvl', t.level - 1] : ['lvl', biz.spr], 150, 140) + '</div>' + kv + '</div>' + levels, buttons: [{ t: 'ดูหุ้นเขตนี้', v: 'd', cls: 'blue small' }, { t: 'ปิด', v: null }] })
       .then(function (v) { if (v === 'd') districtInfo(t.district); });
   }
   function spark(hist, color, w, h) {
@@ -631,10 +675,51 @@
       },
     });
   }
+  function landPreview(p, t) {
+    var g = U.g, s = g.s;
+    if (t.type === 'shop') {
+      if (t.owner < 0) return '📍 <b>' + esc(t.name) + '</b><br>ร้านว่าง • ซื้อได้ ' + fmt(g.buyPrice(t)) + ' G' + (p.cash < g.buyPrice(t) ? '<br><span style="color:#d0342c">เงินไม่พอ</span>' : '');
+      if (t.owner === p.id) return '📍 <b>' + esc(t.name) + '</b> (ร้านคุณ)<br>ลงทุนเพิ่มได้ ' + fmt(g.maxCapital(t)) + ' G';
+      return '📍 <b>' + esc(t.name) + '</b> ของ ' + esc(s.players[t.owner].name) + '<br><span style="color:#d0342c;font-size:16px">ต้องจ่าย ' + fmt(g.shopRent(t)) + ' G</span>';
+    }
+    if (t.type === 'bank') return '📍 <b>ธนาคาร</b><br>' + (Game.suitsDone(p) ? 'เลื่อนระดับ + เงินเดือน ' + fmt(g.salary(p)) + ' G!' : 'ซื้อหุ้น • เลือกทิศได้อิสระ');
+    if (t.type === 'suit') return '📍 สัญลักษณ์ ' + SUIT_GLYPH[t.suit] + (p.suits[t.suit] ? ' (มีแล้ว)' : ' (ใหม่!)');
+    if (t.type === 'vacant' && t.special) { var b = SPECIAL_BUILDINGS.find(function (x) { return x.id === t.special; }); return '📍 ' + b.th + (t.spOwner >= 0 && t.spOwner !== p.id ? ' ของ ' + esc(s.players[t.spOwner].name) : ''); }
+    return '📍 <b>' + esc((TILE_INFO[t.ch] || {}).name || t.name) + '</b>';
+  }
+  function investUI(p, t, o) {
+    var g = U.g, s = g.s, d = s.districts[t.district];
+    var list = o.list.filter(function (x) { return !x.blocked; }), sel = (list.find(function (x) { return x.tile.id === t.id && x.cap > 0; }) || list.find(function (x) { return x.cap > 0; }) || list[0]).tile, amt = 0;
+    return modal({ title: '🏗️ ลงทุนร้านในเขต ' + esc(d.th), width: 980, xValue: null, bgClose: false, body: '<div id="invB"></div>', buttons: [], mount: function (box, close) {
+      var B = box.querySelector('#invB');
+      function draw() {
+        var max = g.maxInvest(p, sel); amt = Math.min(amt, max); if (!amt && max) amt = Math.min(max, Math.round(sel.base * 0.5 / 10) * 10);
+        var cost = g.investCost(p, amt), nv = g.valueAfterInvest(sel, amt), nr = g.rentAfterInvest(sel, amt), curR = g.shopRent(sel);
+        var newLv = (function () { var r = (sel.base + sel.invest + amt) / sel.base, L = 1; CONFIG.levelRatio.forEach(function (x, i) { if (r >= x) L = i + 1; }); return L; })();
+        var dv = g.districtValue(t.district) - g.shopValue(sel) + nv, newStock = Math.max(1, Math.round(dv / (CONFIG.stockDiv * d.tiles.length) * (d.adj || 1)));
+        B.innerHTML = '<div class="row" style="align-items:flex-start;gap:14px"><div style="width:360px">' + list.map(function (x) { var tt = x.tile; return '<div class="invshop ' + (tt.id === sel.id ? 'sel' : '') + (x.cap <= 0 ? ' full' : '') + '" data-is="' + tt.id + '">' + spr(['lvl', tt.level - 1], 64, 56) + '<div class="col grow" style="gap:0"><b>' + esc(tt.name) + '</b><span style="font-size:12px">ค่าเช่า ' + fmt(g.shopRent(tt)) + ' • มูลค่า ' + fmt(g.shopValue(tt)) + '</span><span style="font-size:12px">ทุนสูงสุดคงเหลือ ' + fmt(x.cap) + ' G</span></div></div>'; }).join('') +
+          '<div class="muted" style="font-size:12px;font-weight:700">ถือ ' + g.ownedIn(p.id, t.district) + '/' + d.tiles.length + ' ร้านในเขต — ยิ่งถือมาก ทุนสูงสุดและค่าเช่ายิ่งสูง' + (g.dominated(sel) ? ' • 👑 ผูกขาดทั้งเขต!' : '') + '</div></div>' +
+          '<div class="grow"><div class="row" style="gap:12px;justify-content:center">' + spr(['lvl', sel.level - 1], 120, 104) + '<div style="font-size:36px">➜</div>' + spr(['lvl', newLv - 1], 140, 122) + '</div>' +
+          '<div style="text-align:center;font-weight:700">' + CONFIG.levelName[sel.level] + ' ➜ <span class="up">' + CONFIG.levelName[newLv] + '</span></div>' +
+          '<div class="bigrow"><div>ค่าเช่า<b>' + fmt(curR) + ' ➜ <span class="up">' + fmt(nr) + '</span></b></div><div>มูลค่าร้าน<b>' + fmt(g.shopValue(sel)) + ' ➜ <span class="up">' + fmt(nv) + '</span></b></div><div>หุ้นเขต<b>' + d.price + ' ➜ <span class="up">' + newStock + '</span></b></div></div>' +
+          '<div style="text-align:center"><div style="font-size:15px;font-weight:700">จำนวนเงินลงทุน</div><div style="font-size:40px;font-weight:700;color:#2c9a2c">' + fmt(amt) + ' G</div>' +
+          '<input type="range" id="invR" min="0" max="' + max + '" step="10" value="' + amt + '" style="width:90%">' +
+          '<div class="row" style="justify-content:center;gap:6px;flex-wrap:wrap">' + [-1000, -100, 100, 500, 1000].map(function (v) { return '<button class="small rbtn" data-ia="' + v + '">' + (v > 0 ? '+' : '') + fmt(v) + '</button>'; }).join('') + '<button class="small rbtn pink" data-ia="max">สูงสุด ' + fmt(max) + '</button></div>' +
+          '<div style="font-size:13px;font-weight:700;margin-top:4px">จ่ายจริง ' + fmt(cost) + ' G' + (cost < amt ? ' (ส่วนลด)' : '') + ' • เงินสด ' + fmt(p.cash) + ' G • ลงทุนได้อีก ' + fmt(o.turnLeft) + ' G ในเทิร์นนี้</div></div>' +
+          '<div class="row" style="justify-content:center;gap:10px;margin-top:8px"><button class="green" id="invOk" ' + (amt > 0 ? '' : 'disabled') + '>🏗️ ลงทุน ' + fmt(amt) + ' G</button><button class="gray" id="invNo">ไม่ลงทุน</button></div></div></div>';
+        B.querySelectorAll('[data-is]').forEach(function (e) { e.onclick = function () { sel = g.tile(+e.dataset.is); amt = 0; draw(); }; });
+        B.querySelectorAll('[data-ia]').forEach(function (e) { e.onclick = function () { var v = e.dataset.ia; amt = v === 'max' ? max : Math.max(0, Math.min(max, amt + +v)); draw(); }; });
+        B.querySelector('#invR').oninput = function () { amt = +this.value; draw(); };
+        B.querySelector('#invOk').onclick = function () { close({ id: sel.id, amount: amt }); };
+        B.querySelector('#invNo').onclick = function () { close(null); };
+      }
+      draw();
+    } });
+  }
   function myShopsModal(p) {
     var g = U.g, list = g.shopsOf(p);
     if (!list.length) return alertBox('🏪 ร้านของฉัน', 'ยังไม่มีร้าน — หยุดที่ช่องร้านว่าง (กรอบเส้นประ) เพื่อซื้อ แล้วร้านจะเปลี่ยนเป็นกรอบสีของคุณ');
-    modal({ title: '🏪 ร้านของ ' + esc(p.name) + ' (' + list.length + ' ร้าน)', width: 820, body: '<div class="col">' + list.map(function (t) { var d = g.s.districts[t.district], c = g.ownedIn(p.id, t.district); return '<div class="opt" data-sh="' + t.id + '" style="border-color:' + p.color + '"><span class="sw" style="background:' + d.color + '"></span>' + spr(['lvl', t.level - 1], 54, 48) + '<div class="col grow" style="gap:0"><span>' + t.name + ' • Lv' + t.level + '</span><span style="font-size:12px">' + d.th + ' (ถือ ' + c + '/' + d.tiles.length + ') • ลงทุนได้ถึง Lv' + g.levelCap(t) + '</span></div><span>ค่าเช่า <b>' + fmt(g.shopRent(t)) + '</b> • มูลค่า <b>' + fmt(g.shopValue(t)) + '</b></span></div>'; }).join('') + '<div class="muted" style="font-size:13px;font-weight:800">อัปเกรดได้เมื่อหยุดที่ร้านของตัวเอง หรือหยุดที่ธนาคาร</div></div>', buttons: [{ t: 'ปิด', v: null }], mount: function (box, close) { box.querySelectorAll('[data-sh]').forEach(function (e) { e.onclick = function () { close(+e.dataset.sh); }; }); } })
+    modal({ title: '🏪 ร้านของ ' + esc(p.name) + ' (' + list.length + ' ร้าน)', width: 820, body: '<div class="col">' + list.map(function (t) { var d = g.s.districts[t.district], c = g.ownedIn(p.id, t.district); return '<div class="opt" data-sh="' + t.id + '" style="border-color:' + p.color + '"><span class="sw" style="background:' + d.color + '"></span>' + spr(['lvl', t.level - 1], 54, 48) + '<div class="col grow" style="gap:0"><span>' + t.name + ' • Lv' + t.level + '</span><span style="font-size:12px">' + d.th + ' (ถือ ' + c + '/' + d.tiles.length + ') • ลงทุนได้ถึง Lv' + g.levelCap(t) + '</span></div><span>ค่าเช่า <b>' + fmt(g.shopRent(t)) + '</b> • มูลค่า <b>' + fmt(g.shopValue(t)) + '</b></span></div>'; }).join('') + '<div class="muted" style="font-size:13px;font-weight:800">ตกที่ร้านของตัวเอง = ลงทุนร้านของคุณในเขตเดียวกันได้ (สูงสุด 6,000 G ต่อครั้ง)</div></div>', buttons: [{ t: 'ปิด', v: null }], mount: function (box, close) { box.querySelectorAll('[data-sh]').forEach(function (e) { e.onclick = function () { close(+e.dataset.sh); }; }); } })
       .then(function (id) { if (id !== null && id !== undefined) shopInfo(g.s.tiles[id]); });
   }
   function sellShopsPanel(p) {
@@ -643,12 +728,7 @@
     return modal({ title: '🏚️ ขายร้านให้ธนาคาร (75% − ค่าธรรมเนียม 5%)', width: 760, body: '<div class="col">' + list.map(function (t) { var v = Math.floor(g.shopValue(t) * CONFIG.shopSellRate * (1 - CONFIG.shopSellFee)); return '<div class="opt" data-sh="' + t.id + '"><span class="sw" style="background:' + g.s.districts[t.district].color + '"></span>' + spr(['lvl', t.level - 1], 50, 44) + '<span class="grow">' + t.name + ' Lv' + t.level + '</span><span>มูลค่า ' + fmt(g.shopValue(t)) + ' → ได้รับ <b>' + fmt(v) + ' G</b></span></div>'; }).join('') + '</div>', buttons: [{ t: 'ปิด', v: null }], mount: function (box, close) { box.querySelectorAll('[data-sh]').forEach(function (e) { e.onclick = function () { close(+e.dataset.sh); }; }); } })
       .then(function (id) { if (id === null || id === undefined) return; var t = g.s.tiles[id]; return modal({ title: 'ยืนยันขาย ' + t.name + '?', body: '<div style="text-align:center;font-weight:800">ร้านจะกลับเป็นของว่าง และมูลค่าเขตจะลดลง</div>', buttons: [{ t: 'ขาย', v: 1, cls: 'pink' }, { t: 'ยกเลิก', v: 0 }] }).then(function (ok) { if (ok) { g.sellShopToBank(p, t); sfx('coin'); refresh(); } }); });
   }
-  function upgradeUI(p, t, o) {
-    var g = U.g, d = g.s.districts[t.district], c = g.ownedIn(p.id, t.district), n = d.tiles.length;
-    var opts = o.list.map(function (x) { var nr = Math.min(CONFIG.rentCap, Math.round(CONFIG.levelRent[x.level] * t.f * g.distMult(t) * g.eventMod(t))); return '<div class="opt" data-lv="' + x.level + '" style="flex-direction:column;width:132px;text-align:center;gap:2px">' + spr(['lvl', x.level - 1], 96, 80) + '<div>Lv' + x.level + '</div><div style="font-size:12px">' + CONFIG.levelName[x.level] + '</div><div class="coin" style="font-size:14px">' + fmt(x.cost) + '</div><div style="font-size:12px">ค่าเช่า ' + fmt(nr) + '</div></div>'; }).join('');
-    var locked = []; for (var L = o.cap + 1; L <= 8; L++) locked.push(L);
-    return modal({ title: '🏗️ อัปเกรด ' + t.name + ' (Lv' + t.level + ')', width: 980, body: '<div style="text-align:center;font-weight:800;margin-bottom:8px">ถือ ' + c + '/' + n + ' ร้านใน <span style="color:' + d.color + '">' + d.th + '</span> → ลงทุนได้สูงสุด <b>Lv' + o.cap + '</b>' + (locked.length ? ' • ซื้อร้านในเขตนี้เพิ่มเพื่อปลดล็อก Lv' + locked.join(', ') : ' 👑') + ' • เงินสด ' + fmt(p.cash) + ' G</div><div class="row" style="gap:8px;flex-wrap:wrap;justify-content:center">' + opts + '</div>', buttons: [{ t: 'ไม่อัปเกรด', v: 0, cls: 'gray' }], mount: function (box, close) { box.querySelectorAll('[data-lv]').forEach(function (e) { e.onclick = function () { close(+e.dataset.lv); }; }); } });
-  }
+
 
   // ---------- IO adapter: human = UI, AI = ai.js + short visual delays ----------
   function makeIO(g, tok) {
@@ -684,6 +764,55 @@
           U.preRollRender = render; render();
         });
       },
+      rollDice: function (p) {
+        return new Promise(function (resolve) {
+          var L = $('#diceLayer'); L.classList.add('on', 'tap'); L.innerHTML = '<div id="spinD"></div><div class="tapmsg">แตะเพื่อหยุดลูกเต๋า!</div>';
+          setAct(spr(['ui', 'roll'], 200, 96) + '<div>แตะลูกเต๋าเพื่อหยุด!</div>');
+          var sp = spinner(L.querySelector('#spinD'), 220), done = false;
+          L.onclick = async function () {
+            if (done) return; done = true; var v = sp.stop(); sfx('card'); U.lastRoll = v;
+            L.innerHTML = spr(['ui', 'd' + v], 220, 220) + '<div class="num">' + v + '</div>'; L.classList.remove('tap');
+            try { await wait(650); } catch (e) { }
+            L.classList.remove('on'); L.innerHTML = ''; L.onclick = null;
+            setAct(spr(['ui', 'd' + v], 64, 64) + '<div>' + esc(p.name) + ' ได้ ' + v + ' แต้ม!</div>');
+            resolve(v);
+          };
+        });
+      },
+      planPath: function (p, steps) {
+        return new Promise(function (resolve) {
+          var path = [], manual = false, timer = null, B = $('#board');
+          var curId = function () { return path.length ? path[path.length - 1] : p.pos; };
+          var prevId = function () { return path.length >= 2 ? path[path.length - 2] : path.length === 1 ? p.pos : p.prev; };
+          var bubble = document.createElement('div'); bubble.className = 'stepBubble'; B.appendChild(bubble);
+          function clear() { B.querySelectorAll('.dirArrow').forEach(function (a) { a.remove(); }); B.querySelectorAll('.dest,.trail').forEach(function (e) { e.classList.remove('dest', 'trail'); }); clearTimeout(timer); }
+          function render() {
+            clear(); var rem = steps - path.length, cur = g.tile(curId());
+            // piece preview
+            var el = document.getElementById('pc' + p.id); el.style.left = (cur.x * SC - BT * 0.52) + 'px'; el.style.top = (cur.y * SC - BT * 1.05) + 'px'; el.style.zIndex = 30;
+            bubble.style.left = cur.x * SC + 'px'; bubble.style.top = (cur.y * SC - BT * 1.1) + 'px'; bubble.textContent = rem; bubble.style.display = rem > 0 ? 'flex' : 'none';
+            path.forEach(function (id) { var e = document.getElementById('t' + id); if (e) e.classList.add('trail'); });
+            if (CAM.follow && CAM.z > 1.05) centerOnTile(cur.id, true);
+            if (rem > 0) {
+              g.endpoints(cur.id, prevId(), rem).forEach(function (e) { var d = document.getElementById('t' + e.end); if (d) d.classList.add('dest'); });
+              var opts = g.nextOptions(cur.id, prevId());
+              setAct('<div style="font-size:18px">เดินอีก <b style="font-size:26px;color:#ff5d8f">' + rem + '</b> ก้าว</div><div class="lp">' + (opts.length > 1 || manual ? 'แตะลูกศรเพื่อเลือกทาง' : 'กำลังเดิน...') + '<br>📍 = จุดที่อาจตก</div>');
+              $('#actBtns').innerHTML = '<div class="mvbtns"><button class="blue" id="mvUndo" ' + (path.length ? '' : 'disabled') + '>↩ ย้อน 1 ก้าว</button><button class="small" id="mvReset" ' + (path.length ? '' : 'disabled') + '>⏮ เริ่มเดินใหม่</button></div>';
+              if (opts.length === 1 && !manual) timer = setTimeout(function () { step(opts[0]); }, 230 / U.speed + 80);
+              else opts.forEach(function (id) { var t = g.tile(id), dx = t.x - cur.x, dy = t.y - cur.y, ch = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? '➜' : '⬅') : (dy > 0 ? '⬇' : '⬆'); var a = document.createElement('div'); a.className = 'dirArrow'; a.textContent = ch; var az = Math.max(46, BT * 1.05) / Math.max(1, CAM.z * 0.8); a.style.width = a.style.height = az + 'px'; a.style.fontSize = az * 0.55 + 'px'; a.style.left = (t.x * SC - az / 2) + 'px'; a.style.top = (t.y * SC - az / 2) + 'px'; a.onclick = function (e) { e.stopPropagation(); step(id); }; B.appendChild(a); });
+            } else {
+              var e2 = document.getElementById('t' + cur.id); if (e2) e2.classList.add('dest');
+              setAct('<div class="lp">' + landPreview(p, cur) + '</div>');
+              $('#actBtns').innerHTML = '<div class="mvbtns"><button class="green" id="mvOk">✔ หยุดตรงนี้</button><button class="blue" id="mvUndo">↩ ย้อน 1 ก้าว</button></div>';
+              $('#mvOk').onclick = function () { clear(); bubble.remove(); $('#actBtns').innerHTML = ''; resolve(path.slice()); };
+            }
+            var u = $('#mvUndo'); if (u) u.onclick = function () { if (!path.length) return; path.pop(); manual = true; sfx('tap'); render(); };
+            var r = $('#mvReset'); if (r) r.onclick = function () { path = []; manual = true; render(); };
+          }
+          function step(id) { path.push(id); sfx('step'); render(); }
+          render();
+        });
+      },
       showDice: async function (p, roll) {
         setAct('<div class="msg">' + esc(p.name) + ' ทอยลูกเต๋า...</div>');
         var L = $('#diceLayer'), skin = (!p.isAI && g.s.dice) ? +g.s.dice.split('_')[1] : 0;
@@ -693,7 +822,8 @@
         await wait(750); L.classList.remove('on'); L.innerHTML = '';
         setAct(spr(['dice', 6 + roll], 64, 64) + '<div>' + esc(p.name) + ' ได้ ' + roll + ' แต้ม!</div>');
       },
-      step: async function (p, id, rem) {
+      step: async function (p, id, rem, fast) {
+        if (fast) { placePieces(); await wait(60); return; }
         var el = document.getElementById('pc' + p.id); placePieces(); if (CAM.follow && CAM.z > 1.05) centerOnTile(id, true); el.classList.remove('hop'); void el.offsetWidth; el.classList.add('hop'); sfx('step');
         setAct(spr(['ui', 'walking'], 220, 44) + '<div style="font-size:18px">เหลืออีก ' + rem + ' ช่อง</div>');
         await wait(200);
@@ -712,36 +842,31 @@
       confirmBuy: function (p, t, price, disc) {
         if (p.isAI) { var r = A.confirmBuy(g, p, t, price); return aiWait(350).then(function () { if (r) toast('🏠 ' + esc(p.name) + ' ซื้อ ' + t.name); return r; }); }
         var d = g.s.districts[t.district], biz = BUSINESS.find(function (b) { return b.id === t.biz; }), c = g.ownedIn(p.id, t.district) + 1, n = d.tiles.length;
-        var bonus = (CONFIG.districtBonus[c] || 1.1) * (c >= n ? CONFIG.monopolyBonus : 1);
-        return modal({ title: '🏪 ' + t.name + ' ว่างอยู่!', width: 620, body: '<div class="row" style="gap:16px;align-items:flex-start"><div style="border:5px solid ' + d.color + ';border-radius:18px;padding:8px;background:#fff">' + spr(['lvl', biz.spr], 150, 130) + '</div><div class="kv"><span>เขต</span><b style="color:' + d.color + '">' + d.th + '</b><span>ธุรกิจ</span><b>' + biz.name + '</b><span>ราคา</span><b>' + fmt(price) + ' G</b>' + (disc.length ? '<span>ส่วนลด</span><b>' + disc.join(', ') + '</b>' : '') + '<span>ค่าเช่าเริ่มต้น (Lv1)</span><b>' + fmt(Math.round(CONFIG.levelRent[1] * t.f * bonus)) + ' G</b><span>ถ้าซื้อ: ถือในเขต</span><b>' + c + '/' + n + (c >= n ? ' 👑 Monopoly!' : '') + '</b><span>โบนัสเขต</span><b>×' + bonus.toFixed(2) + '</b><span>ลงทุนได้ถึง</span><b>Lv' + (c >= n ? 8 : CONFIG.levelCapByCount[c]) + '</b><span>เงินสดหลังซื้อ</span><b>' + fmt(p.cash - price) + ' G</b></div></div>', buttons: [{ t: spr(['ui', 3], 120, 56), v: true, cls: 'gray', }, { t: 'ไม่ซื้อ', v: false }] });
+        var mult = (1 + CONFIG.distStep * (c - 1)) * (c >= n ? CONFIG.domination : 1), others = d.tiles.map(function (id) { return g.tile(id); }).filter(function (x) { return x.owner >= 0 && x.owner !== p.id; });
+        return modal({ title: '🏪 ' + esc(t.name) + ' ว่างอยู่!', width: 640, body: '<div class="row" style="gap:16px;align-items:flex-start"><div style="border:5px dashed ' + d.color + ';border-radius:18px;padding:8px;background:#fff">' + spr(['lvl', biz.spr], 150, 130) + '</div><div class="kv"><span>เขต</span><b style="color:' + d.color + '">' + d.th + '</b><span>ธุรกิจ</span><b>' + biz.name + '</b><span>ราคา</span><b style="font-size:22px">' + fmt(price) + ' G</b>' + (disc.length ? '<span>ส่วนลด</span><b>' + disc.join(', ') + '</b>' : '') + '<span>ค่าเช่าเริ่มต้น</span><b>' + fmt(Math.round(g.priceFor(t.base * mult))) + ' G</b><span>ถ้าซื้อ: ถือในเขต</span><b>' + c + '/' + n + (c >= n ? ' 👑 ผูกขาด!' : '') + '</b><span>ตัวคูณเขต</span><b>×' + mult.toFixed(2) + '</b><span>ทุนสูงสุดที่ลงทุนได้</span><b>' + fmt(Math.round(t.base * (c + 1) * (c >= n ? CONFIG.domination : 1))) + ' G</b><span>เงินสดหลังซื้อ</span><b>' + fmt(p.cash - price) + ' G</b></div></div>' + (others.length ? '<div class="muted" style="text-align:center;font-weight:700;font-size:13px">เขตนี้มีร้านของคู่แข่งแล้ว ' + others.length + ' ร้าน</div>' : ''), buttons: [{ t: '🏠 ซื้อร้าน ' + fmt(price) + ' G', v: true, cls: 'green' }, { t: 'ไม่ซื้อ', v: false }] });
       },
-      chooseUpgrade: function (p, t, o) {
-        if (p.isAI) { var r = A.chooseUpgrade(g, p, t, o); return aiWait(300).then(function () { return r; }); }
-        return upgradeUI(p, t, o);
+      chooseInvest: function (p, t, o) {
+        if (p.isAI) { var r = A.chooseInvest(g, p, t, o); return aiWait(350).then(function () { if (r) toast('🏗️ ' + esc(p.name) + ' ลงทุน ' + esc(g.tile(r.id).name) + ' ' + fmt(r.amount) + ' G'); return r; }); }
+        return investUI(p, t, o);
       },
       confirmBuyout: function (p, t, cost) {
         if (p.isAI) { var r = A.confirmBuyout(g, p, t, cost); return aiWait(300).then(function () { return r; }); }
         var o = g.s.players[t.owner];
         return modal({ title: '🤝 ซื้อกิจการ ' + t.name + '?', body: '<div style="text-align:center;font-weight:800;font-size:17px">' + spr(['lvl', t.level - 1], 140, 120) + '<br>เจ้าของ: ' + esc(o.name) + '<br>ราคาซื้อกิจการ (5× มูลค่า) = <b>' + fmt(cost) + ' G</b><br>เงินสดของคุณ ' + fmt(p.cash) + ' G</div>', buttons: [{ t: 'ซื้อกิจการ', v: true, cls: 'pink' }, { t: 'ไม่ซื้อ', v: false }] });
       },
-      rent: async function (p, owner, t, rent) {
-        sfx('bad');
-        if (!p.isAI) await modal({ title: '🏪 จ่ายค่าเช่า ' + t.name, body: '<div class="kv" style="min-width:420px"><span>ค่าเช่าทั้งหมด</span><b>' + fmt(rent) + ' G</b><span>เจ้าของ ' + esc(owner.name) + ' (85%)</span><b>' + fmt(Math.floor(rent * .85)) + ' G</b><span>ภาษีเมือง (5%)</span><b>' + fmt(Math.floor(rent * .05)) + ' G</b><span>กองทุนปันผลเขต (10%)</span><b>' + fmt(rent - Math.floor(rent * .85) - Math.floor(rent * .05)) + ' G</b></div>', buttons: [{ t: 'จ่าย', v: 1, cls: 'pink' }], auto: 4000 });
-        else toast('🏪 ' + esc(p.name) + ' จ่ายค่าเช่า ' + fmt(rent) + ' G ให้ ' + esc(owner.name));
-        floatText(p, -rent); floatText(owner, Math.floor(rent * .85));
+      dividend: async function (t, dist) { toast('💹 ปันผล ' + esc(U.g.s.districts[t.district].th) + ': ' + esc(dist.join(', ')), 2600); },
+      rent: async function (p, owner, t, rent, ownerInc, city) {
+        sfx('bad'); floatText(p, -rent); floatText(owner, ownerInc);
+        var big = rent >= 2000, d = g.s.districts[t.district];
+        var html = '<div style="text-align:center;min-width:460px"><div class="row" style="justify-content:center;gap:18px;align-items:flex-end">' + spr(charSpec(p), 110, 110) + '<div style="font-size:40px">➜</div><div style="border:6px solid ' + owner.color + ';border-radius:22px;padding:6px;background:' + hexA(owner.color, .2) + '">' + spr(['lvl', t.level - 1], 130, 116) + '</div>' + spr(charSpec(owner), 110, 110) + '</div>' +
+          '<div style="font-size:' + (big ? 56 : 42) + 'px;font-weight:700;color:#e0405a;-webkit-text-stroke:3px #fff;paint-order:stroke fill;' + (big ? 'animation:pop .3s' : '') + '">−' + fmt(rent) + ' G</div>' +
+          '<div style="font-weight:700">' + esc(p.name) + ' จ่ายให้ ' + esc(owner.name) + ' ' + fmt(ownerInc) + ' G' + (city ? ' • ภาษีเมือง ' + fmt(city) + ' G' : '') + '</div>' +
+          '<div style="font-size:13px;font-weight:700;color:#5a8a3a">💹 ผู้ถือหุ้น ' + esc(d.th) + ' ได้ปันผล 20% (' + fmt(Math.floor(rent * CONFIG.dividendPct)) + ' G) จากธนาคาร</div></div>';
+        await modal({ title: big ? '💸 ร้านราคาแพง! จ่ายเงิน' : '🏪 จ่ายเงินที่ร้าน ' + esc(t.name), body: html, buttons: [{ t: 'จ่าย', v: 1, cls: 'pink' }], auto: p.isAI ? (big ? 2200 : 1300) : 0, close: false });
       },
       bank: async function (p, stopped) {
         refresh();
         if (p.isAI) { await aiWait(300); await A.bank(g, p, stopped); refresh(); return; }
-        var shops = g.shopsOf(p);
-        if (stopped && shops.length) {
-          while (true) {
-            var pick = await modal({ title: '🏦 หยุดที่ธนาคาร — ลงทุนร้านได้ทุกแห่ง', width: 820, body: '<div class="col">' + g.shopsOf(p).map(function (t) { var o = g.upgradeOptions(p, t); return '<div class="opt" data-sh="' + t.id + '" style="' + (o.list.length ? '' : 'opacity:.5') + '"><span class="sw" style="background:' + g.s.districts[t.district].color + '"></span>' + spr(['lvl', t.level - 1], 50, 44) + '<span class="grow">' + t.name + ' Lv' + t.level + ' (สูงสุด Lv' + o.cap + ')</span><span>' + (o.list.length ? 'อัปเกรดได้ ' + o.list.length + ' ระดับ' : o.blocked ? 'ถูกระงับ' : 'อัปเกรดไม่ได้') + '</span></div>'; }).join('') + '</div>', buttons: [{ t: 'ไปซื้อหุ้น ▶', v: null, cls: 'green' }], mount: function (box, close) { box.querySelectorAll('[data-sh]').forEach(function (e) { e.onclick = function () { close(+e.dataset.sh); }; }); } });
-            if (pick === null || pick === undefined) break;
-            var t = g.tile(pick), o = g.upgradeOptions(p, t); if (!o.list.length) { toast('ร้านนี้อัปเกรดไม่ได้ตอนนี้'); continue; }
-            var to = await upgradeUI(p, t, o); if (to) { await g.doUpgrade(p, t, to); refresh(); }
-          }
-        }
         await stockPanel(p, 'buy', '🏦 ธนาคาร — ซื้อหุ้น' + (Game.suitsDone(p) ? '' : ' • สัญลักษณ์ ' + SUITS.map(function (k) { return p.suits[k] ? SUIT_GLYPH[k] : '·'; }).join(' ')));
         refresh();
       },
@@ -750,11 +875,11 @@
         sfx('win');
         if (p.isAI) { toast('🎉 ' + esc(p.name) + ' เลื่อนเป็น Lv' + p.level + ' รับเงินเดือน ' + fmt(sal) + ' G'); floatText(p, sal); await aiWait(500); return; }
         var pv = g.propertyValue(p);
-        await modal({ title: '🎉 เลื่อนระดับเป็น Lv' + p.level + '!', body: '<div class="kv" style="min-width:420px"><span>เงินเดือนพื้นฐาน</span><b>' + CONFIG.baseSalary + '</b><span>ระดับ × 100</span><b>' + fmt((p.level - 1) * CONFIG.salaryPerLevel) + '</b><span>2% ของทรัพย์สิน (' + fmt(pv) + ')</span><b>' + fmt(Math.round(pv * CONFIG.salaryPropPct)) + '</b><span>รวมเงินเดือน (รวมโบนัส)</span><b style="color:#2c8a2c">+' + fmt(sal) + ' G</b></div><div style="text-align:center;margin-top:6px;font-weight:800">สัญลักษณ์ถูกล้าง เริ่มเก็บรอบใหม่!</div>', buttons: [{ t: 'เยี่ยม!', v: 1, cls: 'green' }] });
+        await modal({ title: '🎉 เลื่อนระดับเป็น Lv' + p.level + '!', body: '<div class="kv" style="min-width:420px"><span>เงินเดือนพื้นฐาน</span><b>' + CONFIG.baseSalary + '</b><span>ระดับ ' + (p.level - 1) + ' × ' + fmt(CONFIG.salaryPerLevel) + '</span><b>' + fmt((p.level - 1) * CONFIG.salaryPerLevel) + '</b><span>10% ของมูลค่าร้าน (' + fmt(pv) + ')</span><b>' + fmt(Math.floor(pv * CONFIG.salaryPropPct)) + '</b><span>รวมเงินเดือน (รวมโบนัส)</span><b style="color:#2c8a2c">+' + fmt(sal) + ' G</b></div><div style="text-align:center;margin-top:6px;font-weight:800">สัญลักษณ์ถูกล้าง เริ่มเก็บรอบใหม่!</div>', buttons: [{ t: 'เยี่ยม!', v: 1, cls: 'green' }] });
         floatText(p, sal);
       },
       suit: async function (p, suit) { sfx('card'); renderPlayers(); toast('<span style="color:' + SUIT_COLOR[suit] + ';font-size:22px">' + SUIT_GLYPH[suit] + '</span> ' + esc(p.name) + ' เก็บสัญลักษณ์!', 1200); },
-      built: async function (p, t) { sfx('build'); refresh(); var el = document.getElementById('t' + t.id); if (el) { el.classList.add('hl'); setTimeout(function () { el.classList.remove('hl'); }, 900); } await wait(300); },
+      built: async function (p, t, oldLv) { sfx('build'); refresh(); if (oldLv !== undefined && t.level > oldLv) toast('✨ ' + esc(t.name) + ' ขยายเป็น ' + CONFIG.levelName[t.level] + '!', 2000); var el = document.getElementById('t' + t.id); if (el) { el.classList.add('hl'); setTimeout(function () { el.classList.remove('hl'); }, 900); } await wait(300); },
       pickCard: async function (p, grid) {
         var title = '🃏 ' + esc(p.name) + ' เลือกการ์ด 1 ใบจากตาราง 100 ช่อง';
         var body = cardGridHTML(grid, null) + '<div style="text-align:center;font-weight:800;margin-top:6px">เหลือ ' + grid.filter(function (x) { return !x; }).length + ' ใบ • เปิดการ์ดให้สีของคุณเรียงเป็นแถว (แนวนอน/ตั้ง/ทแยง) ตั้งแต่ 3 ช่องขึ้นไปรับโบนัส!</div>';

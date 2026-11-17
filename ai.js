@@ -12,7 +12,7 @@
       case 'bank': return Game.suitsDone(p) ? 900 : 60;
       case 'shop':
         if (t.owner < 0) return p.cash >= g.buyPrice(t) ? 250 + g.ownedIn(p.id, t.district) * 120 : 0;
-        if (t.owner === p.id) return 120 + (g.levelCap(t) > t.level ? 80 : 0);
+        if (t.owner === p.id) return 120 + (g.maxCapital(t) > 0 && p.cash > 1500 ? 260 : 0);
         return -g.shopRent(t) * (1 + (g.shopRent(t) > p.cash ? 3 : 0)) / 2;
       case 'chance': return 90; case 'lucky': return 140; case 'superlucky': return 220; case 'tax': return -150;
       case 'casino': return 30; case 'broker': return 60; case 'vacant': return t.special ? (t.spOwner === p.id || t.spOwner < 0 ? 10 : -300) : 50;
@@ -89,12 +89,14 @@
       if (p.ai.persona === 'Investor' && g.ownedIn(p.id, t.district) === 0 && g.r() < 0.3) return false;
       return p.cash - price >= r * 0.5;
     },
-    chooseUpgrade: function (g, p, t, o) {
-      var r = reserve(g, p), best = 0;
-      var aggr = p.ai.level === 'beginner' ? 0.5 : p.ai.level === 'normal' ? 0.7 : 0.85;
-      if (p.ai.persona === 'Tycoon') aggr += 0.1; if (p.ai.persona === 'Investor') aggr -= 0.15;
-      o.list.forEach(function (x) { if (p.cash - x.cost >= r && x.cost <= (p.cash - r) * aggr + 200) best = x.level; });
-      if (!best && p.ai.level !== 'beginner' && o.list.length && p.cash - o.list[0].cost > r) best = o.list[0].level;
+    chooseInvest: function (g, p, t, o) {
+      var r = reserve(g, p), spare = p.cash - r;
+      var aggr = p.ai.level === 'beginner' ? 0.45 : p.ai.level === 'normal' ? 0.7 : 0.9;
+      if (p.ai.persona === 'Tycoon' || p.ai.persona === 'Aggressive') aggr += 0.1; if (p.ai.persona === 'Investor') aggr -= 0.1;
+      if (spare < 300) return null;
+      // best target: highest rent gain per gold (dominated / big districts first)
+      var best = null, bv = 0;
+      o.list.forEach(function (x) { var m = g.maxInvest(p, x.tile); if (m <= 0) return; var a = Math.min(m, Math.floor(spare * aggr / 10) * 10); if (a < 200) return; var gain = g.rentAfterInvest(x.tile, a) - g.shopRent(x.tile); var v = gain / a + (x.tile.id === t.id ? 0.01 : 0); if (v > bv) { bv = v; best = { id: x.tile.id, amount: a }; } });
       return best;
     },
     confirmBuyout: function (g, p, t, cost) {
@@ -106,11 +108,6 @@
     },
     bank: async function (g, p, stopped) {
       var r = reserve(g, p);
-      // upgrade when stopping at bank (Fortune Street: invest from bank)
-      if (stopped) {
-        var shops = g.shopsOf(p).sort(function (a, b) { return g.ownedIn(p.id, b.district) - g.ownedIn(p.id, a.district); });
-        for (var i = 0; i < shops.length; i++) { var o = g.upgradeOptions(p, shops[i]); if (o.list.length) { var to = AI.chooseUpgrade(g, p, shops[i], o); if (to) await g.doUpgrade(p, shops[i], to); } }
-      }
       await AI.stocks(g, p, r);
     },
     stocks: async function (g, p, r) {
@@ -120,19 +117,19 @@
       if (p.ai.level === 'advanced') frac += 0.1;
       var bestD = -1, bv = -1e9;
       g.s.districts.forEach(function (d, i) {
-        var mine = g.ownedIn(p.id, i), val = g.districtValue(i);
-        var v = mine * 3 + (val / 4000) - d.price / 150 + (p.ai.level === 'advanced' ? (d.hist.length > 2 ? (d.price - d.hist[d.hist.length - 3]) / d.price * 10 : 0) : 0);
+        var mine = g.ownedIn(p.id, i), val = g.districtValue(i), dom = d.tiles.every(function (id) { return g.tile(id).owner === p.id; });
+        var v = mine * 3 + (dom ? 8 : 0) + (val / 4000) - d.price / 150 + (p.ai.level === 'advanced' ? (d.hist.length > 2 ? (d.price - d.hist[d.hist.length - 3]) / d.price * 10 : 0) : 0);
         if (g.maxBuyShares(p, i) <= 0) v = -1e9;
         if (v > bv) { bv = v; bestD = i; }
       });
       if (bestD < 0) return;
       var n = Math.min(g.maxBuyShares(p, bestD), Math.floor(spare * frac / g.s.districts[bestD].price));
-      n = n >= 50 ? Math.floor(n / 10) * 10 : n;
+      n = Math.min(99, n >= 50 ? Math.floor(n / 10) * 10 : n);
       if (n >= 5) g.buyStock(p, bestD, n);
     },
     broker: async function (g, p) {
       // advanced: take profit on held districts with poor prospects
-      if (p.ai.level !== 'beginner') p.shares.forEach(function (n, d) { if (n && g.ownedIn(p.id, d) === 0 && g.s.districts[d].price > 160 && g.r() < 0.5) g.sellStock(p, d, n); });
+      if (p.ai.level !== 'beginner') p.shares.forEach(function (n, d) { if (n && g.ownedIn(p.id, d) === 0 && g.s.districts[d].hist.length > 3 && g.s.districts[d].price > g.s.districts[d].hist[0] * 1.6 && g.r() < 0.5) g.sellStock(p, d, n); });
       await AI.stocks(g, p, reserve(g, p));
     },
     pickCard: function (g, p, grid) {

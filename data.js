@@ -1,19 +1,20 @@
 // ===================== RILAKKUMA FORTUNE STREET — DATA (data-driven config) =====================
 var CONFIG = {
   startCash: 10000, targetNetWorth: 30000, maxRounds: 100,
-  baseSalary: 300, salaryPerLevel: 100, salaryPropPct: 0.02, maxLevel: 20,
-  // 8-level upgrade (cumulative investment, base rent) — GDD §8
-  levelCum:  [0, 500, 1000, 1800, 2800, 4000, 5500, 7500, 10000],
-  levelRent: [0, 100, 180, 280, 420, 600, 850, 1200, 1800],
+  // ---- Itadaki / Fortune Street style economy (scaled ×~6.7 to this game's money) ----
+  baseSalary: 1700, salaryPerLevel: 1000, salaryPropPct: 0.10, maxLevel: 20,   // Salary = B + 1000×Lv + 10% shop value
+  shopBase: [900, 1060, 1220, 1380, 1540],     // base shop value pattern × district factor
+  distStep: 0.25, domination: 1.5,              // value ×(1 + 0.25×(shops owned−1)), all shops in district ×1.5
+  capPerShop: 1,                                // max value = base × (1 + shops owned) (×1.5 domination)
+  investCap: 6000,                              // max investment per landing (Fortune Street: 999 per turn)
+  yieldScale: 6.67,                             // price = value × (0.2 − 0.15·0.2^(0.005·value/scale))
+  levelRatio: [1, 1.4, 1.8, 2.3, 2.9, 3.6, 4.4, 5.3], // building art (house → luxury hotel) by value ÷ base
   levelName: ['ที่ดินเปล่า','บ้านหลังเล็ก','บ้านชั้นเดียว','บ้านสองชั้น','บ้านหลังใหญ่','บ้านหรู','โรงแรมขนาดเล็ก','โรงแรมขนาดกลาง','โรงแรมหรู'],
-  // District holdings bonus (Fortune Street style) — GDD §7.1
-  districtBonus: [1, 1, 1.05, 1.10, 1.10, 1.10, 1.10],   // index = shops owned in district
-  monopolyBonus: 1.20,
-  // Max upgrade level by shops owned in district (more shops = more capital allowed)
-  levelCapByCount: [0, 4, 6, 7, 7, 7, 7], levelCapMonopoly: 8,
-  rentCap: 5000,
-  split: { owner: 0.85, city: 0.05, dividend: 0.10 }, maxDividendPool: 0.20,
-  stock: { start: 100, total: 1000, maxPerPlayer: 500, buyFee: 0.01, sellFee: 0.02, maxMove: 0.15, min: 10, demandFactor: 0.5 },
+  stockDiv: 23.275, dividendPct: 0.20, maxStockBuy: 99,
+  rules: { tax: false, endOnBankrupt: true },
+  rentCap: 99999,
+  split: { city: 0.05 }, maxDividendPool: 0.30,
+  stock: { start: 100, total: 1e9, maxPerPlayer: 1e9, buyFee: 0.01, sellFee: 0.02, maxMove: 0.25, min: 1 },
   shopSellRate: 0.75, shopSellFee: 0.05, buyoutMult: 5,
   propertyTaxEvery: 5, propertyTaxPct: 0.01, propertyTaxCap: 500,
   taxTile: { flat: 300, pct: 0.03, cap: 1000 },

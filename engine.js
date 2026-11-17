@@ -23,7 +23,7 @@
         if (code[0] === '#') {
           var d = +code.slice(1) - 1, k = dCount[d] = (dCount[d] || 0), dd = M.districts[d], def = dd.shops[k] || [dd.th + ' ' + (k + 1), D.BUSINESS[k % D.BUSINESS.length].id];
           dCount[d]++; t.type = 'shop'; t.ch = 'S' + d; t.district = d; t.name = def[0]; t.biz = def[1];
-          t.f = Math.round(dd.f * (0.92 + 0.05 * (k % 5)) * 100) / 100;
+          t.f = dd.f; t.base = Math.round(dd.f * C.shopBase[k % C.shopBase.length] / 10) * 10; t.invest = 0;
         } else { var info = D.TILE_INFO[code]; t.type = info.type; t.name = info.name; if (info.suit) t.suit = info.suit; }
         tiles.push(t); return t;
       });
@@ -50,7 +50,7 @@
         if (ch >= '1' && ch <= '9') {
           var d = +ch - 1, k = dCount[d]++, def = M.districts[d].shops[k] || ['ร้านค้า', 'cafe'];
           t.type = 'shop'; t.district = d; t.name = def[0]; t.biz = def[1];
-          t.f = Math.round(M.districts[d].f * (0.92 + 0.06 * k) * 100) / 100; // tile price factor
+          t.f = M.districts[d].f; t.base = Math.round(t.f * C.shopBase[k % C.shopBase.length] / 10) * 10; t.invest = 0;
         } else {
           var info = D.TILE_INFO[ch]; t.type = info.type; t.name = info.name; if (info.suit) t.suit = info.suit;
         }
@@ -85,7 +85,7 @@
     var bank = b.tiles.find(function (t) { return t.type === 'bank'; });
     var s = {
       v: 1, mapIdx: opts.mapIdx, tiles: b.tiles, districts: b.districts, w: b.w, h: b.h, painted: b.painted,
-      settings: { target: opts.target || C.targetNetWorth, maxRounds: opts.maxRounds || C.maxRounds, startCash: opts.startCash || C.startCash },
+      settings: { target: opts.target || C.targetNetWorth, maxRounds: opts.maxRounds || C.maxRounds, startCash: opts.startCash || C.startCash, rules: Object.assign({}, C.rules, opts.rules || {}) },
       players: opts.players.map(function (o, i) {
         return {
           id: i, name: o.name, char: o.char, costume: o.costume || 'chars', color: D.PLAYER_COLORS[i], isAI: !!o.isAI,
@@ -100,6 +100,8 @@
       seed: opts.seed || (Date.now() & 0xffffff), rngCalls: 0, cardHistory: [], phase: 'idle', forcedDice: null,
     };
     var g = new Game(s, null);
+    if (!s.settings.rules.tax) s.tiles.forEach(function (t) { if (t.type === 'tax') { t.type = 'chance'; t.ch = '?'; t.name = 'Chance'; } });
+    s.districts.forEach(function (d, i) { d.adj = 1; d.price = Math.max(1, Math.round(g.fairPrice(i))); d.hist = [d.price]; });
     // turn order: roll dice, highest first
     var rolls = s.players.map(function (p) { return { p: p, r: g.dice() * 10 + g.rng() }; });
     rolls.sort(function (a, b) { return b.r - a.r; });
@@ -129,17 +131,27 @@
   P.distMult = function (t) {
     if (t.owner < 0) return 1;
     var c = this.ownedIn(t.owner, t.district), n = this.s.districts[t.district].tiles.length;
-    return (C.districtBonus[c] || 1.1) * (c >= n ? C.monopolyBonus : 1);
+    return (1 + C.distStep * (c - 1)) * (c >= n ? C.domination : 1);
   };
-  P.levelCap = function (t) {
+  P.dominated = function (t) { return t.owner >= 0 && this.ownedIn(t.owner, t.district) >= this.s.districts[t.district].tiles.length; };
+  P.rawValue = function (t) { return (t.base + (t.invest || 0) + t.bonusVal) * (1 + t.bonusPct); };
+  P.buyPrice = function (t) { return t.base; };
+  P.baseValue = function (t) { return Math.round(this.rawValue(t)); };
+  P.shopValue = function (t) { if (t.type !== 'shop' || t.owner < 0) return 0; return Math.round(this.rawValue(t) * this.distMult(t)); };
+  P.valueAfterInvest = function (t, add) { return Math.round((t.base + (t.invest || 0) + add + t.bonusVal) * (1 + t.bonusPct) * this.distMult(t)); };
+  P.maxCapital = function (t) { // remaining capital that can be invested in this shop
     if (t.owner < 0) return 0;
-    var c = this.ownedIn(t.owner, t.district), n = this.s.districts[t.district].tiles.length;
-    return c >= n ? C.levelCapMonopoly : (C.levelCapByCount[c] || 7);
+    var c = this.ownedIn(t.owner, t.district), cap = t.base * (C.capPerShop * c + 1) * (this.dominated(t) ? C.domination : 1);
+    return Math.max(0, Math.round(cap - (t.invest || 0)));
   };
-  P.buyPrice = function (t) { return Math.round(C.levelCum[1] * t.f); };
-  P.baseValue = function (t) { return Math.round(C.levelCum[t.level] * t.f * (1 + t.bonusPct) + t.bonusVal); };
-  P.shopValue = function (t) { if (t.type !== 'shop' || t.level === 0) return 0; return Math.round(this.baseValue(t) * this.distMult(t)); };
-  P.upgradeCostRaw = function (t, to) { return Math.round((C.levelCum[to] - C.levelCum[t.level]) * t.f); };
+  P.priceFor = function (value) { var v = value / C.yieldScale; return value * (0.2 - 0.15 * Math.pow(0.2, 0.005 * v)); };
+  P.refreshLevel = function (t) {
+    if (t.type !== 'shop' || t.owner < 0) { t.level = 0; return; }
+    var r = (t.base + (t.invest || 0)) / t.base, L = 1;
+    C.levelRatio.forEach(function (x, i) { if (r >= x) L = i + 1; });
+    t.level = Math.min(8, L);
+  };
+  P.refreshDistrictLevels = function (d) { var self = this; this.s.districts[d].tiles.forEach(function (id) { self.refreshLevel(self.s.tiles[id]); }); };
   P.eventMod = function (t) {
     var m = 1, s = this.s, self = this;
     s.effects.forEach(function (e) {
@@ -156,60 +168,63 @@
   };
   P.noRent = function (t) { return this.s.effects.some(function (e) { return e.kind === 'noRent' && e.tile === t.id; }); };
   P.shopRent = function (t) {
-    if (t.type !== 'shop' || t.owner < 0 || t.level === 0) return 0;
-    return Math.min(C.rentCap, Math.round(C.levelRent[t.level] * t.f * this.distMult(t) * this.eventMod(t)));
+    if (t.type !== 'shop' || t.owner < 0) return 0;
+    return Math.min(C.rentCap, Math.round(this.priceFor(this.shopValue(t)) * this.eventMod(t)));
   };
-  P.districtValue = function (d) { var self = this; return this.s.districts[d].tiles.reduce(function (a, id) { var t = self.s.tiles[id]; return a + (t.owner >= 0 ? self.shopValue(t) : Math.round(C.levelCum[1] * t.f)); }, 0); };
+  P.rentAfterInvest = function (t, add) { return Math.min(C.rentCap, Math.round(this.priceFor(this.valueAfterInvest(t, add)) * this.eventMod(t))); };
+  P.districtValue = function (d) { var self = this; return this.s.districts[d].tiles.reduce(function (a, id) { var t = self.s.tiles[id]; return a + (t.owner >= 0 ? self.shopValue(t) : t.base); }, 0); };
   P.specialValue = function (p) { return this.s.tiles.reduce(function (a, t) { if (t.special && t.spOwner === p.id) { var b = D.SPECIAL_BUILDINGS.find(function (x) { return x.id === t.special; }); return a + b.cost; } return a; }, 0); };
   P.propertyValue = function (p) { var self = this; return this.s.tiles.reduce(function (a, t) { return a + (t.owner === p.id ? self.shopValue(t) : 0); }, 0) + this.specialValue(p); };
   P.stockValue = function (p) { var s = this.s; return p.shares.reduce(function (a, n, d) { return a + n * s.districts[d].price; }, 0); };
   P.netWorth = function (p) { return p.cash + p.safe + this.propertyValue(p) + this.stockValue(p); };
   P.shopsOf = function (p) { var id = p.id; return this.s.tiles.filter(function (t) { return t.type === 'shop' && t.owner === id; }); };
   P.salary = function (p) {
-    var sal = C.baseSalary + p.level * C.salaryPerLevel + Math.round(this.propertyValue(p) * C.salaryPropPct);
+    var sal = C.baseSalary + p.level * C.salaryPerLevel + Math.floor(this.propertyValue(p) * C.salaryPropPct);
     var gardens = this.s.tiles.filter(function (t) { return t.special === 'garden' && t.spOwner === p.id; }).length;
     if (gardens) sal += Math.min(400 * gardens, Math.round(sal * 0.05 * gardens));
     return sal;
   };
 
   // ---------- Stock market ----------
-  P.stockMove = function (d, pct, why) {
-    var D0 = this.s.districts[d];
-    if (pct < 0 && this.s.effects.some(function (e) { return e.kind === 'priceLock' && e.district === d; })) { this.log('🔒 Price Lock ป้องกันหุ้น ' + D0.name + ' ไม่ให้ลดลง'); return; }
-    pct = clamp(pct, -C.stock.maxMove, C.stock.maxMove);
-    var old = D0.price; D0.price = Math.max(C.stock.min, Math.round(old * (1 + pct)));
+  P.rules = function () { return (this.s.settings && this.s.settings.rules) || C.rules; };
+  P.fairPrice = function (d) { var D0 = this.s.districts[d]; return this.districtValue(d) / (C.stockDiv * D0.tiles.length); };
+  P.updateStock = function (d, why) {
+    var D0 = this.s.districts[d]; if (D0.adj === undefined) D0.adj = 1;
+    var old = D0.price; D0.price = Math.max(C.stock.min, Math.round(this.fairPrice(d) * D0.adj));
     if (D0.price !== old) { D0.hist.push(D0.price); if (D0.hist.length > 40) D0.hist.shift(); if (why) this.log('📈 หุ้น ' + D0.name + ' ' + (D0.price > old ? '▲' : '▼') + ' ' + old + ' → ' + D0.price + ' G (' + why + ')'); }
   };
-  P.valueChanged = function (d, before) {
-    var after = this.districtValue(d), growth = (after - before) / Math.max(before, 3000);
-    if (Math.abs(growth) > 0.001) this.stockMove(d, growth, 'มูลค่าเขตเปลี่ยน');
+  P.stockMove = function (d, pct, why) {
+    var D0 = this.s.districts[d]; if (D0.adj === undefined) D0.adj = 1;
+    if (pct < 0 && this.s.effects.some(function (e) { return e.kind === 'priceLock' && e.district === d; })) { this.log('🔒 Price Lock ป้องกันหุ้น ' + D0.name + ' ไม่ให้ลดลง'); return; }
+    pct = clamp(pct, -C.stock.maxMove, C.stock.maxMove);
+    D0.adj = clamp(D0.adj * (1 + pct), 0.3, 4);
+    this.updateStock(d, why);
   };
-  P.sharesAvail = function (d) { var s = this.s; return C.stock.total - s.players.reduce(function (a, p) { return a + p.shares[d]; }, 0); };
-  P.maxBuyShares = function (p, d) {
-    var price = this.s.districts[d].price, fee = p.flags.stockFeeZero ? 0 : C.stock.buyFee;
-    return Math.max(0, Math.min(this.sharesAvail(d), C.stock.maxPerPlayer - p.shares[d], Math.floor(p.cash / (price * (1 + fee)))));
-  };
+  P.valueChanged = function (d) { this.refreshDistrictLevels(d); this.updateStock(d, 'มูลค่าเขตเปลี่ยน'); };
+  P.buyFee = function (p) { return (!this.rules().tax || p.flags.stockFeeZero) ? 0 : C.stock.buyFee; };
+  P.sellFee = function () { return this.rules().tax ? C.stock.sellFee : 0; };
+  P.sharesAvail = function () { return 1e9; };
+  P.maxBuyShares = function (p, d) { var price = this.s.districts[d].price; return Math.max(0, Math.min(C.maxStockBuy, Math.floor(p.cash / (price * (1 + this.buyFee(p)))))); };
   P.buyStock = function (p, d, n) {
     n = Math.floor(n); if (n <= 0) return false;
     if (n > this.maxBuyShares(p, d)) return false; // atomic guard
-    var price = this.s.districts[d].price, fee = p.flags.stockFeeZero ? 0 : C.stock.buyFee;
-    var cost = Math.ceil(n * price * (1 + fee));
+    var price = this.s.districts[d].price, cost = Math.ceil(n * price * (1 + this.buyFee(p)));
     p.cash -= cost; p.shares[d] += n; this.txid('buyStock');
     this.log('🧾 ' + p.name + ' ซื้อหุ้น ' + this.s.districts[d].name + ' ' + n + ' หุ้น (' + fmt(cost) + ' G)');
-    this.stockMove(d, n / C.stock.total * C.stock.demandFactor * 2, 'แรงซื้อ');
+    if (n >= 10) this.stockMove(d, 0.03 + n / 2000, 'ซื้อหุ้นจำนวนมาก');
     return true;
   };
   P.sellStock = function (p, d, n) {
     n = Math.min(Math.floor(n), p.shares[d]); if (n <= 0) return 0;
-    var price = this.s.districts[d].price, net = Math.floor(n * price * (1 - C.stock.sellFee));
+    var price = this.s.districts[d].price, net = Math.floor(n * price * (1 - this.sellFee()));
     p.shares[d] -= n; p.cash += net; this.txid('sellStock');
     this.log('🧾 ' + p.name + ' ขายหุ้น ' + this.s.districts[d].name + ' ' + n + ' หุ้น (+' + fmt(net) + ' G)');
-    this.stockMove(d, -n / C.stock.total * C.stock.demandFactor * 2, 'แรงขาย');
+    if (n >= 10) this.stockMove(d, -(0.03 + n / 2000), 'ขายหุ้นจำนวนมาก');
     return net;
   };
-  P.sellPreview = function (p, d, n) { var price = this.s.districts[d].price; return { net: Math.floor(n * price * (1 - C.stock.sellFee)), newPrice: Math.max(C.stock.min, Math.round(price * (1 - clamp(n / C.stock.total * C.stock.demandFactor * 2, 0, C.stock.maxMove)))) }; };
+  P.sellPreview = function (p, d, n) { var price = this.s.districts[d].price; return { net: Math.floor(n * price * (1 - this.sellFee())), newPrice: n >= 10 ? Math.max(C.stock.min, Math.round(price * (1 - 0.03 - n / 2000))) : price }; };
   P.giveShares = function (p, d, n) {
-    n = Math.min(n, this.sharesAvail(d), C.stock.maxPerPlayer - p.shares[d]); if (n <= 0) return 0;
+    if (n <= 0) return 0;
     p.shares[d] += n; this.log('🎁 ' + p.name + ' ได้รับหุ้นฟรี ' + this.s.districts[d].name + ' ' + n + ' หุ้น'); return n;
   };
 
@@ -250,20 +265,21 @@
   };
   P.sellShopToBank = function (p, t, forced) {
     var before = this.districtValue(t.district), v = Math.floor(this.shopValue(t) * C.shopSellRate * (1 - C.shopSellFee));
-    p.cash += v; t.owner = -1; t.level = 0; t.bonusPct = 0; t.bonusVal = 0;
+    p.cash += v; t.owner = -1; t.level = 0; t.invest = 0; t.bonusPct = 0; t.bonusVal = 0;
     this.s.effects = this.s.effects.filter(function (e) { return e.tile !== t.id; });
     this.txid('sellShop'); this.log('🏚️ ' + p.name + ' ขาย ' + t.name + ' ให้ธนาคาร +' + fmt(v) + ' G' + (forced ? ' (ชำระหนี้)' : ''));
-    this.valueChanged(t.district, before); return v;
+    this.valueChanged(t.district); return v;
   };
   P.bankrupt = async function (p) {
     p.bankrupt = true; p.cash = 0; p.safe = 0;
     var self = this;
-    this.s.tiles.forEach(function (t) { if (t.owner === p.id) { t.owner = -1; t.level = 0; t.bonusPct = 0; t.bonusVal = 0; } if (t.spOwner === p.id) { t.special = null; t.spOwner = -1; } });
+    this.s.tiles.forEach(function (t) { if (t.owner === p.id) { t.owner = -1; t.level = 0; t.invest = 0; t.bonusPct = 0; t.bonusVal = 0; } if (t.spOwner === p.id) { t.special = null; t.spOwner = -1; } });
     p.shares = p.shares.map(function () { return 0; });
     this.log('💥 ' + p.name + ' ล้มละลาย! ทรัพย์สินคืนสู่ตลาด', 'bad');
     if (this.io && this.io.notify) await this.io.notify(p, '💥 ' + p.name + ' ล้มละลาย', 'ร้านทั้งหมดถูกคืนเป็นของว่างเพื่อให้ผู้อื่นซื้อได้');
-    var alive = this.alive();
+    var alive = this.alive(), self2 = this;
     if (alive.length === 1) this.finish(alive[0], 'ผู้เล่นคนอื่นล้มละลายทั้งหมด');
+    else if (this.rules().endOnBankrupt) { var best = alive.sort(function (a, b) { return self2.netWorth(b) - self2.netWorth(a); })[0]; this.finish(best, p.name + ' ล้มละลาย — เกมจบ ผู้มีทรัพย์สินสูงสุดชนะ'); }
   };
   P.finish = function (winner, why) {
     if (this.s.over) return;
@@ -367,7 +383,7 @@
     var s = this.s, p = this.cp(), io = this.io;
     if (s.over) return;
     if (p.bankrupt) { await this.nextPlayer(); return; }
-    s.phase = 'preRoll'; s.forcedDice = null; s.teleportBank = false; p.flags.stockFeeZero = false;
+    s.phase = 'preRoll'; s.forcedDice = null; s.teleportBank = false; p.flags.stockFeeZero = false; p.flags.investedTurn = 0;
     if (io.autosave) io.autosave(s);
     if (io.turnStart) await io.turnStart(p);
     await io.preRoll(p); // human: waits for roll button (may use items/sell); AI: decides & uses items
@@ -377,13 +393,13 @@
       await this.arriveBank(p, true);
     } else {
       s.phase = 'roll';
-      var roll = s.forcedDice || this.dice(); s.forcedDice = null;
-      if (io.showDice) await io.showDice(p, roll);
+      var roll = s.forcedDice || (io.rollDice && !p.isAI ? await io.rollDice(p) : this.dice()); var forced = !!s.forcedDice; s.forcedDice = null;
+      if (io.showDice && (p.isAI || forced || !io.rollDice)) await io.showDice(p, roll);
       s.phase = 'postRoll';
       for (var guard = 0; guard < 4; guard++) {
         var u = await this.offerReactive(p, 'postRoll', { roll: roll });
         if (!u) break;
-        if (u === 'eq_lucky') { roll = this.dice(); this.log('🎲 ทอยใหม่ได้ ' + roll); if (io.showDice) await io.showDice(p, roll); }
+        if (u === 'eq_lucky') { roll = io.rollDice && !p.isAI ? await io.rollDice(p) : this.dice(); this.log('🎲 ทอยใหม่ได้ ' + roll); if (io.showDice && p.isAI) await io.showDice(p, roll); }
         if (u === 'eq_move') roll += 1;
         if (u === 'SC_step') roll += 2;
       }
@@ -395,7 +411,7 @@
     if (s.over) return;
     // property tax every N turns of this player
     p.turns++;
-    if (!p.bankrupt && p.turns % C.propertyTaxEvery === 0) await this.propertyTax(p);
+    if (!p.bankrupt && this.rules().tax && p.turns % C.propertyTaxEvery === 0) await this.propertyTax(p);
     if (s.over) return;
     await this.nextPlayer();
   };
@@ -414,6 +430,16 @@
   };
   P.move = async function (p, steps, noLand) {
     var io = this.io;
+    if (io.planPath && !p.isAI) {
+      var path = await io.planPath(p, steps);
+      for (var i = 0; i < path.length; i++) {
+        p.prev = p.pos; p.pos = path[i];
+        if (io.step) await io.step(p, path[i], path.length - 1 - i, true);
+        await this.onPass(p, this.tile(path[i]), i === path.length - 1);
+        if (this.s.over || p.bankrupt) return;
+      }
+      return;
+    }
     for (var k = steps; k > 0; k--) {
       var opts = this.nextOptions(p.pos, p.prev), next = opts[0];
       if (opts.length > 1) next = await io.chooseDir(p, opts, k);
@@ -493,14 +519,14 @@
       var u = await this.offerReactive(p, 'buy', { price: price }); if (u) price = Math.round(price * 0.7);
       if (p.cash < price) return;
       var before = this.districtValue(t.district);
-      p.cash -= price; t.owner = p.id; t.level = 1; this.txid('buyShop');
+      p.cash -= price; t.owner = p.id; t.invest = 0; this.txid('buyShop');
       p.flags.newBranch = 0; p.flags.winterSale = 0;
       this.log('🏠 ' + p.name + ' ซื้อ ' + t.name + ' (' + fmt(price) + ' G)', 'buy');
       this.valueChanged(t.district, before);
       if (io.built) await io.built(p, t);
       return;
     }
-    if (t.owner === p.id) { await this.offerUpgrade(p, t); return; }
+    if (t.owner === p.id) { await this.offerInvest(p, t); return; }
     // rival shop: pay rent
     var owner = s.players[t.owner], rent = this.shopRent(t);
     if (this.noRent(t)) { this.log('🔧 ' + t.name + ' ปิดปรับปรุง — ไม่เก็บค่าเช่า'); rent = 0; }
@@ -521,7 +547,7 @@
       if (go) {
         if (owner.flags.shopProtect) { owner.flags.shopProtect--; this.log('🛡️ ' + owner.name + ' มี Shop Protection — ซื้อกิจการไม่สำเร็จ'); if (io.info) await io.info(p, t, owner.name + ' ป้องกันการซื้อกิจการ'); return; }
         var b1 = this.districtValue(t.district);
-        p.cash -= cost; owner.cash += Math.round(cost * 0.95); p.flags.buyoutDisc = 0; this.txid('buyout');
+        p.cash -= cost; owner.cash += Math.round(cost * 0.6); p.flags.buyoutDisc = 0; this.txid('buyout');
         t.owner = p.id;
         this.log('🤝 ' + p.name + ' ซื้อกิจการ ' + t.name + ' จาก ' + owner.name + ' ' + fmt(cost) + ' G', 'buy');
         this.valueChanged(t.district, b1);
@@ -531,67 +557,74 @@
   };
   P.payRent = async function (p, owner, t, rent) {
     var s = this.s, tx = this.txid('rent');
-    var divPct = C.split.dividend + s.effects.filter(function (e) { return e.kind === 'divBonus'; }).reduce(function (a, e) { return a + e.mult; }, 0);
-    divPct = Math.min(C.maxDividendPool, divPct);
-    var ownerInc = Math.floor(rent * C.split.owner), city = Math.floor(rent * C.split.city), pool = rent - ownerInc - city;
-    var poolUsed = Math.floor(rent * divPct);
+    var city = this.rules().tax ? Math.floor(rent * C.split.city) : 0, ownerInc = rent - city;
     this.log('🏪 ' + p.name + ' จ่ายค่าเช่า ' + t.name + ' ' + fmt(rent) + ' G → ' + owner.name + ' ' + fmt(ownerInc) + ' G', 'rent');
-    if (this.io.rent) await this.io.rent(p, owner, t, rent);
+    if (this.io.rent) await this.io.rent(p, owner, t, rent, ownerInc, city);
     p.cash -= rent; owner.cash += ownerInc; s.taxPool += city;
-    // dividends (once per tx)
+    // dividends: 20% of the price, paid by the bank, split among the district's stockholders by share ratio
     if (!s.paidTx) s.paidTx = {};
     if (!s.paidTx[tx]) {
       s.paidTx[tx] = 1;
-      var per = poolUsed / C.stock.total, dist = [];
-      s.players.forEach(function (q) {
+      var pct = Math.min(C.maxDividendPool, C.dividendPct + s.effects.filter(function (e) { return e.kind === 'divBonus'; }).reduce(function (a, e) { return a + e.mult; }, 0));
+      var pool = rent * pct, total = s.players.reduce(function (a, q) { return a + (q.bankrupt ? 0 : q.shares[t.district]); }, 0), dist = [];
+      if (total > 0) s.players.forEach(function (q) {
         if (q.bankrupt || !q.shares[t.district]) return;
         var boost = s.effects.some(function (e) { return e.kind === 'divBoost' && e.owner === q.id; }) ? 1.5 : 1;
-        var amt = Math.floor(per * q.shares[t.district] * boost);
-        if (amt > 0) { q.cash += amt; dist.push(q.name + ' +' + amt); }
+        var amt = Math.floor(pool * q.shares[t.district] / total * boost);
+        if (amt > 0) { q.cash += amt; dist.push(q.name + ' +' + fmt(amt)); }
       });
-      if (dist.length) this.log('💹 ปันผล ' + s.districts[t.district].name + ': ' + dist.join(', '), 'div');
+      if (dist.length) { this.log('💹 ปันผล ' + s.districts[t.district].name + ': ' + dist.join(', '), 'div'); if (this.io.dividend) await this.io.dividend(t, dist); }
       var keys = Object.keys(s.paidTx); if (keys.length > 200) delete s.paidTx[keys[0]];
     }
     if (p.cash < 0) await this.resolveDebt(p);
   };
-  P.upgradeOptions = function (p, t) {
-    var cap = this.levelCap(t), out = [];
-    if (this.s.effects.some(function (e) { return e.kind === 'noUpgrade' && e.tile === t.id; })) return { cap: cap, blocked: true, list: [] };
-    for (var L = t.level + 1; L <= cap; L++) { var c = this.upgradeCost(p, t, L); if (c <= p.cash) out.push({ level: L, cost: c }); }
-    return { cap: cap, list: out };
+  // ---------- INVEST (Fortune Street: land on your shop → invest in your shops of that district) ----------
+  P.investDiscount = function (p) { var d = 1; if (p.flags.upgDisc) d *= (1 - p.flags.upgDisc); if (p.flags.builderDisc) d *= 0.8; return d; };
+  P.investOptions = function (p, t) {
+    var self = this, left = Math.max(0, C.investCap - (p.flags.investedTurn || 0));
+    var list = this.shopsOf(p).filter(function (x) { return x.district === t.district; }).map(function (x) {
+      var blocked = self.s.effects.some(function (e) { return e.kind === 'noUpgrade' && e.tile === x.id; });
+      return { tile: x, cap: blocked ? 0 : self.maxCapital(x), blocked: blocked };
+    });
+    return { list: list, turnLeft: left, cash: p.cash, disc: this.investDiscount(p), free: p.flags.freeUpgrade ? 1000 : 0, hotel: p.flags.hotelDisc ? 500 : 0 };
   };
-  P.upgradeCost = function (p, t, to) {
-    var c = this.upgradeCostRaw(t, to);
-    if (p.flags.freeUpgrade) c -= this.upgradeCostRaw(t, t.level + 1);
-    if (p.flags.upgDisc) c *= (1 - p.flags.upgDisc);
-    if (p.flags.builderDisc) c *= 0.8;
-    if (p.flags.hotelDisc && to >= 6) c -= 500;
-    return Math.max(0, Math.round(c));
+  P.investCost = function (p, amount) { var c = amount * this.investDiscount(p); if (p.flags.freeUpgrade) c -= 1000; if (p.flags.hotelDisc) c -= 500; return Math.max(0, Math.round(c)); };
+  P.maxInvest = function (p, t) { // max amount of capital for this shop given cash, cap and per-turn limit
+    var cap = Math.min(this.maxCapital(t), Math.max(0, C.investCap - (p.flags.investedTurn || 0)));
+    for (var a = cap; a > 0; a -= 10) if (this.investCost(p, a) <= p.cash) return a;
+    return 0;
   };
-  P.offerUpgrade = async function (p, t) {
-    if (t.level >= C.levelCapMonopoly) return;
-    var o = this.upgradeOptions(p, t);
-    if (o.blocked) { this.log('🚧 ' + t.name + ' อัปเกรดไม่ได้ในรอบนี้'); return; }
-    if (!o.list.length) { if (this.io.info && !p.isAI) await this.io.info(p, t, t.level >= o.cap ? 'ระดับสูงสุดที่ลงทุนได้ตอนนี้คือ Lv' + o.cap + ' — ซื้อร้านในเขตเดียวกันเพิ่มเพื่อปลดล็อก' : 'เงินไม่พอสำหรับอัปเกรด'); return; }
-    var to = await this.io.chooseUpgrade(p, t, o);
-    if (!to) return;
-    await this.doUpgrade(p, t, to);
+  P.offerInvest = async function (p, t) {
+    for (var guard = 0; guard < 8; guard++) {
+      var o = this.investOptions(p, t);
+      if (!o.list.some(function (x) { return x.cap > 0; })) { if (guard === 0 && this.io.info && !p.isAI) await this.io.info(p, t, 'ร้านในเขตนี้ลงทุนเต็มแล้ว — ซื้อร้านในเขตเดียวกันเพิ่มเพื่อขยายทุนสูงสุด'); return; }
+      if (o.turnLeft <= 0 || p.cash <= 0) return;
+      var pick = await this.io.chooseInvest(p, t, o);
+      if (!pick || !pick.amount) return;
+      if (!(await this.doInvest(p, this.tile(pick.id), pick.amount))) return;
+      if (this.s.over) return;
+    }
   };
-  P.doUpgrade = async function (p, t, to) {
-    if (to <= t.level || to > this.levelCap(t)) return false;
-    var cost = this.upgradeCost(p, t, to);
-    var u = await this.offerReactive(p, 'upgrade', { tile: t, to: to, cost: cost });
+  P.doInvest = async function (p, t, amount) {
+    if (t.owner !== p.id) return false;
+    amount = Math.min(Math.round(amount), this.maxInvest(p, t)); if (amount <= 0) return false;
+    var cost = this.investCost(p, amount);
+    var u = await this.offerReactive(p, 'upgrade', { tile: t, cost: cost });
     if (u === 'eq_upg') cost = Math.round(cost * 0.7);
-    if (u === 'SC_upg') cost = Math.max(0, cost - this.upgradeCostRaw(t, t.level + 1));
+    if (u === 'SC_upg') cost = Math.max(0, cost - 1500);
     if (p.cash < cost) return false; // atomic
-    var before = this.districtValue(t.district), from = t.level;
-    p.cash -= cost; t.level = to; this.txid('upgrade');
-    p.flags.freeUpgrade = 0; p.flags.builderDisc = 0; if (to >= 6) p.flags.hotelDisc = 0;
-    this.log('🏗️ ' + p.name + ' อัปเกรด ' + t.name + ' Lv' + from + '→Lv' + to + ' (' + C.levelName[to] + ') ' + fmt(cost) + ' G', 'buy');
-    this.valueChanged(t.district, before);
-    if (this.io.built) await this.io.built(p, t);
+    var oldRent = this.shopRent(t), oldLv = t.level;
+    p.cash -= cost; t.invest = (t.invest || 0) + amount; p.flags.investedTurn = (p.flags.investedTurn || 0) + amount; this.txid('invest');
+    p.flags.freeUpgrade = 0; p.flags.builderDisc = 0; p.flags.hotelDisc = 0;
+    this.valueChanged(t.district);
+    this.log('🏗️ ' + p.name + ' ลงทุน ' + t.name + ' ' + fmt(amount) + ' G (จ่าย ' + fmt(cost) + ') ค่าเช่า ' + fmt(oldRent) + ' → ' + fmt(this.shopRent(t)) + ' G' + (t.level > oldLv ? ' • ขยายเป็น ' + C.levelName[t.level] : ''), 'buy');
+    if (this.io.built) await this.io.built(p, t, oldLv);
     return true;
   };
+  // compatibility helpers used by cards / UI
+  P.levelCap = function (t) { return t.owner < 0 ? 0 : 8; };
+  P.upgradeCostRaw = function (t) { return Math.round(t.base * 0.5); };
+  P.doUpgrade = async function (p, t) { return this.doInvest(p, t, Math.min(this.maxInvest(p, t), Math.round(t.base * 0.5))); };
   P.landVacant = async function (p, t) {
     if (!t.special) {
       var opts = D.SPECIAL_BUILDINGS.map(function (b) { return { b: b, cost: Math.max(0, b.cost - (p.flags.vacantDisc || 0)) }; }).filter(function (o) { return o.cost <= p.cash; });
@@ -673,9 +706,9 @@
   CARD_FX[12] = async function (g, p) { var t = await g.pickOwnShop(p, 'เลือกร้านเพิ่มมูลค่า 500 G'); if (t) { var b = g.districtValue(t.district); t.bonusVal += 500; g.valueChanged(t.district, b); } };
   CARD_FX[13] = function (g, p, c) { return g.gain(p, Math.min(1500, 300 * g.shopsOf(p).length), c.name, true); };
   CARD_FX[14] = async function (g, p) {
-    var t = await g.pickOwnShop(p, 'เลือกร้านอัปเกรดราคา 50%', function (t) { return t.level < g.levelCap(t); }); if (!t) return;
-    var cost = Math.round(g.upgradeCostRaw(t, t.level + 1) * 0.5); if (p.cash < cost) { g.log('เงินไม่พอสำหรับ Free Renovation'); return; }
-    var b = g.districtValue(t.district); p.cash -= cost; t.level++; g.log('🏗️ ' + t.name + ' → Lv' + t.level + ' (จ่าย ' + fmt(cost) + ' G)'); g.valueChanged(t.district, b); if (g.io.built) await g.io.built(p, t);
+    var t = await g.pickOwnShop(p, 'Free Renovation — ลงทุนครึ่งราคา', function (t) { return g.maxCapital(t) > 0; }); if (!t) return;
+    var amt = Math.min(g.maxCapital(t), t.base), cost = Math.round(amt * 0.5); if (p.cash < cost) { g.log('เงินไม่พอสำหรับ Free Renovation'); return; }
+    p.cash -= cost; t.invest += amt; g.valueChanged(t.district); g.log('🏗️ ' + t.name + ' ลงทุน ' + fmt(amt) + ' G (จ่ายครึ่งราคา ' + fmt(cost) + ' G)'); if (g.io.built) await g.io.built(p, t);
   };
   CARD_FX[15] = async function (g, p) { var t = await g.pickOwnShop(p, 'เลือกร้านโปรโมชันค่าเช่า +20%'); if (t) g.addEffect({ kind: 'rentMult', tile: t.id, mult: 1.2, rounds: 2 }); };
   CARD_FX[16] = function (g, p, c) { if (g.shopsOf(p).length >= 2) return g.gain(p, 1000, c.name, true); g.log('ต้องมีร้านอย่างน้อย 2 แห่ง'); };

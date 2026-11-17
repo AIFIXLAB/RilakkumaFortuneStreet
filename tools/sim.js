@@ -2,7 +2,7 @@ const path=__dirname+'/../';
 const D=require(path+'data.js'), Game=require(path+'engine.js'), AI=require(path+'ai.js');
 function aiIO(g){return {
  preRoll:p=>AI.preRoll(g,p), chooseDir:(p,o,r)=>AI.chooseDir(g,p,o,r), confirmBuy:(p,t,pr)=>AI.confirmBuy(g,p,t,pr),
- chooseUpgrade:(p,t,o)=>AI.chooseUpgrade(g,p,t,o), confirmBuyout:(p,t,c)=>AI.confirmBuyout(g,p,t,c), bank:(p,s)=>AI.bank(g,p,s),
+ chooseInvest:(p,t,o)=>AI.chooseInvest(g,p,t,o), confirmBuyout:(p,t,c)=>AI.confirmBuyout(g,p,t,c), bank:(p,s)=>AI.bank(g,p,s),
  broker:p=>AI.broker(g,p), pickCard:(p,gr)=>AI.pickCard(g,p,gr), choose:(p,r)=>AI.choose(g,p,r), confirmUse:(p,d,c)=>AI.confirmUse(g,p,d,c),
  confirmDeal:(q,t,v)=>AI.confirmDeal(g,q,t,v), auctionBid:(q,t,c)=>AI.auctionBid(g,q,t,c), casinoBet:(p,b)=>AI.casinoBet(g,p,b),
  chooseBuilding:(p,t,o)=>AI.chooseBuilding(g,p,t,o), chooseNumber:(p,t,a,b)=>AI.chooseNumber(g,p,t,a,b),

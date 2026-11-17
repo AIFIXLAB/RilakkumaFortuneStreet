@@ -1,0 +1,303 @@
+// ===================== RILAKKUMA FORTUNE STREET — DATA (data-driven config) =====================
+var CONFIG = {
+  startCash: 10000, targetNetWorth: 30000, maxRounds: 100,
+  baseSalary: 300, salaryPerLevel: 100, salaryPropPct: 0.02, maxLevel: 20,
+  // 8-level upgrade (cumulative investment, base rent) — GDD §8
+  levelCum:  [0, 500, 1000, 1800, 2800, 4000, 5500, 7500, 10000],
+  levelRent: [0, 100, 180, 280, 420, 600, 850, 1200, 1800],
+  levelName: ['ที่ดินเปล่า','บ้านหลังเล็ก','บ้านชั้นเดียว','บ้านสองชั้น','บ้านหลังใหญ่','บ้านหรู','โรงแรมขนาดเล็ก','โรงแรมขนาดกลาง','โรงแรมหรู'],
+  // District holdings bonus (Fortune Street style) — GDD §7.1
+  districtBonus: [1, 1, 1.05, 1.10, 1.10, 1.10, 1.10],   // index = shops owned in district
+  monopolyBonus: 1.20,
+  // Max upgrade level by shops owned in district (more shops = more capital allowed)
+  levelCapByCount: [0, 4, 6, 7, 7, 7, 7], levelCapMonopoly: 8,
+  rentCap: 5000,
+  split: { owner: 0.85, city: 0.05, dividend: 0.10 }, maxDividendPool: 0.20,
+  stock: { start: 100, total: 1000, maxPerPlayer: 500, buyFee: 0.01, sellFee: 0.02, maxMove: 0.15, min: 10, demandFactor: 0.5 },
+  shopSellRate: 0.75, shopSellFee: 0.05, buyoutMult: 5,
+  propertyTaxEvery: 5, propertyTaxPct: 0.01, propertyTaxCap: 500,
+  taxTile: { flat: 300, pct: 0.03, cap: 1000 },
+  luckyMin: 200, superLuckyMin: 500,
+  restBonus: 150,
+  casino: { bets: [100, 300, 500], maxWin: 2500 },
+  // Card grid colour streaks (bingo-style): run length → bonus G
+  cardLine: { 3: 300, 4: 600, 5: 1000, 6: 1500, 7: 2000, 8: 2500, 9: 3000, 10: 5000 },
+};
+
+// Player colours / AI
+var PLAYER_COLORS = ['#ff6f91', '#4fa3ff', '#ffc531', '#59c96b'];
+var AI_LEVELS = [
+  { id: 'beginner', name: 'Beginner' }, { id: 'normal', name: 'Normal' }, { id: 'advanced', name: 'Advanced' },
+];
+var AI_PERSONAS = ['Investor', 'Tycoon', 'Aggressive', 'Defensive', 'Balanced'];
+
+// 8 starting characters (sprite index in 'chars' sheet = pixel outfit, 'cozy' sheet = cozy outfit)
+var CHARACTERS = [
+  { id: 'kuma',   name: 'ริลัคคุมะ',     sub: 'นักเดินทาง', price: 0 },
+  { id: 'kori',   name: 'โคริลัคคุมะ',   sub: 'สาวหวาน',    price: 0 },
+  { id: 'kiiro',  name: 'คิอิโรอิโทริ',  sub: 'นักสืบ',     price: 0 },
+  { id: 'chai',   name: 'ชาอิโรอิโคกุมะ', sub: 'นักสำรวจ',   price: 0 },
+  { id: 'cat',    name: 'แมวกะลาสี',    sub: 'กะลาสี',     price: 3000 },
+  { id: 'squir',  name: 'กระรอกซากุระ',  sub: 'ดอกไม้',     price: 3000 },
+  { id: 'peng',   name: 'เพนกวินนักบิน', sub: 'นักบิน',     price: 4000 },
+  { id: 'deer',   name: 'กวางดอกไม้',    sub: 'สวนดอกไม้',  price: 4000 },
+];
+// Costumes: sheet + index. 'pixel' outfits are default, 'cozy' outfits are bought in shop.
+var EXTRA_CHARS = [
+  { id: 'x_ninja', name: 'หมีนินจา', d: 30 }, { id: 'x_mermaid', name: 'หมีเงือก', d: 30 },
+  { id: 'x_miner', name: 'เจี๊ยบนักขุด', d: 30 }, { id: 'x_astro', name: 'หมีนักบินอวกาศ', d: 40 },
+  { id: 'x_wizard', name: 'แมวพ่อมด', d: 40 }, { id: 'x_nurse', name: 'กระต่ายพยาบาล', d: 40 },
+  { id: 'x_panda', name: 'แพนด้าซูชิ', d: 50 }, { id: 'x_samurai', name: 'กวางซามูไร', d: 50 },
+];
+
+// Business types → sprite index in 'lvl' sheet (14..23)
+var BUSINESS = [
+  { id: 'cafe', name: 'คาเฟ่', spr: 14 }, { id: 'bakery', name: 'เบเกอรี่', spr: 15 },
+  { id: 'mart', name: 'มินิมาร์ท', spr: 16 }, { id: 'clothes', name: 'ร้านเสื้อผ้า', spr: 17 },
+  { id: 'book', name: 'ร้านหนังสือ', spr: 18 }, { id: 'food', name: 'ร้านอาหาร', spr: 19 },
+  { id: 'onsen', name: 'ออนเซ็น', spr: 20 }, { id: 'clinic', name: 'คลินิก', spr: 21 },
+  { id: 'bank', name: 'สำนักงาน', spr: 22 }, { id: 'mall', name: 'ห้าง', spr: 23 },
+];
+
+// Special buildings on vacant land — GDD §9 (subset for v0.1, data-driven)
+var SPECIAL_BUILDINGS = [
+  { id: 'toll',    name: 'Toll Gate',        th: 'ด่านเก็บเงิน',  cost: 1500, spr: ['items', 45], desc: 'ผู้เล่นที่เดินผ่านต้องจ่ายค่าผ่านทาง 100–500 G' },
+  { id: 'parking', name: 'Parking Building', th: 'อาคารจอดรถ',   cost: 1500, spr: ['deco', 18], desc: 'ผู้เล่นที่หยุดต้องจ่ายค่าจอด 400 G' },
+  { id: 'garden',  name: 'Flower Garden',    th: 'สวนดอกไม้',    cost: 1500, spr: ['deco', 44], desc: 'เจ้าของได้โบนัสเงินเดือน +5% (สูงสุด 400 G)' },
+  { id: 'market',  name: 'Market',           th: 'ตลาด',         cost: 2000, spr: ['deco', 0],  desc: 'ค่าเช่าร้านทุกร้านในเขตใกล้เคียง +5%' },
+  { id: 'hotel',   name: 'Hotel',            th: 'โรงแรมพิเศษ',  cost: 3000, spr: ['deco', 31], desc: 'ผู้เล่นที่หยุดต้องจ่ายค่าที่พัก 500 G' },
+  { id: 'onsen',   name: 'Spa & Onsen',      th: 'สปาออนเซ็น',   cost: 3500, spr: ['lvl', 20],  desc: 'ผู้เล่นที่หยุดต้องจ่าย 600 G' },
+];
+
+// ---------------- MAPS ----------------
+// Grid legend: 1-5 = shop of district, B bank, H D C S suits (Heart Diamond Clover Spade),
+// ? chance, L lucky, U super lucky, T tax, K casino, M stock broker, V vacant land, W warp, R rest,
+// F festival, E event, . = empty. Orthogonally adjacent tiles are connected (Fortune Street graph).
+// ---------------- MAPS (painted boards from the project art) ----------------
+// paths: tokens "x,y,T" in image pixels (1536x1024). Consecutive tokens are connected; '>' closes a loop.
+// Tokens at the same position (±16px) are the same tile. T: #n = shop of district n, B bank, H D C S suits,
+// ? chance, L lucky, U super lucky, T tax, K casino, M broker, V vacant land, W warp, R rest, F festival,
+// E event, P road. A trailing '+' draws the game icon over a plain painted tile.
+var MAPS = [
+  {
+    id: 'sakura', name: 'Sakura Park', th: 'สวนซากุระ', bg: 'bg_map1', img: [1536, 1024], ts: 70, size: 'ใหญ่',
+    districts: [
+      { name: 'Sakura Loop North', th: 'ซากุระเหนือ', color: '#f06292', f: 0.85, label: [405, 352], shops: [['ร้านขนมซากุระ','bakery'],['ร้านชุดกิโมโน','clothes'],['มินิมาร์ทหมีน้อย','mart'],['ร้านหนังสือฮานะ','book'],['คาเฟ่ซากุระ','cafe'],['ร้านโมจิ','bakery']] },
+      { name: 'Sakura Loop South', th: 'ซากุระใต้', color: '#ec407a', f: 0.9, label: [405, 398], shops: [['ร้านพัดญี่ปุ่น','clothes'],['ร้านดังโงะ','bakery'],['ร้านของฝาก','mart'],['ร้านชาเขียว','cafe'],['ร้านอุด้ง','food']] },
+      { name: 'Cozy Cafe North', th: 'คาเฟ่เหนือ', color: '#ff9f43', f: 0.95, label: [1132, 352], shops: [['คาเฟ่ฮันนี่','cafe'],['ร้านแพนเค้ก','bakery'],['ร้านราเมง','food'],['คาเฟ่ชาเขียว','cafe'],['ร้านครัวซองต์','bakery'],['ร้านไอศกรีม','cafe']] },
+      { name: 'Cozy Cafe South', th: 'คาเฟ่ใต้', color: '#fb8c00', f: 1.0, label: [1132, 398], shops: [['ร้านซูชิ','food'],['ร้านโดนัท','bakery'],['คาเฟ่แมว','cafe'],['ร้านข้าวแกง','food'],['ร้านชีสเค้ก','bakery']] },
+      { name: 'Flower Garden North', th: 'สวนดอกไม้เหนือ', color: '#66bb6a', f: 1.0, label: [400, 735], shops: [['ร้านดอกไม้','clothes'],['คาเฟ่ในสวน','cafe'],['ร้านต้นไม้','mart'],['ร้านอาหารสวน','food'],['ร้านน้ำผึ้ง','mart']] },
+      { name: 'Flower Garden South', th: 'สวนดอกไม้ใต้', color: '#43a047', f: 1.05, label: [400, 780], shops: [['ร้านกระถาง','mart'],['ร้านชาดอกไม้','cafe'],['ร้านขนมดอกไม้','bakery'],['ร้านปิกนิก','food'],['ร้านเมล็ดพันธุ์','mart'],['ร้านช่อดอกไม้','clothes']] },
+      { name: 'Central Business North', th: 'ย่านธุรกิจเหนือ', color: '#9575cd', f: 1.2, label: [1140, 735], shops: [['สำนักงานใหญ่','bank'],['ห้างหมีพาวเวอร์','mall'],['ธนาคารสาขา','bank'],['ห้างดอกไม้','mall'],['ออนเซ็นกลางเมือง','onsen']] },
+      { name: 'Central Business South', th: 'ย่านธุรกิจใต้', color: '#7e57c2', f: 1.25, label: [1140, 780], shops: [['คลินิกกลางเมือง','clinic'],['ห้างคิอิโระ','mall'],['ตลาดหลักทรัพย์','bank'],['โรงแรมกลางเมือง','onsen'],['ภัตตาคารหรู','food'],['ห้างซากุระ','mall']] },
+      { name: 'Lakeside West', th: 'ริมทะเลสาบตะวันตก', color: '#29b6f6', f: 1.1, label: [300, 612], shops: [['เรียวกังริมน้ำ','onsen'],['ร้านเรือพาย','mart'],['คาเฟ่ริมทะเลสาบ','cafe']] },
+      { name: 'Lakeside East', th: 'ริมทะเลสาบตะวันออก', color: '#039be5', f: 1.1, label: [1236, 612], shops: [['ออนเซ็นหมีขาว','onsen'],['ร้านปลาย่าง','food'],['ร้านของที่ระลึก','mart']] },
+    ],
+    paths: [
+      '176,205,U 270,205,H 358,205,V+ 436,205,E+ 518,205,? 603,205,F+ 678,205,R+ 770,205,K 856,205,T+ 934,205,E+ 1018,205,S 1101,205,V+ 1178,205,F+ 1260,205,? 1360,205,L 1371,284,R+ 1373,357,? 1376,434,V+ 1376,492,P 1383,562,S 1386,644,T+ 1388,718,? 1391,798,E+ 1393,852,P 1390,910,U 1290,910,? 1194,910,F+ 1112,910,V+ 1025,910,D 940,910,E+ 858,910,R+ 770,910,K 678,910,T+ 598,910,V+ 510,910,C 420,910,E+ 340,910,F+ 250,910,? 150,910,L 145,852,P 146,798,V+ 148,718,? 153,644,R+ 150,562,S 158,492,P 160,434,T+ 163,357,? 165,284,E+ >',
+      '150,562,S 239,562,#9 306,562,#9 380,562,? 462,562,#9 545,562,M 629,562,P 768,556,B 908,562,P 990,562,M 1072,562,#10 1155,562,? 1231,562,#10 1298,562,#10 1383,562,S',
+      '770,205,K 768,289,E+ 768,352,P 768,556,B 768,753,P 768,821,E+ 770,910,K',
+      '268,316,#1 335,316,#1 401,316,#1 467,316,#1 544,316,#1 548,372,#1 545,432,? 470,439,#2 404,439,#2 338,439,#2 270,432,#2 265,372,#2 >',
+      '518,205,? 544,316,#1', '160,434,T+ 270,432,#2', '545,432,? 545,490,P 545,562,M',
+      '992,316,#3 1070,316,#3 1136,316,#3 1202,316,#3 1268,316,#3 1270,372,#3 1266,432,#4 1198,439,#4 1133,439,#4 1067,439,#4 990,432,? 992,372,#4 >',
+      '1018,205,S 992,316,#3', '1266,432,#4 1376,434,V+', '990,432,? 990,490,P 990,562,M',
+      '262,692,#5 332,692,#5 398,692,#5 464,692,#5 545,700,H 545,765,#5 542,822,#6 466,822,#6 402,822,#6 336,822,#6 264,816,#6 262,752,#6 >',
+      '148,718,? 262,692,#5', '545,700,H 545,632,P 545,562,M', '542,822,#6 510,910,C',
+      '990,700,H 1072,692,#7 1140,692,#7 1206,692,#7 1274,692,#7 1274,752,#7 1272,816,#8 1200,822,#8 1136,822,#8 1070,822,#8 994,822,#8 990,765,#8 >',
+      '990,700,H 990,632,P 990,562,M', '1274,692,#7 1388,718,?', '994,822,#8 1025,910,D',
+    ],
+  },
+  {
+    id: 'ajisai', name: 'Hydrangea Isles', th: 'หมู่เกาะไฮเดรนเยีย', bg: 'bg_map2', img: [1536, 1024], ts: 92, size: 'กลาง',
+    districts: [
+      { name: 'Ajisai Island', th: 'เกาะไฮเดรนเยีย', color: '#f06292', f: 0.9, label: [330, 340], shops: [['ร้านร่มน่ารัก','clothes'],['ร้านชาไฮเดรนเยีย','cafe'],['ร้านหนังสือฝนพรำ','book'],['เบเกอรี่สายรุ้ง','bakery'],['ร้านขนมโมจิ','bakery']] },
+      { name: 'Rainbow Island', th: 'เกาะสายรุ้ง', color: '#ff9f43', f: 1.0, label: [1190, 340], shops: [['คาเฟ่สายรุ้ง','cafe'],['ร้านโดนัท','bakery'],['ร้านอุด้ง','food'],['มาร์ทเกาะ','mart'],['ร้านดอกไม้ฝน','clothes'],['ร้านข้าวกล่อง','food']] },
+      { name: 'Lotus West', th: 'บัวตะวันตก', color: '#ec407a', f: 1.1, label: [575, 790], shops: [['โรงแรมสระบัว','onsen'],['ร้านอาหารริมสระ','food'],['คลินิกสระบัว','clinic']] },
+      { name: 'Lotus East', th: 'บัวตะวันออก', color: '#ab47bc', f: 1.15, label: [960, 790], shops: [['ออนเซ็นกบน้อย','onsen'],['ห้างร่มทอง','mall'],['สำนักงานเรนโบว์','bank']] },
+      { name: 'Umbrella Central', th: 'ย่านกลางร่ม', color: '#7e57c2', f: 1.25, label: [880, 725], shops: [['ธนาคารฝนแก้ว','bank'],['ห้างสายรุ้ง','mall']] },
+    ],
+    paths: [
+      '200,262,H 306,262,#1 409,262,? 512,262,#1 540,340,S 495,405,#1 412,416,? 300,418,#1 190,414,#1 122,340,L >',
+      '1024,262,#2 1128,262,D 1232,262,#2 1336,262,? 1400,340,L 1346,412,#2 1236,418,#2 1128,412,C 1037,405,#2 985,340,#2 >',
+      '540,340,S 768,290,R+ 985,340,#2',
+      '270,655,M 514,652,#3 634,652,#3 768,640,P 901,652,#4 1022,652,#4 1265,655,E',
+      '514,652,#3 476,735,H 468,826,#3 496,898,? 768,880,K 1004,898,F 1066,825,#4 1060,734,? 1022,652,#4',
+      '768,640,P 768,700,#5 768,748,#5 768,880,K', '768,640,P 768,530,B',
+      '270,655,M 190,414,#1', '1265,655,E 1236,418,#2',
+    ],
+  },
+  {
+    id: 'snow', name: 'Snow Village', th: 'หมู่บ้านหิมะ', bg: 'bg_map3', img: [1536, 1024], ts: 108, size: 'เล็ก',
+    districts: [
+      { name: 'Snowflake West', th: 'ถนนเกล็ดหิมะ', color: '#4fc3f7', f: 0.9, label: [330, 600], shops: [['ร้านผ้าพันคอ','clothes'],['ร้านโกโก้ร้อน','cafe'],['ร้านถุงมือ','mart']] },
+      { name: 'Bank Hill', th: 'เนินธนาคาร', color: '#9575cd', f: 1.2, label: [1250, 640], shops: [['ห้างน้ำแข็ง','mall'],['ออนเซ็นภูเขา','onsen'],['ธนาคารหิมะ','bank']] },
+      { name: 'South Street', th: 'ถนนสายใต้', color: '#ff8a80', f: 1.0, label: [390, 790], shops: [['ร้านหม้อไฟ','food'],['เบเกอรี่ป่าสน','bakery'],['ร้านของขวัญ','mart'],['คาเฟ่มาร์ชเมลโลว์','cafe']] },
+      { name: 'North Street', th: 'ถนนสายเหนือ', color: '#ffb74d', f: 0.95, label: [700, 330], shops: [['ร้านเทียนหอม','clothes'],['เรียวกังหิมะ','onsen']] },
+    ],
+    paths: [
+      '182,248,L 317,250,H 439,250,#4 560,250,? 690,250,S 822,250,U 959,250,#4 1085,250,D 1205,250,? 1320,263,#2 1330,372,#2 1090,470,B 1100,585,P 1102,665,#2 1102,750,? 1110,862,#3 1042,872,#3 940,872,H 848,870,? 660,880,K 473,871,#3 375,872,? 282,872,#3 182,862,F 182,749,#1 182,650,C 182,550,? 182,454,#1 182,356,#1 >',
+    ],
+  },
+  {
+    id: 'river', name: 'Riverside Town', th: 'เมืองริมแม่น้ำ', bg: 'bg_map4', img: [1536, 1024], ts: 108, size: 'กลาง',
+    districts: [
+      { name: 'Cherry Lot', th: 'แปลงซากุระ', color: '#f06292', f: 0.9, label: [430, 360], lot: [320, 360, 550, 470], shops: [['ร้านขนมหวาน','bakery'],['ร้านผ้าทอ','clothes']] },
+      { name: 'Orange Lot', th: 'แปลงส้ม', color: '#ffa726', f: 1.0, label: [1100, 360], lot: [985, 360, 1215, 470], shops: [['คาเฟ่เป็ดน้อย','cafe'],['ร้านแซนด์วิช','bakery']] },
+      { name: 'Meadow Lot', th: 'แปลงทุ่งหญ้า', color: '#8bc34a', f: 1.05, label: [390, 680], lot: [270, 680, 515, 785], shops: [['ร้านดอกเชอร์รี่','clothes'],['มาร์ทสวนผลไม้','mart'],['ร้านพาย','bakery']] },
+      { name: 'Lavender Lot', th: 'แปลงลาเวนเดอร์', color: '#ab47bc', f: 1.15, label: [1140, 680], lot: [1015, 680, 1260, 785], shops: [['โรงแรมสะพาน','onsen'],['ภัตตาคารริมน้ำ','food'],['คลินิกริมน้ำ','clinic']] },
+      { name: 'Bank Central', th: 'ย่านธนาคารกลาง', color: '#7e57c2', f: 1.25, label: [900, 350], shops: [['ห้างริมน้ำ','mall'],['ตลาดหลักทรัพย์','bank']] },
+    ],
+    paths: [
+      '255,285,L 382,262,H 508,261,#1 630,262,? 768,250,U 905,262,S 1029,261,#2 1150,262,D 1290,285,L 1332,392,? 1354,500,#2 1372,602,#4 1377,714,C 1350,830,E 1238,883,#4 1114,884,? 1004,884,#4 768,880,K 535,884,#3 423,884,? 300,883,#3 190,830,F 159,714,C 163,603,#3 180,501,#1 204,394,? >',
+      '768,250,U 767,345,#5 770,410,P 768,530,B 769,700,#5 768,880,K',
+    ],
+  },
+];
+
+var TILE_INFO = {
+  B: { type: 'bank', name: 'ธนาคาร', icon: ['items', 42] },
+  shop: { type: 'shop', name: 'ร้านค้า' },
+  H: { type: 'suit', suit: 'heart', name: 'Heart', glyph: '♥', color: '#ff6f91' },
+  D: { type: 'suit', suit: 'diamond', name: 'Diamond', glyph: '♦', color: '#4fa3ff' },
+  C: { type: 'suit', suit: 'clover', name: 'Clover', glyph: '♣', color: '#45b34f' },
+  S: { type: 'suit', suit: 'spade', name: 'Spade', glyph: '♠', color: '#3d79d9' },
+  '?': { type: 'chance', name: 'Chance', icon: ['ui', 41], color: '#b07ce0' },
+  L: { type: 'lucky', name: 'Lucky', icon: ['ui', 48], color: '#ffd54f' },
+  U: { type: 'superlucky', name: 'Super Lucky', icon: ['ui', 49], color: '#ffca28' },
+  T: { type: 'tax', name: 'Tax', icon: ['ui', 44], color: '#ffab91' },
+  K: { type: 'casino', name: 'Casino', icon: ['items', 58], color: '#ff8fb3' },
+  M: { type: 'broker', name: 'Stock Broker', icon: ['ui', 38], color: '#a5d6a7' },
+  V: { type: 'vacant', name: 'Vacant Land', icon: ['items', 47], color: '#d7ccc8' },
+  W: { type: 'warp', name: 'Warp', icon: ['ui', 46], color: '#b39ddb' },
+  R: { type: 'rest', name: 'Rest', icon: ['ui', 47], color: '#b2dfdb' },
+  F: { type: 'festival', name: 'Festival', icon: ['ui', 43], color: '#ffcc80' },
+  E: { type: 'event', name: 'Event', icon: ['ui', 50], color: '#f8bbd0' },
+  P: { type: 'road', name: 'ทางเดิน', icon: null, color: '#eeeeee' },
+};
+var SUITS = ['heart', 'diamond', 'clover', 'spade'];
+var SUIT_GLYPH = { heart: '♥', diamond: '♦', clover: '♣', spade: '♠' };
+var SUIT_COLOR = { heart: '#ff6f91', diamond: '#4fa3ff', clover: '#45b34f', spade: '#3d79d9' };
+
+// ---------------- 100 CHANCE CARDS (GDD §15) ----------------
+// [id, name, desc, category, art index (0-99 across the 4 sticker sheets), negative?]
+var CARD_DEFS = [
+ [1,'Coin Gift','รับเงิน 500 G','A',0],[2,'Big Bonus','รับเงิน 1,000 G','A',1],[3,'Lucky Day','รับเงิน 2,000 G','A',25],
+ [4,'Treasure Box','สุ่มรับเงิน 500–3,000 G','A',2],[5,'Golden Reward','รับเงิน 3,000 G','A',27],[6,'Saving Bonus','รับ 5% ของเงินสด (สูงสุด 1,000 G)','A',94],
+ [7,'Business Prize','รับ 500 G ต่อร้านที่ถือครอง (สูงสุด 2,000 G)','A',44],[8,'Lucky Investor','รับหุ้นฟรี 5 หุ้นในเขตที่เลือก','A',57],
+ [9,'Rich Customer','รับโบนัส 500 G จากธนาคาร','A',54],[10,'Jackpot','สุ่มรับเงิน 1,000–5,000 G','A',79],
+ [11,'Busy Store','ค่าเช่าร้านทั้งหมดของคุณ +10% เป็นเวลา 1 รอบ','B',72],[12,'Popular Shop','ร้านของคุณหนึ่งแห่งเพิ่มมูลค่า 500 G','B',23],
+ [13,'New Customer','รับ 300 G ต่อร้าน (สูงสุด 1,500 G)','B',52],[14,'Free Renovation','อัปเกรดร้านหนึ่งระดับ จ่ายเพียง 50% ของต้นทุน','B',14],
+ [15,'Store Promotion','ร้านหนึ่งแห่งค่าเช่า +20% เป็นเวลา 2 รอบ','B',89],[16,'Business Contract','รับ 1,000 G หากถือครองอย่างน้อย 2 ร้าน','B',18],
+ [17,'Shop Discount','ลดค่าอัปเกรดร้าน 20% เป็นเวลา 2 รอบ','B',88],[18,'Extra Customers','ร้านของคุณหนึ่งแห่งรับโบนัส 500 G','B',83],
+ [19,'New Branch','ส่วนลด 500 G ในการซื้อร้าน/ที่ดินครั้งถัดไป','B',11],[20,'Business Boom','ร้านของคุณในเขตที่เลือกเพิ่มมูลค่า 5%','B',62],
+ [21,'Construction Grant','รับเงินสร้างบ้าน 500 G','C',50],[22,'Builder Discount','ลดค่าก่อสร้าง/อัปเกรด 20% หนึ่งครั้ง','C',4],
+ [23,'Upgrade Coupon','อัปเกรดครั้งถัดไปฟรี 1 ระดับ','C',74],[24,'New Building','สร้างอาคารพิเศษครั้งถัดไปลด 1,000 G','C',10],
+ [25,'Renovation Day','ลดค่าบำรุงรักษา 50% เป็นเวลา 2 รอบ','C',63],[26,'Property Boom','มูลค่าร้านของคุณทั้งหมด +5%','C',55],
+ [27,'Smart Investment','รับโบนัส 500 G เมื่อจบรอบ','C',59],[28,'Construction Delay','ร้านของคุณหนึ่งแห่งอัปเกรดไม่ได้ 1 รอบ','C',77,1],
+ [29,'Maintenance Fee','จ่ายค่าบำรุงรักษา 300 G','C',58,1],[30,'Grand Opening','อาคารหนึ่งแห่งรับโบนัส 1,000 G (ต้องมีร้าน)','C',24],
+ [31,'Full Booking','โรงแรม (Lv6+) หนึ่งแห่งรับโบนัส 1,000 G','D',12],[32,'Tourist Season','โรงแรมทั้งหมดค่าเช่า +15% เป็นเวลา 1 รอบ','D',29],
+ [33,'Travel Voucher','รับเงิน 500 G','D',20],[34,'Hotel Upgrade','ลดค่าพัฒนาเป็นโรงแรม 500 G','D',13],
+ [35,'Luxury Guest','โรงแรมของคุณรับ 1,500 G (ต้องมีโรงแรม)','D',40],[36,'Empty Rooms','โรงแรมของคุณหนึ่งแห่งเก็บค่าเช่าไม่ได้ 1 รอบ','D',39,1],
+ [37,'Travel Promotion','โรงแรมของคุณในเขตที่เลือกเพิ่มมูลค่า 5%','D',30],[38,'Holiday Season','รับ 300 G ต่ออาคารท่องเที่ยว','D',70],
+ [39,'Hotel Award','รับ 2,000 G หากมีอาคารระดับ 5 ขึ้นไป','D',44],[40,'Tourism Boom','อาคารท่องเที่ยวค่าเช่า +20% 1 รอบ','D',31],
+ [41,'Market Rise','หุ้นเขตที่เลือก +10%','E',15],[42,'Market Fall','หุ้นเขตที่เลือก -10%','E',16],
+ [43,'Dividend Day','เงินปันผลของคุณ +50% ในรอบนี้','E',93],[44,'Free Shares','รับหุ้นฟรี 10 หุ้น','E',3],
+ [45,'Investor Bonus','รับ 500 G ต่อ 50 หุ้นที่ถือ (สูงสุด 2,000 G)','E',53],[46,'Stock Discount','ค่าธรรมเนียมซื้อหุ้น 0% ในเทิร์นนี้','E',91],
+ [47,'Market Panic','หุ้นเขตที่เลือก -5%','E',56],[48,'Bull Market','หุ้นทุกเขต +3%','E',55],
+ [49,'Bear Market','หุ้นทุกเขต -3%','E',99],[50,'Golden Portfolio','รับ 1,000 G หากถือหุ้นอย่างน้อย 3 เขต','E',26],
+ [51,'Extra Step','เดินเพิ่ม 2 ช่อง','F',7],[52,'Long Journey','เดินเพิ่ม 3 ช่อง','F',9],
+ [53,'Short Route','เลือกเดินเพิ่ม 1–3 ช่อง','F',8],[54,'Taxi Service','ย้ายไปช่องใดก็ได้ในระยะ 6 ช่อง','F',86],
+ [55,'Train Ticket','ย้ายไปช่อง Stock Broker (สถานี)','F',85],[56,'Harbor Trip','ย้ายไปท่าเรือ (Warp/ธนาคาร)','F',21],
+ [57,'Travel Back','ถอยหลัง 2 ช่อง','F',41],[58,'Fast Travel','เลือกย้ายไปจุดเดินทาง','F',22],
+ [59,'Detour','เทิร์นถัดไปเลือกทิศทางได้อิสระ','F',28],[60,'Free Ride','ไม่ต้องจ่ายค่าผ่านทางครั้งถัดไป','F',84],
+ [61,'Trade Offer','ขอแลกเปลี่ยนร้านกับคู่แข่ง (จ่ายส่วนต่าง)','G',60],[62,'Business Auction','เปิดประมูลร้านหนึ่งแห่งของคุณ','G',95],
+ [63,'Price Negotiation','ลดราคาซื้อกิจการ 10% ครั้งถัดไป','G',17],[64,'Rent Dispute','ลดค่าเช่าที่ต้องจ่าย 50% หนึ่งครั้ง','G',96],
+ [65,'Friendly Deal','ขอเงิน 500 G จากผู้เล่นที่เลือก หากตกลง','G',61],[66,'Shop Transfer','เสนอขายร้านให้คู่แข่ง 110% ของมูลค่า','G',87],
+ [67,'Business Competition','ร้านคู่แข่งหนึ่งแห่งค่าเช่า -10% 1 รอบ','G',19],[68,'Partnership','รับ 500 G หากมีร้านในเขตเดียวกับคู่แข่ง','G',42],
+ [69,'Buyout Opportunity','ลดค่าซื้อกิจการคู่แข่ง 10% หนึ่งครั้ง','G',90],[70,'Contract Cancel','ยกเลิกส่วนลดซื้อกิจการของคู่แข่งทั้งหมด','G',81],
+ [71,'Rent Shield','ไม่ต้องจ่ายค่าเช่าครั้งถัดไป','H',97],[72,'Tax Discount','ลดภาษีครั้งถัดไป 50%','H',89],
+ [73,'Repair Voucher','ซ่อมร้านฟรี (ลบผลเสียบนร้านของคุณ)','H',75],[74,'Insurance','ป้องกันผลเสียจากการ์ดหนึ่งครั้ง','H',76],
+ [75,'Safe Deposit','เก็บเงิน 1,000 G ในบัญชีคุ้มครอง (+5% เมื่อถึงธนาคาร)','H',92],[76,'Price Lock','ป้องกันราคาหุ้นที่คุณถือลดลง 1 รอบ','H',48],
+ [77,'Shop Protection','ป้องกันการถูกซื้อกิจการหนึ่งครั้ง','H',78],[78,'Maintenance Free','ยกเว้นค่าบำรุงรักษาหนึ่งครั้ง','H',64],
+ [79,'Tax Exemption','ยกเว้นภาษีทรัพย์สินหนึ่งรอบ','H',98],[80,'Emergency Fund','รับ 1,000 G หากเงินสดต่ำกว่า 1,000 G','H',43],
+ [81,'Sakura Festival','รับโบนัส 500 G','I',34],[82,'Weekend Market','เจ้าของร้านในเขตที่เลือกรับ 300 G ต่อร้าน','I',33],
+ [83,'Flower Season','เขตที่ 4 (สวน) ค่าเช่า +20% 2 รอบ','I',68],[84,'Rainy Day','อาคารท่องเที่ยวค่าเช่า -10% 1 รอบ','I',37,1],
+ [85,'Summer Holiday','โรงแรมค่าเช่า +10% 1 รอบ','I',66],[86,'Winter Sale','ลดค่าซื้อร้านค้า 10% ครั้งถัดไป','I',67],
+ [87,'City Development','มูลค่าธุรกิจทุกเขตเพิ่ม 3% (หุ้นขึ้น)','I',31],[88,'Public Construction','อาคารของคุณในเขตที่เลือก +5%','I',36],
+ [89,'Shopping Event','รับ 1,000 G เมื่อมีร้านอย่างน้อย 3 แห่ง','I',83],[90,'City Tax Day','ผู้เล่นทุกคนจ่ายภาษี 200 G','I',65,1],
+ [91,'Lucky Clover','รับเงิน 500 G','J',45],[92,'Bad Weather','เสียเงิน 300 G','J',39,1],
+ [93,'Lost Wallet','เสียเงิน 500 G','J',98,1],[94,'Unexpected Gift','รับของขวัญสุ่ม','J',80],
+ [95,'Broken Shop','ร้านของคุณหนึ่งแห่งเก็บค่าเช่าไม่ได้ 1 รอบ','J',77,1],[96,'Business Crisis','จ่ายค่าบำรุงรักษา 500 G','J',99,1],
+ [97,'Golden Ticket','รับหุ้นฟรี 5 หุ้นและเงิน 500 G','J',74],[98,'Lucky Dice','ทอยลูกเต๋า 2 ครั้ง เลือกผลแล้วเดินต่อ','J',49],
+ [99,'Second Chance','ยกเลิกผลเสียจากการ์ดหนึ่งครั้ง','J',46],[100,'Fortune Day','รับ 1,000 G และร้านหนึ่งแห่ง +5%','J',47],
+];
+var CARD_CATS = { A: 'เงินและโชคลาภ', B: 'ธุรกิจและร้านค้า', C: 'การลงทุนและก่อสร้าง', D: 'โรงแรมและท่องเที่ยว', E: 'หุ้นและตลาดทุน', F: 'การเดินทาง', G: 'คู่แข่งและการซื้อขาย', H: 'ส่วนลดและการป้องกัน', I: 'เหตุการณ์ในเมือง', J: 'โชคดีและโชคร้าย' };
+
+// ---------------- SHOP CATALOG (SHOP SYSTEM spec) ----------------
+// Equipment: max 2 per match, each usable once. 'when' = phase the Use button is enabled.
+var EQUIPMENT = [
+  { id: 'eq_lucky',   name: 'Lucky Dice',     th: 'ทอยลูกเต๋าใหม่ 1 ครั้ง',          when: 'postRoll', price: 800,  cur: 'gold', spr: ['items', 0] },
+  { id: 'eq_golden',  name: 'Golden Dice',    th: 'เลือกผลลูกเต๋า 1–6 ได้ 1 ครั้ง',  when: 'preRoll',  price: 1500, cur: 'gold', spr: ['items', 1] },
+  { id: 'eq_rent',    name: 'Rent Shield',    th: 'ป้องกันการจ่ายค่าเช่า 1 ครั้ง',    when: 'rent',     price: 1200, cur: 'gold', spr: ['items', 29] },
+  { id: 'eq_tax',     name: 'Tax Shield',     th: 'ป้องกันภาษี 1 ครั้ง',              when: 'tax',      price: 600,  cur: 'gold', spr: ['spc', 10] },
+  { id: 'eq_double',  name: 'Double Coin',    th: 'เงินรางวัลจากเหตุการณ์ x2 (1 ครั้ง)', when: 'gain', price: 1000, cur: 'gold', spr: ['spc', 2] },
+  { id: 'eq_stock',   name: 'Stock Boost',    th: 'หุ้นเขตที่ถือมากที่สุด +10%',       when: 'preRoll',  price: 900,  cur: 'gold', spr: ['spc', 32] },
+  { id: 'eq_upg',     name: 'Upgrade Coupon', th: 'ลดค่าอัปเกรด 30% 1 ครั้ง',          when: 'upgrade',  price: 900,  cur: 'gold', spr: ['spc', 4] },
+  { id: 'eq_travel',  name: 'Travel Ticket',  th: 'ย้ายไปธนาคารทันที 1 ครั้ง',        when: 'preRoll',  price: 1500, cur: 'gold', spr: ['items', 10, 6, 1] },
+  { id: 'eq_shopdc',  name: 'Shop Discount',  th: 'ลดราคาซื้อร้าน 30% 1 ครั้ง',        when: 'buy',      price: 800,  cur: 'gold', spr: ['spc', 6] },
+  { id: 'eq_ins',     name: 'Insurance Card', th: 'ป้องกันผลเสียจากเหตุการณ์ 1 ครั้ง', when: 'negative', price: 700,  cur: 'gold', spr: ['spc', 18] },
+  { id: 'eq_move',    name: 'Extra Move',     th: 'เดินเพิ่ม 1 ช่อง',                  when: 'postRoll', price: 500,  cur: 'gold', spr: ['spc', 16] },
+  { id: 'eq_wallet',  name: 'Safe Wallet',    th: 'ป้องกันการเสียเงินจากการ์ด/เทศกาล 1 ครั้ง', when: 'lose', price: 800, cur: 'gold', spr: ['items', 15] },
+];
+// Special cards from SHOP (separate ID space "SC_" from chance cards "C###")
+var SPECIAL_CARDS = [
+  { id: 'SC_cash',    name: 'Bonus Cash',    th: 'รับเงินทันที 1,500 G',               when: 'preRoll',  price: 15, cur: 'diamond', spr: ['spc', 13] },
+  { id: 'SC_rent',    name: 'Rent Guard',    th: 'ไม่ต้องจ่ายค่าเช่า 1 ครั้ง',          when: 'rent',     price: 12, cur: 'diamond', spr: ['spc', 11] },
+  { id: 'SC_step',    name: 'Step Plus',     th: 'เดินเพิ่ม 2 ช่องหลังทอย',            when: 'postRoll', price: 8,  cur: 'diamond', spr: ['spc', 26] },
+  { id: 'SC_upg',     name: 'Free Upgrade',  th: 'อัปเกรด 1 ระดับฟรี',                 when: 'upgrade',  price: 20, cur: 'diamond', spr: ['spc', 5] },
+  { id: 'SC_stock',   name: 'Stock Gift',    th: 'รับหุ้นฟรี 20 หุ้นในเขตที่มีร้านมากสุด', when: 'preRoll', price: 15, cur: 'diamond', spr: ['spc', 3] },
+  { id: 'SC_div',     name: 'Dividend Up',   th: 'กองทุนปันผล +10% เป็นเวลา 3 รอบ (สูงสุด 20%)', when: 'preRoll', price: 15, cur: 'diamond', spr: ['spc', 34] },
+  { id: 'SC_home',    name: 'Warp Home',     th: 'ย้ายไปธนาคารทันที',                  when: 'preRoll',  price: 12, cur: 'diamond', spr: ['spc', 24] },
+  { id: 'SC_value',   name: 'Value Boost',   th: 'ร้านของคุณหนึ่งแห่งมูลค่า +10%',      when: 'preRoll',  price: 15, cur: 'diamond', spr: ['spc', 6] },
+  { id: 'SC_ins',     name: 'Lucky Angel',   th: 'ยกเลิกผลเสียจากการ์ด 1 ครั้ง',        when: 'negative', price: 10, cur: 'diamond', spr: ['spc', 8] },
+];
+var PACKAGES = [
+  { id: 'pk_begin', name: 'Beginner Pack', th: 'เหรียญ 3,000 + Lucky Dice + Extra Move', price: 20, cur: 'diamond', spr: ['rec', 0],
+    gives: { gold: 3000, items: { eq_lucky: 1, eq_move: 1 } } },
+  { id: 'pk_biz', name: 'Business Pack', th: 'Shop Discount x2 + Upgrade Coupon x2 + Stock Gift', price: 40, cur: 'diamond', spr: ['rec', 12],
+    gives: { items: { eq_shopdc: 2, eq_upg: 2, SC_stock: 1 } } },
+  { id: 'pk_hotel', name: 'Hotel Owner Pack', th: 'Free Upgrade x2 + Value Boost + ตึกโรงแรม (ตกแต่ง)', price: 50, cur: 'diamond', spr: ['rec', 17],
+    gives: { items: { SC_upg: 2, SC_value: 1, deco_31: 1 } } },
+  { id: 'pk_lucky', name: 'Lucky Player Pack', th: 'Golden Dice + Lucky Dice x2 + Insurance', price: 35, cur: 'diamond', spr: ['rec', 4],
+    gives: { items: { eq_golden: 1, eq_lucky: 2, eq_ins: 1 } } },
+  { id: 'pk_deco', name: 'Decoration Pack', th: 'ซากุระ + น้ำพุ + สะพาน + ม้านั่ง', price: 3000, cur: 'gold', spr: ['rec', 20],
+    gives: { items: { deco_43: 1, deco_44: 1, deco_40: 1, deco_42: 1 } } },
+];
+var EXCHANGE = [
+  { id: 'ex_g1', th: 'แลก 10 💎 → 2,000 G', pay: { diamond: 10 }, get: { gold: 2000 }, spr: ['rec', 27, 3, 0] },
+  { id: 'ex_g2', th: 'แลก 50 💎 → 11,000 G', pay: { diamond: 50 }, get: { gold: 11000 }, spr: ['items', 14, 3, 0] },
+  { id: 'ex_d1', th: 'แลก 5,000 G → 15 💎', pay: { gold: 5000 }, get: { diamond: 15 }, spr: ['rec', 27, 3, 1] },
+];
+// Decoration items: 'deco' sheet idx 0..49 (rows of buildings/props), cost scales
+function decoCatalog() {
+  var names = ['ร้านเค้ก','ร้านขนมปัง','คาเฟ่','ร้านอาหาร','ร้านเบอร์เกอร์','ร้านราเมง','ร้านซูชิ','ร้านคัพเค้ก','ร้านดอกไม้','ร้านหนังสือ',
+    'ร้านชุด','ร้านแว่น','ร้านกล้อง','ร้านของขวัญ','ร้านขนม','ร้านยา','ร้านเกม','ร้านรองเท้า','ซูเปอร์มาร์เก็ต','ร้านปลา',
+    'บ้านแดง','บ้านฟ้า','บ้านเหลือง','บ้านชมพู','บ้านโมเดิร์น','บ้านสองชั้น','บ้านอิฐ','บ้านไม้','บ้านหรู','บ้านญี่ปุ่น',
+    'โรงแรม','โรงแรมดาว','รีสอร์ท','ห้างหมี','ห้างสรรพสินค้า','ธนาคาร','ตลาดหุ้น','โรงหนัง','โรงพยาบาล','โรงเรียน',
+    'ชิงช้าสวรรค์','ม้าหมุน','น้ำพุ','สะพานสวน','เรือนกระจก','อควาเรียม','สวนสัตว์','ปราสาท','หอคอย','ประภาคาร'];
+  return names.map(function (n, i) { return { id: 'deco_' + i, name: n, price: 400 + (i % 10) * 100 + Math.floor(i / 10) * 300, cur: i >= 40 ? 'diamond' : 'gold', spr: ['deco', i], dprice: 10 + (i - 40) * 2 }; })
+    .map(function (d) { if (d.cur === 'diamond') d.price = d.dprice; return d; });
+}
+var DECOS = decoCatalog();
+var DICE_SKINS = [
+  { id: 'dice_0', name: 'ลูกเต๋าขาว', spr: ['dice', 0], price: 0, cur: 'gold' },
+  { id: 'dice_1', name: 'ลูกเต๋าครีม', spr: ['dice', 1], price: 1200, cur: 'gold' },
+  { id: 'dice_2', name: 'ลูกเต๋าทอง', spr: ['dice', 2], price: 2500, cur: 'gold' },
+  { id: 'dice_3', name: 'ลูกเต๋าชมพู', spr: ['dice', 3], price: 1200, cur: 'gold' },
+  { id: 'dice_4', name: 'ลูกเต๋าฟ้า', spr: ['dice', 4], price: 1200, cur: 'gold' },
+  { id: 'dice_5', name: 'ลูกเต๋าเขียว', spr: ['dice', 5], price: 1200, cur: 'gold' },
+  { id: 'dice_6', name: 'ลูกเต๋าช็อกโกแลต', spr: ['dice', 6], price: 15, cur: 'diamond' },
+];
+var DAILY_REWARDS = [{ gold: 500 }, { diamond: 5 }, { item: 'eq_move' }, { gold: 1000 }, { diamond: 10 }, { item: 'eq_lucky', n: 2 }, { gold: 2000, diamond: 10, item: 'SC_cash' }];
+
+if (typeof module !== 'undefined') module.exports = { CONFIG, PLAYER_COLORS, AI_LEVELS, AI_PERSONAS, CHARACTERS, EXTRA_CHARS, BUSINESS, SPECIAL_BUILDINGS, MAPS, TILE_INFO, SUITS, SUIT_GLYPH, SUIT_COLOR, CARD_DEFS, CARD_CATS, EQUIPMENT, SPECIAL_CARDS, PACKAGES, EXCHANGE, DECOS, DICE_SKINS, DAILY_REWARDS };

@@ -52,7 +52,7 @@
       return new Promise(function (resolve) {
         var box = $('#modalBox'), M = $('#modal'); modalOpen = true;
         box.style.width = o.width ? o.width + 'px' : ''; box.style.background = o.bg || '';
-        box.innerHTML = (o.close !== false ? '<div class="xbtn" data-x>✕</div>' : '') + (o.title ? '<div class="mtitle">' + o.title + '</div>' : '') + '<div class="mbody"></div>' + (o.buttons && o.buttons.length ? '<div class="mbtns"></div>' : '');
+        box.innerHTML = (o.close !== false ? '<div class="xbtn" data-x>' + spr(['ui', 'close'], 64, 60) + '</div>' : '') + (o.title ? '<div class="mtitle">' + o.title + '</div>' : '') + '<div class="mbody"></div>' + (o.buttons && o.buttons.length ? '<div class="mbtns"></div>' : '');
         var body = box.querySelector('.mbody');
         if (typeof o.body === 'string') body.innerHTML = o.body; else if (o.body) body.appendChild(o.body);
         var done = false, timer = null;
@@ -92,40 +92,51 @@
     h += '<div class="hudnum" style="left:836px;top:22px;width:78px;height:34px">20/20</div>';
     h += '<div class="hudnum" style="left:172px;top:22px;width:84px;height:34px;background:#5a2a14">Lv. ' + P.level + '</div>';
     if (ls.canClaim) h += '<div class="badge" style="left:70px;top:140px">!</div><div class="badge" style="left:1176px;top:8px">!</div>';
-    $('#menuHot').innerHTML = h;
-    $('#btnContinue').disabled = !localStorage.getItem('rfs_save_auto');
+    $('#menuHot').innerHTML = h; $('#menuHot').style.cssText = 'position:absolute;left:0;top:69px;width:1280px;height:721px';
   }
   $('#menuHot').addEventListener('click', function (e) {
     var a = e.target.closest('[data-act]'); if (!a) return;
     var act = a.dataset.act;
-    if (act === 'play') openSetup(false);
-    else if (act === 'ai') openSetup(true);
+    if (act === 'play') playMenu(false);
+    else if (act === 'ai') playMenu(true);
     else if (act === 'online') alertBox('🌐 โหมดออนไลน์', 'ตามแผน GDD ระบบ Offline ต้องเสถียรก่อน — โหมดออนไลน์ (ห้อง, Ready, Turn Sync, Reconnect) จะเพิ่มในเฟสถัดไป<br>ตอนนี้เล่น <b>Local Multiplayer</b> หลายคนบนเครื่องเดียวได้แล้วใน “เข้าเกม”');
     else if (act === 'tour') alertBox('🏆 ทัวร์นาเมนต์', 'จะเปิดหลังระบบออนไลน์พร้อม — ระหว่างนี้ลองเล่น “Long Match” กับ AI ระดับ Advanced ได้เลย!');
     else if (act === 'shop') openShop('rec');
     else if (act === 'login') dailyLogin();
     else if (act === 'rank') rankingModal();
     else if (act === 'trophy') achievements();
-    else if (act === 'news' || act === 'mail') mailModal();
+    else if (act === 'news') newsModal();
+    else if (act === 'mail') mailModal();
     else if (act === 'profile') openProfile();
-    else if (act === 'settings') settingsModal();
+    else if (act === 'settings') hubModal();
     else if (act === 'exchange') openShop('exch');
     else if (act === 'energy') toast('❤️ พลังงานเต็ม 20/20 — เล่นได้ไม่จำกัดใน Prototype');
   });
-  $('#btnContinue').onclick = function () { var s = localStorage.getItem('rfs_save_auto'); if (s) startGame(JSON.parse(s)); };
-  $('#btnInv').onclick = function () { openInventory('Game Equipment'); };
-  $('#btnProfile').onclick = openProfile;
-  $('#btnLoad').onclick = function () { loadModal(); };
-  $('#btnGuide').onclick = guideModal;
-  $('#btnSettings').onclick = settingsModal;
-  $('#btnMusic').onclick = function () { if (!Music.playing) { U.music = true; saveSettings(); Music.start('menu'); toast('🎵 เปิดเพลง: ' + (Music.song ? esc(Music.song.title) : '')); } else { Music.next(); } };
+  function playMenu(vsAI) {
+    var has = !!localStorage.getItem('rfs_save_auto'), m = slotMeta('rfs_save_auto');
+    var big = function (k, icon, t, sub, cls, dis) { return '<div class="opt bigopt ' + (cls || '') + (dis ? ' dimo' : '') + '" data-pm="' + k + '">' + icon + '<div class="col" style="gap:0"><span style="font-size:22px">' + t + '</span><span style="font-size:13px;opacity:.8">' + sub + '</span></div></div>'; };
+    modal({ title: vsAI ? 'เล่นกับ AI' : 'เข้าเกม', width: 620, body: '<div class="col" style="gap:12px">' +
+      big('new', spr(['ui', 'play'], 96, 74), 'เริ่มเกมใหม่', 'เลือกแผนที่ ผู้เล่น และไอเทม', 'pmA') +
+      big('cont', spr(['ui', 'auto'], 96, 74), 'เล่นต่อ', has && m ? m.map + ' • รอบ ' + m.round : 'ยังไม่มีเกมที่บันทึกไว้', 'pmB', !has) +
+      big('load', spr(['ui', 'load'], 96, 74), 'โหลดเกม', 'Auto Save + 3 ช่องบันทึก', 'pmC') + '</div>',
+      mount: function (box, close) { box.querySelectorAll('[data-pm]').forEach(function (e) { e.onclick = function () { if (!e.classList.contains('dimo')) close(e.dataset.pm); }; }); } })
+      .then(function (v) { if (v === 'new') openSetup(vsAI); else if (v === 'cont') startGame(JSON.parse(localStorage.getItem('rfs_save_auto'))); else if (v === 'load') loadModal(); });
+  }
+  function hubModal() {
+    var it = function (k, n, t) { return '<div class="hubit" data-hb="' + k + '">' + spr(['ui', n], 150, 120) + '</div>'; };
+    modal({ title: 'เมนู', width: 720, body: '<div class="hub">' + it('settings', 'settings') + it('guide', 'guide') + it('music', 'music') + it('load', 'load') + it('inv', 'assets') + it('prof', 'chars') + it('achv', 'achv') + it('rank', 'rank') + '</div>',
+      mount: function (box, close) { box.querySelectorAll('[data-hb]').forEach(function (e) { e.onclick = function () { close(e.dataset.hb); }; }); } })
+      .then(function (v) { ({ settings: settingsModal, guide: guideModal, music: function () { if (!Music.playing) { U.music = true; saveSettings(); Music.start('menu'); } else Music.next(); toast('🎵 ' + (Music.song ? esc(Music.song.title) : '')); }, load: loadModal, inv: function () { openInventory('Game Equipment'); }, prof: openProfile, achv: achievements, rank: rankingModal }[v] || function () { })(); });
+  }
+  function backBtns() { document.querySelectorAll('.backbtn').forEach(function (b) { if (!b.innerHTML) b.innerHTML = spr(['ui', 'prev'], 70, 70); }); }
+  backBtns();
   document.querySelectorAll('[data-back]').forEach(function (b) { b.onclick = function () { show(b.dataset.back || 'menu'); }; });
 
   function dailyLogin() {
     var ls = Meta.loginState();
     var cells = DAILY_REWARDS.map(function (r, i) {
       var got = ls.canClaim ? i < ls.day : i <= ls.day, today = ls.canClaim && i === ls.day;
-      var icon = r.item && !r.gold ? spr(Meta.item(r.item).spr, 56, 56) : r.diamond && !r.gold ? spr(['rec', 27, 3, 1], 60, 56) : spr(['items', 14, 3, 0], 60, 56);
+      var icon = r.item && !r.gold ? spr(Meta.item(r.item).spr, 56, 56) : r.diamond && !r.gold ? spr(['items', 27], 60, 56) : spr(['ui', 'i_money'], 60, 56);
       var txt = [r.gold ? fmt(r.gold) + ' G' : '', r.diamond ? r.diamond + ' 💎' : '', r.item ? (Meta.item(r.item).name + (r.n ? ' x' + r.n : '')) : ''].filter(Boolean).join(' + ');
       return '<div style="width:122px;height:150px;border:4px solid ' + (today ? '#ff5d8f' : '#6b4226') + ';border-radius:16px;background:' + (got ? '#e8ffe0' : today ? '#fff3a8' : '#fff') + ';display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:6px;font-weight:900;font-size:13px;text-align:center"><div>วันที่ ' + (i + 1) + '</div>' + icon + '<div>' + txt + (got ? ' ✅' : '') + '</div></div>';
     }).join('');
@@ -141,6 +152,9 @@
   function achievements() {
     var P = Meta.p, A = [['ชนะครั้งแรก', P.stats.wins >= 1], ['เล่นครบ 5 เกม', P.stats.games >= 5], ['เศรษฐีหมื่นห้า (NW 15,000+)', P.stats.best >= 15000], ['เจ้าสัว (NW 30,000+)', P.stats.best >= 30000], ['นักสะสม (ของตกแต่ง 5 ชิ้น)', Object.keys(P.deco).length >= 5], ['เพื่อนครบแก๊ง (ตัวละคร 8 ตัว)', Object.keys(P.chars).length >= 8]];
     modal({ title: '🏆 ความสำเร็จ', body: '<div class="col" style="min-width:460px">' + A.map(function (a) { return '<div class="opt">' + (a[1] ? '🏅' : '🔒') + ' ' + a[0] + '</div>'; }).join('') + '</div>', buttons: [{ t: 'ปิด', v: 1 }] });
+  }
+  function newsModal() {
+    modal({ title: 'ข่าวสาร & คู่มือ', width: 700, body: '<div class="col"><div class="opt">' + spr(['ui', 'i_event'], 50, 50) + '<span>อัปเดต v0.4: หน้าตาใหม่น่ารักขึ้น แผนที่ใหญ่ขึ้น ปุ่มจากชุดภาพของเกม และเพลงคาวาอิแต่งใหม่ทุกเพลง</span></div><div class="opt">' + spr(['ui', 'i_card'], 50, 50) + '<span>เปิดการ์ดให้สีของคุณเรียงเป็นแถว 3 ช่องขึ้นไป รับโบนัสสูงสุด 5,000 G!</span></div><div class="opt">' + spr(['ui', 'i_district'], 50, 50) + '<span>ซื้อร้านในเขตเดียวกันหลายร้าน = ค่าเช่าและเพดานการลงทุนสูงขึ้น</span></div></div>', buttons: [{ t: '📖 อ่านคู่มือการเล่น', v: 'g', cls: 'purple' }, { t: 'ปิด', v: 0 }] }).then(function (v) { if (v === 'g') guideModal(); });
   }
   function mailModal() { modal({ title: '✉️ จดหมาย & ข่าวสาร', body: '<div class="col" style="max-width:640px">' + Meta.p.mail.map(function (m) { return '<div class="opt">📩 ' + esc(m.m) + '</div>'; }).join('') + '<div class="opt">📢 Version 0.1 — 4 แผนที่, 5 เขตธุรกิจต่อแผนที่, การ์ด 100 ใบ, หุ้น/ปันผล/ภาษี, AI 3 ระดับ, ร้านค้า & Loadout</div></div>', buttons: [{ t: 'ปิด', v: 1 }] }); }
   function settingsModal() {
@@ -299,7 +313,7 @@
   // GAME
   // =====================================================================
   // ---------- painted board + camera (zoom / pan / follow) ----------
-  var SC = 0.6, BT = 42, VW = 862, VH = 724;
+  var SC = 0.6, BT = 42, VW = 1040, VH = 686;
   var CAM = { z: 1, tx: 0, ty: 0, follow: true };
   function startGame(state, isNew) {
     U.token++; var tok = U.token;
@@ -337,7 +351,6 @@
   }
   function buildBoard() {
     var g = U.g, s = g.s, M = MAPS[s.mapIdx];
-    $('#boardBg').style.backgroundImage = 'url(assets/' + M.bg + '.webp)';
     SC = Math.min(VW / s.w, VH / s.h); BT = M.ts * SC;
     var B = $('#board'); B.style.left = '0px'; B.style.top = '0px'; B.style.width = s.w * SC + 'px'; B.style.height = s.h * SC + 'px';
     B.style.backgroundImage = 'url(assets/' + M.bg + '.webp)'; B.style.backgroundSize = '100% 100%';
@@ -453,7 +466,8 @@
     if (!U.g) return;
     var g = U.g, s = g.s;
     refreshTiles(); refreshLabels(); placePieces(); renderPlayers(); renderStocks(); renderItems();
-    $('#roundPill').innerHTML = spr(['items', 19], 42, 42) + 'รอบ ' + Math.min(s.round, s.settings.maxRounds) + ' / ' + s.settings.maxRounds;
+    $('#roundPill').innerHTML = spr(['items', 19], 36, 36) + 'รอบ ' + Math.min(s.round, s.settings.maxRounds) + ' / ' + s.settings.maxRounds;
+    if (!$('#btnGameMenu').innerHTML) $('#btnGameMenu').innerHTML = spr(['ui', 'settings'], 70, 54);
     $('#targetPill').innerHTML = '<span style="font-size:30px">🎯</span><div><small>เป้าหมายทรัพย์สิน</small><div class="v">' + fmt(s.settings.target) + ' G</div></div>';
   }
   U.refresh = refresh;
@@ -462,12 +476,14 @@
     var rank = s.players.slice().sort(function (a, b) { if (a.bankrupt !== b.bankrupt) return a.bankrupt ? 1 : -1; return g.netWorth(b) - g.netWorth(a); }).map(function (p) { return p.id; });
     $('#pbar').innerHTML = s.players.map(function (p) {
       var rk = rank.indexOf(p.id) + 1;
-      return '<div class="pcard ' + (p.id === cur.id && !s.over ? 'turn ' : '') + (p.bankrupt ? 'bk' : '') + '" data-p="' + p.id + '" style="--pc:' + p.color + ';--pcl:' + hexA(p.color, .32) + '">' + (rk === 1 && !p.bankrupt ? '<div class="crown">👑</div>' : '') +
-        '<div style="flex:none">' + spr(charSpec(p), 78, 88) + '</div><div class="col" style="gap:1px;flex:1;min-width:0">' +
-        '<div class="row" style="gap:5px"><span class="pno">P' + (p.id + 1) + '</span><span class="nm">' + esc(p.name) + '</span>' + (p.isAI ? '<span class="aitag">AI·' + { beginner: 'Easy', normal: 'Normal', advanced: 'Adv' }[p.ai.level] + '</span>' : '') + '</div>' +
-        '<div class="cash coin">' + fmt(p.cash) + ' G</div>' +
-        '<div class="row" style="gap:6px"><span class="nwpill">ทรัพย์สิน ' + fmt(g.netWorth(p)) + ' G</span><div class="suits">' + SUITS.map(function (k) { return '<span class="' + (p.suits[k] ? 'on' : '') + '" style="' + (p.suits[k] ? 'color:' + SUIT_COLOR[k] : '') + '">' + SUIT_GLYPH[k] + '</span>'; }).join('') + '</div></div></div>' +
-        '<div class="rankb">#' + rk + '</div></div>';
+      return '<div class="pcard ' + (p.id === cur.id && !s.over ? 'turn ' : '') + (p.bankrupt ? 'bk' : '') + '" data-p="' + p.id + '" style="--pc:' + p.color + ';--pcl:' + hexA(p.color, .35) + '">' + (rk === 1 && !p.bankrupt ? '<div class="crown">👑</div>' : '') +
+        '<div class="pchar">' + spr(charSpec(p), 84, 92) + '</div>' +
+        '<div class="ptop"><span class="pno">P' + (p.id + 1) + '</span><span class="nm">' + esc(p.name) + '</span></div>' +
+        '<div class="cash coin">' + fmt(p.cash) + '</div>' +
+        '<span class="nwpill">ทรัพย์สิน ' + fmt(g.netWorth(p)) + '</span>' +
+        '<div class="lvl">Lv' + p.level + (p.isAI ? ' • AI ' + { beginner: 'Easy', normal: 'Normal', advanced: 'Adv' }[p.ai.level] : '') + '</div>' +
+        '<div class="suits">' + SUITS.map(function (k) { return '<span class="' + (p.suits[k] ? 'on' : '') + '" style="' + (p.suits[k] ? 'color:' + SUIT_COLOR[k] : '') + '">' + SUIT_GLYPH[k] + '</span>'; }).join('') + '</div>' +
+        '<div class="rankb">' + spr(['ui', 'rank' + rk], 92, 30) + '</div></div>';
     }).join('');
   }
   $('#pbar').onclick = function (e) { var c = e.target.closest('[data-p]'); if (c && !modalOpen) playerInfo(U.g.s.players[+c.dataset.p]); };
@@ -486,12 +502,12 @@
     var card = function (sl, i) {
       var d = g.itemDef(sl.id), ready = g.canUsePre(p, sl) && !p.isAI && U.preRollActive;
       var st = sl.used ? '<span class="st used">ใช้แล้ว</span>' : d.when === 'preRoll' ? '<span class="st ready">' + (ready ? 'แตะเพื่อใช้' : 'พร้อมใช้') + '</span>' : '<span class="st on">✓ ใช้งานอยู่</span>';
-      return '<div class="itemSlot ' + (sl.used ? 'used ' : '') + (ready ? 'ready' : '') + '" data-sl="' + i + '">' + spr(d.spr, 56, 50) + '<div class="in">' + d.name + '</div>' + st + '</div>';
+      return '<div class="itemSlot ' + (sl.used ? 'used ' : '') + (ready ? 'ready' : '') + '" data-sl="' + i + '">' + spr(d.spr, 50, 44) + '<div class="in">' + d.name + '</div>' + st + '</div>';
     };
-    var eq = p.loadout.eq.map(function (sl, i) { return card(sl, i); }).join('') || '<div class="muted" style="font-size:12px;font-weight:800;padding:8px">ไม่มีอุปกรณ์</div>';
-    var sc = p.loadout.sc ? card(p.loadout.sc, p.loadout.eq.length) : '<div class="muted" style="font-size:12px;font-weight:800;padding:8px">ไม่มี</div>';
-    var left = p.loadout.eq.filter(function (x) { return !x.used; }).length;
-    $('#itemBar').innerHTML = '<div class="igroup grow"><div class="h">🎒 ไอเทมติดตัว (' + left + '/' + p.loadout.eq.length + ')</div><div class="islots">' + eq + '</div></div><div class="igroup"><div class="h">🃏 การ์ดพิเศษ (' + (p.loadout.sc && !p.loadout.sc.used ? 1 : 0) + ')</div><div class="islots">' + sc + '</div></div>';
+    var all = p.loadout.eq.map(function (sl, i) { return card(sl, i); });
+    if (p.loadout.sc) all.push(card(p.loadout.sc, p.loadout.eq.length).replace('class="itemSlot', 'class="itemSlot sc'));
+    var left = slots.filter(function (x) { return !x.used; }).length;
+    $('#itemBar').innerHTML = '<div class="ribbon">🎒 ไอเทม + การ์ดพิเศษ (' + left + '/' + slots.length + ')</div>' + (all.join('') || '<div class="muted" style="font-weight:700">ไม่ได้ติดตั้งไอเทม</div>');
     $('#itemBar').dataset.pid = p.id;
   }
   $('#itemBar').onclick = function (e) {
@@ -506,11 +522,11 @@
           .then(async function (ok) { if (ok) { await g.usePreRoll(p, sl); consumeUsed(g); sfx('coin'); refresh(); if (g.s.teleportBank && U.preRollResolve) U.preRollResolve(); else if (U.preRollRender) U.preRollRender(); } });
       });
   };
-  var LOG_ICON = { gain: ['items', 14, 3, 0], lose: ['items', 34], rent: ['ui', 39], buy: ['items', 39], card: ['ui', 41], div: ['ui', 38], bad: ['items', 33], win: ['items', 8] };
+  var LOG_ICON = { gain: ['ui', 'i_money'], lose: ['ui', 'c_warn'], rent: ['ui', 'i_shop'], buy: ['ui', 'buy'], card: ['ui', 'i_card'], div: ['ui', 'i_stock'], bad: ['ui', 'c_x'], win: ['ui', 'achv'] };
   function logIcon(m, k) {
     if (LOG_ICON[k]) return LOG_ICON[k];
-    if (/ทอย/.test(m)) return ['dice', 11]; if (/หุ้น/.test(m)) return ['ui', 38]; if (/สัญลักษณ์/.test(m)) return ['rec', 5]; if (/ธนาคาร|เงินเดือน/.test(m)) return ['items', 42]; if (/วาร์ป|ย้าย/.test(m)) return ['ui', 46]; if (/ใช้ /.test(m)) return ['items', 15];
-    return ['ui', 43];
+    if (/ทอย/.test(m)) return ['ui', 'd' + ((m.match(/(\d) แต้ม/) || [0, 1])[1])]; if (/หุ้น/.test(m)) return ['ui', 'i_stock']; if (/สัญลักษณ์/.test(m)) return ['ui', 'c_star']; if (/ธนาคาร|เงินเดือน/.test(m)) return ['ui', 'bank']; if (/วาร์ป|ย้าย/.test(m)) return ['ui', 'i_warp']; if (/ใช้ /.test(m)) return ['ui', 'i_item']; if (/ภาษี/.test(m)) return ['ui', 'i_tax'];
+    return ['ui', 'c_info'];
   }
   function addLog(m, k) {
     var b = $('#logBox'), d = document.createElement('div'); d.className = 'lrow ' + (k || '');
@@ -532,7 +548,7 @@
   function setTurn(p, mine) {
     $('#turnRibbon').textContent = mine ? 'เทิร์นของคุณ' : 'เทิร์นของ ' + p.name;
     $('#turnChar').style.setProperty('--pc', p.color);
-    $('#turnChar').innerHTML = spr(charSpec(p), 104, 104) + '<div class="tn"><b>P' + (p.id + 1) + '</b>' + esc(p.name) + '</div>';
+    $('#turnChar').innerHTML = spr(charSpec(p), 88, 92) + '<div class="tn"><b>P' + (p.id + 1) + '</b>' + esc(p.name) + '</div>';
     $('#actBtns').innerHTML = '';
   }
 
@@ -650,14 +666,14 @@
         if (!p.isAI && g.s.players.filter(function (q) { return !q.isAI; }).length > 1) await modal({ title: 'ตาของ ' + esc(p.name), body: '<div style="text-align:center">' + spr(charSpec(p), 140, 140) + '<div style="font-weight:800">ส่ง iPad ให้ ' + esc(p.name) + '</div></div>', buttons: [{ t: 'พร้อมแล้ว!', v: 1, cls: 'pink' }], close: false });
       },
       preRoll: function (p) {
-        if (p.isAI) { setAct('<div style="font-size:20px">💭 กำลังคิด...</div><div>' + esc(p.name) + '</div>'); return aiWait(500).then(function () { return A.preRoll(g, p); }).then(function () { refresh(); }); }
+        if (p.isAI) { setAct(spr(['ui', 'thinking'], 220, 44) + '<div>' + esc(p.name) + '</div>'); return aiWait(500).then(function () { return A.preRoll(g, p); }).then(function () { refresh(); }); }
         return new Promise(function (resolve) {
           U.preRollActive = true;
           var done = function () { U.preRollActive = false; U.preRollResolve = null; U.preRollRender = null; renderItems(); resolve(); };
           U.preRollResolve = done;
           var render = function () {
-            setAct('<div class="bigdice" id="rollBtn">' + (U.lastRoll ? '<div class="bub">' + U.lastRoll + '</div>' : '') + spr(['dice', 0], 92, 88) + '<div class="t">ทอยลูกเต๋า</div></div>');
-            $('#actBtns').innerHTML = '<div class="abtn c1" id="aShops">' + spr(['ui', 39], 40, 34) + 'ร้านของฉัน</div><div class="abtn c2" id="aMine">' + spr(['items', 39], 40, 34) + 'ทรัพย์สิน</div><div class="abtn c3" id="aSellSh">' + spr(['spc', 17], 40, 34) + 'ขาย/แลก</div><div class="abtn c4" id="aSellSt">' + spr(['ui', 38], 40, 34) + 'หุ้น</div>';
+            setAct('<div class="uibtn" id="rollBtn">' + spr(['ui', 'roll'], 244, 118) + '</div>' + (U.lastRoll ? '<div class="lastroll">ครั้งก่อน ' + U.lastRoll + '</div>' : ''));
+            $('#actBtns').innerHTML = '<div class="uibtn" id="aShops">' + spr(['ui', 'manage'], 150, 58) + '</div><div class="uibtn" id="aMine">' + spr(['ui', 'assets'], 150, 58) + '</div><div class="uibtn" id="aSellSh">' + spr(['ui', 'sell'], 150, 58) + '</div><div class="uibtn" id="aSellSt">' + spr(['ui', 'stockmkt'], 150, 58) + '</div>';
             $('#rollBtn').onclick = function () { if (modalOpen) return; $('#actBtns').innerHTML = ''; done(); };
             $('#aSellSt').onclick = function () { stockPanel(p, 'sell', '📈 หุ้นของคุณ — ขายได้ต้นเทิร์น (ซื้อที่ธนาคาร/Broker)').then(function () { refresh(); render(); }); };
             $('#aSellSh').onclick = function () { sellShopsPanel(p).then(function () { refresh(); render(); }); };
@@ -679,7 +695,7 @@
       },
       step: async function (p, id, rem) {
         var el = document.getElementById('pc' + p.id); placePieces(); if (CAM.follow && CAM.z > 1.05) centerOnTile(id, true); el.classList.remove('hop'); void el.offsetWidth; el.classList.add('hop'); sfx('step');
-        setAct('<div style="font-size:20px">👣 กำลังเดิน...</div><div>เหลืออีก ' + rem + ' ช่อง</div>');
+        setAct(spr(['ui', 'walking'], 220, 44) + '<div style="font-size:18px">เหลืออีก ' + rem + ' ช่อง</div>');
         await wait(200);
       },
       teleport: async function (p, from, to) { var el = document.getElementById('pc' + p.id); el.style.opacity = 0; await wait(250); placePieces(); el.style.opacity = 1; await wait(250); },
@@ -839,7 +855,7 @@
     var W = 560, H = 220, mx = Math.max.apply(null, s.players.map(function (p) { return Math.max.apply(null, p.hist.concat([g.netWorth(p), 1])); }));
     var lines = s.players.map(function (p) { var h = p.hist.concat([g.netWorth(p)]); if (h.length < 2) h = [h[0], h[0]]; return '<polyline fill="none" stroke="' + p.color + '" stroke-width="4" points="' + h.map(function (v, i) { return (i / (h.length - 1) * W).toFixed(1) + ',' + (H - v / mx * (H - 10)).toFixed(1); }).join(' ') + '"/>'; }).join('');
     var ranks = rk.map(function (r, i) { var p = s.players[r.id]; return '<div class="row panel" style="padding:8px 14px;gap:14px;' + (i === 0 ? 'background:#fff3a8' : '') + '">' + spr(['ui', [55, 57, 59, 61][i]], 140, 40) + spr(charSpec(p), 70, 74) + '<div class="grow"><div style="font-weight:900;font-size:20px;color:' + p.color + '">' + esc(p.name) + (p.bankrupt ? ' 💥' : '') + '</div><div style="font-weight:800">ทรัพย์สิน ' + fmt(r.nw) + ' G • ร้าน ' + g.shopsOf(p).length + ' • Lv' + p.level + '</div></div></div>'; }).join('');
-    $('#result').innerHTML = '<div class="scrhead"><div class="title">🏆 ผลการแข่งขัน — ' + MAPS[s.mapIdx].th + '</div><button class="green" id="resMenu">กลับหน้าหลัก</button></div><div class="scrbody"><div class="row" style="align-items:flex-start;gap:20px"><div class="col" style="width:600px">' + ranks + '<div class="panel" style="padding:10px;font-weight:800">' + esc(s.endReason || '') + '</div></div><div class="col" style="width:610px"><div class="panel" style="padding:12px"><b>กราฟทรัพย์สินรายรอบ</b><svg width="' + W + '" height="' + H + '" style="margin-top:6px;background:#fffdf5;border-radius:12px">' + lines + '</svg></div>' + (reward ? '<div class="panel" style="padding:12px;text-align:center;font-weight:900;font-size:20px">🎁 รางวัล: +' + fmt(reward.gold) + ' Gold Coin' + (reward.diamond ? ' • +' + reward.diamond + ' 💎' : '') + '<div style="font-size:14px">ใช้ซื้อไอเทมในร้านค้าได้เลย!</div></div>' : '') + '<div class="panel" style="padding:12px;text-align:center">' + (s.winner !== null && s.winner !== undefined ? spr(charSpec(s.players[s.winner]), 200, 200) + '<div style="font-size:26px;font-weight:900">' + esc(s.players[s.winner].name) + ' ชนะ!</div>' : '') + '</div></div></div></div>';
+    $('#result').innerHTML = '<div class="scrhead"><div class="title"><span class="ttl">🏆 ผลการแข่งขัน — ' + MAPS[s.mapIdx].th + '</span></div><div class="uibtn" id="resMenu">' + spr(['ui', 'home'], 110, 80) + '</div></div><div class="scrbody"><div class="row" style="align-items:flex-start;gap:20px"><div class="col" style="width:600px">' + ranks + '<div class="panel" style="padding:10px;font-weight:800">' + esc(s.endReason || '') + '</div></div><div class="col" style="width:610px"><div class="panel" style="padding:12px"><b>กราฟทรัพย์สินรายรอบ</b><svg width="' + W + '" height="' + H + '" style="margin-top:6px;background:#fffdf5;border-radius:12px">' + lines + '</svg></div>' + (reward ? '<div class="panel" style="padding:12px;text-align:center;font-weight:900;font-size:20px">🎁 รางวัล: +' + fmt(reward.gold) + ' Gold Coin' + (reward.diamond ? ' • +' + reward.diamond + ' 💎' : '') + '<div style="font-size:14px">ใช้ซื้อไอเทมในร้านค้าได้เลย!</div></div>' : '') + '<div class="panel" style="padding:12px;text-align:center">' + (s.winner !== null && s.winner !== undefined ? spr(charSpec(s.players[s.winner]), 200, 200) + '<div style="font-size:26px;font-weight:900">' + esc(s.players[s.winner].name) + ' ชนะ!</div>' : '') + '</div></div></div></div>';
     $('#resMenu').onclick = function () { show('menu'); };
     show('result'); sfx('win');
   }
@@ -852,7 +868,7 @@
   function openShop(cat) { SH.cat = cat || 'rec'; renderShop(); show('shop'); }
   function renderShop() {
     var P = Meta.p;
-    var head = '<div class="scrhead"><button class="small" id="shBack">◀ กลับ</button>' + spr(['ui', 2, 3, 0], 60, 56) + '<div class="title">ร้านค้า SHOP</div><span class="chip coin" style="font-size:18px">' + fmt(P.gold) + '</span><span class="chip" style="font-size:18px">💎 ' + fmt(P.diamond) + '</span><button class="small" id="shInv">🎒 Inventory</button></div>';
+    var head = '<div class="scrhead">' + '<div class="uibtn backbtn" id="shBack">' + spr(['ui', 'prev'], 70, 70) + '</div>' + '<div class="title"><span class="ttl">ร้านค้า SHOP</span></div><span class="chip coin" style="font-size:18px">' + fmt(P.gold) + '</span><span class="chip" style="font-size:18px">💎 ' + fmt(P.diamond) + '</span><div class="uibtn" id="shInv">' + spr(['ui', 'assets'], 100, 72) + '</div></div>';
     var tabs = '<div class="tabs" style="margin-bottom:12px">' + SHOP_CATS.map(function (c) { return '<div class="tab ' + (SH.cat === c[0] ? 'on' : '') + '" data-cat="' + c[0] + '">' + c[1] + '</div>'; }).join('') + '</div>';
     var body = '';
     if (SH.cat === 'exch') {
@@ -909,7 +925,7 @@
       Meta.all().forEach(function (it) { if (it.type === IV.tab && Meta.owned(it.id)) items.push({ id: it.id, name: it.name, spr: it.spr, q: Meta.owned(it.id), desc: it.desc, eq: P.equip.eq.indexOf(it.id) >= 0 || P.equip.sc === it.id }); });
     }
     var grid = items.length ? '<div class="invgrid">' + items.map(function (i) { return '<div class="invitem ' + (i.eq ? 'eqd' : '') + '" data-iv="' + i.id + '"><span class="q">x' + i.q + '</span>' + spr(i.spr, 90, 84) + '<div>' + i.name + '</div>' + (i.eq ? '<div style="font-size:11px;color:#2c8a2c">ติดตั้ง/ใช้งานอยู่</div>' : '') + '</div>'; }).join('') + '</div>' : '<div class="panel" style="padding:20px;text-align:center;font-weight:800">' + (IV.tab === 'Packages' ? 'แพ็กเกจจะถูกแยกสินค้าเข้า Inventory ตามประเภทอัตโนมัติเมื่อซื้อ' : 'ยังไม่มีไอเทมในหมวดนี้') + '</div>';
-    $('#inventory').innerHTML = '<div class="scrhead"><button class="small" id="ivBack">◀ กลับ</button><div class="title">🎒 Inventory</div><span class="chip coin">' + fmt(P.gold) + '</span><span class="chip">💎 ' + P.diamond + '</span><button class="small pink" id="ivShop">ไปร้านค้า</button></div><div class="scrbody"><div class="tabs" style="margin-bottom:12px">' + INV_TABS.map(function (t) { return '<div class="tab ' + (IV.tab === t ? 'on' : '') + '" data-ivt="' + t + '">' + t + '</div>'; }).join('') + '</div>' + grid + '</div>';
+    $('#inventory').innerHTML = '<div class="scrhead">' + '<div class="uibtn backbtn" id="ivBack">' + spr(['ui', 'prev'], 70, 70) + '</div>' + '<div class="title"><span class="ttl">🎒 คลังไอเทม</span></div><span class="chip coin">' + fmt(P.gold) + '</span><span class="chip">💎 ' + P.diamond + '</span><div class="uibtn" id="ivShop">' + spr(['ui', 'shop'], 100, 72) + '</div></div><div class="scrbody"><div class="tabs" style="margin-bottom:12px">' + INV_TABS.map(function (t) { return '<div class="tab ' + (IV.tab === t ? 'on' : '') + '" data-ivt="' + t + '">' + t + '</div>'; }).join('') + '</div>' + grid + '</div>';
     $('#ivBack').onclick = function () { show('menu'); };
     $('#ivShop').onclick = function () { openShop(); };
     document.querySelectorAll('[data-ivt]').forEach(function (e) { e.onclick = function () { IV.tab = e.dataset.ivt; renderInventory(); }; });
@@ -940,7 +956,7 @@
     }
     var owned = Object.keys(P.deco).filter(function (k) { return P.deco[k] > 0; });
     var side = owned.map(function (k) { var it = Meta.item(k), free = P.deco[k] - (placedCount[k] || 0); return '<div class="invitem ' + (PF.sel === k ? 'eqd' : '') + (free <= 0 ? ' dim' : '') + '" data-dk="' + k + '"><span class="q">' + free + '/' + P.deco[k] + '</span>' + spr(it.spr, 70, 64) + '<div style="font-size:11px">' + it.name + '</div></div>'; }).join('') || '<div class="muted">ยังไม่มีของตกแต่ง — ซื้อได้ที่ร้านค้า</div>';
-    $('#profile').innerHTML = '<div class="scrhead"><button class="small" id="pfBack">◀ กลับ</button>' + spr(Meta.charSprite(P.equip.char, P.equip.costume), 60, 60) + '<div class="title">เมืองของ ' + esc(P.name) + ' (Profile Decoration)</div><span class="chip">Lv ' + P.level + '</span><span class="chip">ชนะ ' + P.stats.wins + '/' + P.stats.games + '</span><button class="small pink" id="pfShop">ซื้อของตกแต่ง</button></div>' +
+    $('#profile').innerHTML = '<div class="scrhead">' + '<div class="uibtn backbtn" id="pfBack">' + spr(['ui', 'prev'], 70, 70) + '</div>' + spr(Meta.charSprite(P.equip.char, P.equip.costume), 64, 70) + '<div class="title"><span class="ttl">เมืองของ ' + esc(P.name) + '</span></div><span class="chip">Lv ' + P.level + '</span><span class="chip">ชนะ ' + P.stats.wins + '/' + P.stats.games + '</span><button class="small pink" id="pfShop">ซื้อของตกแต่ง</button></div>' +
       '<div class="scrbody"><div class="row" style="align-items:flex-start;gap:14px"><div><div class="town">' + cells + '</div><div style="font-weight:800;margin-top:6px;font-size:14px">' + (PF.move ? '👉 แตะช่องว่างเพื่อย้าย' : PF.sel ? '👉 แตะช่องในเมืองเพื่อวาง ' + Meta.item(PF.sel).name : 'เลือกของตกแต่งด้านขวา แล้วแตะช่องเพื่อวาง • แตะของที่วางแล้วเพื่อย้าย/หมุน/ถอด') + ' • ของตกแต่งไม่มีผลต่อการแข่งขัน</div></div><div class="panel" style="padding:8px;width:270px;max-height:640px;overflow:auto"><b>ของตกแต่งที่มี</b><div class="invgrid" style="grid-template-columns:1fr 1fr">' + side + '</div></div></div></div>';
     $('#pfBack').onclick = function () { PF.sel = null; PF.move = null; show('menu'); };
     $('#pfShop').onclick = function () { openShop('deco'); };

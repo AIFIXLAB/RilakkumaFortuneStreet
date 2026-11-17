@@ -6,16 +6,18 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>Rilakkuma Fortune Street</title>
 <link rel="icon" href="assets/cardback.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Mali:wght@500;600;700&family=Itim&display=swap" rel="stylesheet">
 <style>
 :root{--brown:#6b4226;--brown2:#8a5a35;--cream:#fff7e6;--cream2:#ffeccc;--pink:#ff8fb1;--yellow:#ffd25e;--green:#7fcf7a;--blue:#7cc0ff;--purple:#b99cf0;--red:#ff6b6b;}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
-html,body{margin:0;height:100%;overflow:hidden;background:#f3d9b8;font-family:-apple-system,"Sukhumvit Set","Thonburi","Noto Sans Thai","Leelawadee UI","Tahoma",sans-serif;color:var(--brown);touch-action:manipulation}
+html,body{margin:0;height:100%;overflow:hidden;background:#f3d9b8;font-family:"Mali","Itim",-apple-system,"Sukhumvit Set","Thonburi","Noto Sans Thai","Leelawadee UI","Tahoma",sans-serif;color:var(--brown);touch-action:manipulation}
 #wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 30% 20%,#ffe9f1,#f6d7b2)}
 #stage{position:relative;flex:none;width:1280px;height:860px;transform-origin:center center;overflow:hidden;background:#fff3df;border-radius:18px;box-shadow:0 10px 40px rgba(107,66,38,.25)}
 .screen{position:absolute;inset:0;display:none}
 .screen.on{display:block}
 .spr{display:inline-block;background-repeat:no-repeat;flex:none;vertical-align:middle}
-button,.btn{font-family:inherit;cursor:pointer;border:3px solid var(--brown);border-radius:18px;background:linear-gradient(#fff6d6,#ffd97a);color:var(--brown);font-weight:800;font-size:18px;padding:10px 18px;box-shadow:0 4px 0 var(--brown);min-height:48px;transition:transform .08s}
+button,.btn{position:relative;font-family:inherit;cursor:pointer;border:3px solid var(--brown);border-radius:18px;background:linear-gradient(#fff6d6,#ffd97a);color:var(--brown);font-weight:800;font-size:18px;padding:10px 18px;box-shadow:0 4px 0 var(--brown);min-height:48px;transition:transform .08s}
 button:active,.btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--brown)}
 button:disabled{filter:grayscale(1);opacity:.5;pointer-events:none}
 button.pink{background:linear-gradient(#ffe1ec,#ff9fbe)} button.green{background:linear-gradient(#e8ffd9,#8fdc7c)} button.blue{background:linear-gradient(#e3f3ff,#8ecbff)} button.gray{background:linear-gradient(#f3f3f3,#cfcfcf)} button.purple{background:linear-gradient(#f0e6ff,#c4a8f5)}
@@ -243,6 +245,100 @@ button.small{font-size:15px;padding:6px 12px;min-height:38px;border-radius:14px;
 .piece .pin{position:absolute;left:50%;top:-14px;transform:translateX(-50%);background:var(--pc);color:#fff;font-weight:900;font-size:11px;line-height:15px;border-radius:9px;padding:0 6px;border:2px solid #fff;box-shadow:0 0 0 1.5px #6b4226;white-space:nowrap}
 .piece .pin::after{content:'';position:absolute;left:50%;bottom:-6px;transform:translateX(-50%);border:4px solid transparent;border-top-color:#fff}
 .nowplay{position:absolute;left:12px;bottom:10px;z-index:40;background:rgba(255,255,255,.92);border:2px solid var(--brown);border-radius:999px;padding:2px 10px;font-weight:900;font-size:12px;cursor:pointer}
+
+/* ===== v0.4 cute theme ===== */
+:root{--pinkA:#ff8fb3}
+body{letter-spacing:.1px}
+#stage{background:#fff4e2}
+.screen:not(#menu):not(#game){background:radial-gradient(circle,rgba(255,255,255,.8) 18%,transparent 20%) 0 0/34px 34px,radial-gradient(circle,rgba(255,255,255,.55) 12%,transparent 14%) 17px 17px/34px 34px,linear-gradient(160deg,#ffe3ee 0%,#fff1dc 55%,#e6f5ff 100%)}
+.scrhead{background:none!important;border:none!important;height:92px;padding:6px 18px 0;gap:14px}
+.scrhead .title{flex:1;display:flex;align-items:center;justify-content:center}
+.ttl{display:inline-block;position:relative;background:linear-gradient(#ffb3cc,#ff7fa8);color:#fff;font-size:30px;font-weight:700;padding:8px 46px 10px;border-radius:16px;border:4px solid #fff;box-shadow:0 0 0 3px var(--brown),0 6px 0 3px rgba(107,66,38,.35);-webkit-text-stroke:5px #b9406a;paint-order:stroke fill;white-space:nowrap}
+.ttl::before,.ttl::after{content:'';position:absolute;top:50%;width:34px;height:40px;background:#ff7fa8;border:3px solid var(--brown);z-index:-1;transform:translateY(-35%)}
+.ttl::before{left:-26px;clip-path:polygon(0 0,100% 0,100% 100%,0 100%,35% 50%)}
+.ttl::after{right:-26px;clip-path:polygon(0 0,100% 0,65% 50%,100% 100%,0 100%)}
+.scrbody{top:96px!important}
+.uibtn{cursor:pointer;display:inline-flex;transition:transform .1s;filter:drop-shadow(0 3px 0 rgba(107,66,38,.25))}
+.uibtn:active{transform:scale(.93)}
+.uibtn.dis{filter:grayscale(1);opacity:.5;pointer-events:none}
+/* bear-ear frames */
+.bear,.slot,#loadoutBody .panel,#result .panel,.town{position:relative}
+.bear::before,.bear::after,.slot::before,.slot::after,#loadoutBody .panel::before,#loadoutBody .panel::after,#result .panel::before,#result .panel::after{content:'';position:absolute;top:-15px;width:30px;height:30px;border-radius:50%;background:radial-gradient(circle at 50% 55%,#ffc2d4 0 30%,var(--earc,#fff7e6) 32%);border:4px solid var(--brown);z-index:0;clip-path:inset(-10px -10px 48% -10px)}
+.bear::before,.slot::before,#loadoutBody .panel::before,#result .panel::before{left:18px}.bear::after,.slot::after,#loadoutBody .panel::after,#result .panel::after{right:18px}
+.slot{--earc:#fff}
+.panel{background:linear-gradient(#fffdf6,#fff3dc);border:4px solid var(--brown);border-radius:24px;box-shadow:0 5px 0 rgba(107,66,38,.3),inset 0 0 0 3px #fff}
+button{background:linear-gradient(#fffbe6 0%,#ffe08a 55%,#ffd15c 100%);border-radius:999px;box-shadow:0 4px 0 var(--brown),inset 0 3px 0 rgba(255,255,255,.75);font-weight:700}
+button.pink{background:linear-gradient(#fff0f5,#ffb0c8 60%,#ff8fb3)} button.green{background:linear-gradient(#f4ffe9,#a9e48f 60%,#7fcf6b)} button.blue{background:linear-gradient(#eef8ff,#a9d8ff 60%,#7cc0ff)} button.purple{background:linear-gradient(#f7f0ff,#d4bdf8 60%,#b99cf0)}
+.chip{border-width:3px;padding:4px 12px;font-size:16px;box-shadow:0 2px 0 rgba(107,66,38,.25)}
+.tab{border-radius:999px;box-shadow:0 3px 0 rgba(107,66,38,.3)}
+.tab.on{background:linear-gradient(#fff3a8,#ffcf4d)}
+.opt{border-radius:20px;box-shadow:0 3px 0 rgba(107,66,38,.25)}
+.seg{border-width:3px;border-radius:999px}
+.seg div.on{background:linear-gradient(#fff3a8,#ffcf4d)}
+.sitem,.invitem,.slot,.mapcard,.charbtn,.eqslot{border-radius:22px;box-shadow:0 4px 0 rgba(107,66,38,.25)}
+.sitem{background:linear-gradient(#fff,#fff6e4)}
+/* modal */
+#modal{background:rgba(255,190,210,.35);backdrop-filter:blur(3px)}
+#modalBox{border-width:5px;border-radius:30px;padding-top:30px;overflow:visible}
+#modalBox::before,#modalBox::after{content:'';position:absolute;top:-22px;width:46px;height:46px;border-radius:50%;background:radial-gradient(circle at 50% 55%,#ffc2d4 0 30%,#fffaf0 33%);border:5px solid var(--brown);clip-path:inset(-10px -10px 50% -10px)}
+#modalBox::before{left:34px}#modalBox::after{right:34px}
+#modalBox>.mtitle{display:table;margin:-50px auto 12px;background:linear-gradient(#ffb3cc,#ff7fa8);color:#fff;padding:6px 30px 8px;border-radius:14px;border:4px solid #fff;box-shadow:0 0 0 3px var(--brown),0 4px 0 3px rgba(107,66,38,.3);-webkit-text-stroke:4px #b9406a;paint-order:stroke fill;font-size:22px;max-width:90%}
+.mbody{max-height:700px;overflow:auto;padding:2px}
+.xbtn{background:none!important;border:none!important;box-shadow:none!important;top:-26px!important;right:-24px!important;width:64px!important;height:64px!important;z-index:3}
+/* menu */
+#menu{background:#bfe6ff}
+#menuImg{top:69px}
+/* ===== game layout v0.4: players left, wide map, dock bottom ===== */
+#pbar{position:absolute;left:8px;top:8px;width:206px;height:696px;display:flex;flex-direction:column;gap:8px}
+.pcard{flex:1;flex-direction:column;align-items:stretch;justify-content:flex-start;padding:6px 8px;gap:2px;border-radius:24px;border-width:4px;overflow:visible}
+.pcard .ptop{display:flex;align-items:center;gap:4px}
+.pcard .pchar{position:absolute;right:2px;bottom:4px;opacity:.95}
+.pcard .crown{left:auto;right:6px;top:-14px;font-size:26px}
+.pcard .rankb{top:auto;bottom:6px;left:8px;right:auto;background:none;border:none;padding:0}
+.pcard .nm{font-size:15px;max-width:110px}
+.pcard .cash{font-size:20px;margin-top:2px}
+.pcard .nwpill{font-size:11.5px;align-self:flex-start}
+.pcard .lvl{font-size:11px;font-weight:700}
+#boardWrap{left:222px!important;top:8px!important;width:1050px!important;height:696px!important;border-radius:26px;border-width:5px;background:#dff1ff radial-gradient(circle,#c8e3ff 22%,transparent 24%) 0 0/26px 26px}
+#diceLayer{left:222px!important;top:8px!important;width:1050px!important;height:696px!important}
+.mapHud{position:absolute;top:8px;right:8px;z-index:40;display:flex;gap:6px;align-items:center}
+.mapHud .pill{height:48px;font-size:16px}
+#dock{position:absolute;left:8px;right:8px;top:716px;bottom:8px;display:flex;gap:10px}
+#dock .panel{padding:6px 10px}
+#actBox{width:600px;flex:none;flex-direction:row;padding:4px 8px!important;gap:0}
+#turnRibbon{position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:14px;padding:1px 18px;z-index:2;white-space:nowrap}
+#turnRow{width:100%;gap:6px;align-items:center}
+#turnChar{width:96px}
+#turnChar .tn{font-size:11px;max-width:96px}
+#actMain{min-height:0;height:118px;flex:none;width:230px;font-size:14px}
+#actMain .uibtn{animation:wob 1.6s infinite ease-in-out}
+#actBtns{display:grid;grid-template-columns:1fr 1fr;gap:2px 4px;flex:1}
+#actBtns:empty{display:none}
+#itemBar{width:330px;flex:none;padding:6px!important}
+#itemBar .igroup{padding:3px 4px}
+#itemBar .itemSlot{width:86px;height:88px}
+#infoBox{flex:1;min-width:0}
+#logBox .lrow{font-size:12px;padding:2px 0}
+.zbtns div{width:46px;height:46px;border-radius:50%}
+.piece .pin{font-size:12px}
+.bigopt{gap:16px;padding:10px 16px;min-height:96px;font-weight:700}
+.bigopt.pmA{background:linear-gradient(#fffbe6,#ffe58f)}.bigopt.pmB{background:linear-gradient(#f3ffe9,#bfeaa8)}.bigopt.pmC{background:linear-gradient(#eef8ff,#bfe0ff)}
+.bigopt.dimo{filter:grayscale(.8);opacity:.55}
+.hub{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;justify-items:center}
+.hubit{cursor:pointer;transition:transform .1s}.hubit:active{transform:scale(.92)}
+.lastroll{font-size:12px;background:#fff;border:2px solid var(--brown);border-radius:999px;padding:0 8px}
+.backbtn{flex:none}
+#actBox{width:650px}
+#actMain{width:250px}
+#actBtns{gap:0 6px;align-content:center}
+#actBtns .uibtn{justify-content:center}
+#itemBar{width:330px;align-items:center;justify-content:center;gap:6px}
+#itemBar .ribbon{position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:13px;padding:0 14px;white-space:nowrap;z-index:2;background:linear-gradient(#bfe0ff,#7cb8f5)}
+#itemBar .itemSlot{width:96px;height:100px;padding-top:6px}
+#itemBar .itemSlot.sc{border-color:#b98ae8;background:linear-gradient(#fff,#f3eaff)}
+#infoBox .tabs2{margin-top:4px}
+.tabs2 div{white-space:nowrap;font-size:12px}
+#loadoutBody .panel,.slot{margin-top:6px}
 </style>
 </head>
 <body>
@@ -253,20 +349,11 @@ button.small{font-size:15px;padding:6px 12px;min-height:38px;border-radius:14px;
     <div id="menuBgBlur"></div>
     <div id="menuImg"></div>
     <div id="menuHot"></div>
-    <div id="menuBar">
-      <button class="green" id="btnContinue">▶ เล่นต่อ</button>
-      <button id="btnInv">🎒 คลังไอเทม</button>
-      <button class="pink" id="btnProfile">🏡 ตกแต่งโปรไฟล์</button>
-      <button class="blue" id="btnLoad">📂 โหลดเกม</button>
-      <button class="purple" id="btnGuide">📖 คู่มือ</button>
-      <button class="gray" id="btnSettings">⚙️ ตั้งค่า</button>
-      <button class="pink" id="btnMusic">🎵 เพลง</button>
-    </div>
   </div>
 
   <!-- SETUP -->
   <div id="setup" class="screen">
-    <div class="scrhead"><button class="small" data-back>◀ กลับ</button><div class="title">เลือกแผนที่และผู้เล่น</div><button class="green" id="toLoadout">ถัดไป: เตรียมอุปกรณ์ ▶</button></div>
+    <div class="scrhead"><div class="uibtn backbtn" data-back></div><div class="title"><span class="ttl">เลือกแผนที่และผู้เล่น</span></div><button class="green" id="toLoadout">ถัดไป ▶</button></div>
     <div class="scrbody">
       <div class="row" id="mapCards" style="gap:12px;justify-content:center"></div>
       <div class="row" style="margin-top:14px;gap:12px;justify-content:center" id="slots"></div>
@@ -278,20 +365,22 @@ button.small{font-size:15px;padding:6px 12px;min-height:38px;border-radius:14px;
 
   <!-- PRE-MATCH LOADOUT -->
   <div id="loadout" class="screen">
-    <div class="scrhead"><button class="small" data-back="setup">◀ กลับ</button><div class="title">เตรียมตัวก่อนเริ่มเกม (Pre-Match Setup)</div><button class="pink" id="btnStart">✔ Ready & Start Game</button></div>
+    <div class="scrhead"><div class="uibtn backbtn" data-back="setup"></div><div class="title"><span class="ttl">เตรียมตัวก่อนเริ่มเกม</span></div><button class="pink" id="btnStart">✔ Ready! เริ่มเกม</button></div>
     <div class="scrbody" id="loadoutBody"></div>
   </div>
 
   <!-- GAME -->
   <div id="game" class="screen">
     <div id="pbar"></div>
-    <div id="boardWrap"><div id="boardBg"></div><div id="board"></div><div class="nowplay" id="nowPlay">♪</div><div class="zbtns"><div data-z="in">＋</div><div data-z="out">－</div><div data-z="fit">⤢</div><div data-z="me">🎯</div><div data-z="follow" class="on">📷</div><span id="zLvl">100%</span></div></div>
+    <div id="boardWrap"><div id="board"></div>
+      <div class="mapHud"><div class="pill" id="roundPill"></div><div class="pill" id="targetPill"></div><div class="uibtn" id="btnGameMenu"></div></div>
+      <div class="nowplay" id="nowPlay">♪</div><div class="zbtns"><div data-z="in">＋</div><div data-z="out">－</div><div data-z="fit">⤢</div><div data-z="me">🎯</div><div data-z="follow" class="on">📷</div><span id="zLvl">100%</span></div>
+    </div>
     <div id="diceLayer"></div>
-    <div id="side">
-      <div class="row" style="gap:6px"><div class="pill" id="roundPill"></div><div class="pill grow" id="targetPill"></div><button class="roundbtn" id="btnGameMenu">☰</button></div>
-      <div id="actBox" class="panel"><div class="ribbon" id="turnRibbon">เทิร์นของคุณ</div><div class="row" id="turnRow"><div id="turnChar"></div><div id="actMain"></div></div><div id="actBtns"></div></div>
-      <div id="itemBar" class="panel"></div>
-      <div id="infoBox" class="panel"><div class="tabs2"><div data-tab="log" class="on">📜 ประวัติเหตุการณ์ล่าสุด</div><div data-tab="stock">📈 หุ้นเขต</div></div><div id="logBox"></div><div id="stockBox" style="display:none"></div></div>
+    <div id="dock">
+      <div id="actBox" class="panel bear"><div class="ribbon" id="turnRibbon">เทิร์นของคุณ</div><div class="row" id="turnRow"><div id="turnChar"></div><div id="actMain"></div><div id="actBtns"></div></div></div>
+      <div id="itemBar" class="panel bear"></div>
+      <div id="infoBox" class="panel bear"><div class="tabs2"><div data-tab="log" class="on">📜 ประวัติเหตุการณ์ล่าสุด</div><div data-tab="stock">📈 หุ้นเขต</div></div><div id="logBox"></div><div id="stockBox" style="display:none"></div></div>
     </div>
   </div>
 

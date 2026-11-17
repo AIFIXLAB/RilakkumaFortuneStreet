@@ -7,6 +7,9 @@
   Meta.load();
   U.music = true; U.vol = 0.5;
   try { var st = JSON.parse(localStorage.getItem('rfs_settings') || '{}'); if (st.speed) U.speed = st.speed; if (st.sound === false) U.sound = false; if (st.music === false) U.music = false; if (st.vol !== undefined) U.vol = st.vol; } catch (e) { }
+  var SPEEDS = [[0.5, '🐢 ช้า'], [1, '🐻 ปกติ'], [1.8, '🐇 เร็ว'], [3, '⚡ เร็วมาก']];
+  if (!SPEEDS.some(function (x) { return x[0] === U.speed; })) U.speed = 1;
+  function speedLabel() { return (SPEEDS.find(function (x) { return x[0] === U.speed; }) || SPEEDS[1])[1]; }
   function saveSettings() { localStorage.setItem('rfs_settings', JSON.stringify({ speed: U.speed, sound: U.sound, music: U.music, vol: U.vol })); }
 
   // ---------- stage scaling ----------
@@ -118,15 +121,16 @@
     modal({ title: vsAI ? 'เล่นกับ AI' : 'เข้าเกม', width: 620, body: '<div class="col" style="gap:12px">' +
       big('new', spr(['ui', 'play'], 96, 74), 'เริ่มเกมใหม่', 'เลือกแผนที่ ผู้เล่น และไอเทม', 'pmA') +
       big('cont', spr(['ui', 'auto'], 96, 74), 'เล่นต่อ', has && m ? m.map + ' • รอบ ' + m.round : 'ยังไม่มีเกมที่บันทึกไว้', 'pmB', !has) +
-      big('load', spr(['ui', 'load'], 96, 74), 'โหลดเกม', 'Auto Save + 3 ช่องบันทึก', 'pmC') + '</div>',
+      big('load', spr(['ui', 'load'], 96, 74), 'โหลดเกม', 'Auto Save + 3 ช่องบันทึก', 'pmC') +
+      big('tut', spr(['ui', 'guide'], 96, 74), 'โหมดสอนเล่น 🎓', 'เล่นจริงพร้อมครูช่วยอธิบายทีละขั้น (แนะนำสำหรับมือใหม่)', 'pmD') + '</div>',
       mount: function (box, close) { box.querySelectorAll('[data-pm]').forEach(function (e) { e.onclick = function () { if (!e.classList.contains('dimo')) close(e.dataset.pm); }; }); } })
-      .then(function (v) { if (v === 'new') openSetup(vsAI); else if (v === 'cont') startGame(JSON.parse(localStorage.getItem('rfs_save_auto'))); else if (v === 'load') loadModal(); });
+      .then(function (v) { if (v === 'new') openSetup(vsAI); else if (v === 'cont') startGame(JSON.parse(localStorage.getItem('rfs_save_auto'))); else if (v === 'load') loadModal(); else if (v === 'tut') Tutorial.start(); });
   }
   function hubModal() {
     var it = function (k, n, t) { return '<div class="hubit" data-hb="' + k + '">' + spr(['ui', n], 150, 120) + '</div>'; };
-    modal({ title: 'เมนู', width: 720, body: '<div class="hub">' + it('settings', 'settings') + it('guide', 'guide') + it('music', 'music') + it('load', 'load') + it('inv', 'assets') + it('prof', 'chars') + it('achv', 'achv') + it('rank', 'rank') + '</div>',
+    modal({ title: 'เมนู', width: 720, body: '<div class="hub">' + it('settings', 'settings') + it('lessons', 'guide') + it('music', 'music') + it('load', 'load') + it('inv', 'assets') + it('prof', 'chars') + it('achv', 'achv') + it('rank', 'rank') + '</div>',
       mount: function (box, close) { box.querySelectorAll('[data-hb]').forEach(function (e) { e.onclick = function () { close(e.dataset.hb); }; }); } })
-      .then(function (v) { ({ settings: settingsModal, guide: guideModal, music: function () { if (!Music.playing) { U.music = true; saveSettings(); Music.start('menu'); } else Music.next(); toast('🎵 ' + (Music.song ? esc(Music.song.title) : '')); }, load: loadModal, inv: function () { openInventory('Game Equipment'); }, prof: openProfile, achv: achievements, rank: rankingModal }[v] || function () { })(); });
+      .then(function (v) { ({ settings: settingsModal, lessons: lessonsModal, guide: guideModal, music: function () { if (!Music.playing) { U.music = true; saveSettings(); Music.start('menu'); } else Music.next(); toast('🎵 ' + (Music.song ? esc(Music.song.title) : '')); }, load: loadModal, inv: function () { openInventory('Game Equipment'); }, prof: openProfile, achv: achievements, rank: rankingModal }[v] || function () { })(); });
   }
   function backBtns() { document.querySelectorAll('.backbtn').forEach(function (b) { if (!b.innerHTML) b.innerHTML = spr(['ui', 'prev'], 70, 70); }); }
   backBtns();
@@ -154,13 +158,13 @@
     modal({ title: '🏆 ความสำเร็จ', body: '<div class="col" style="min-width:460px">' + A.map(function (a) { return '<div class="opt">' + (a[1] ? '🏅' : '🔒') + ' ' + a[0] + '</div>'; }).join('') + '</div>', buttons: [{ t: 'ปิด', v: 1 }] });
   }
   function newsModal() {
-    modal({ title: 'ข่าวสาร & คู่มือ', width: 700, body: '<div class="col"><div class="opt">' + spr(['ui', 'i_event'], 50, 50) + '<span>อัปเดต v0.4: หน้าตาใหม่น่ารักขึ้น แผนที่ใหญ่ขึ้น ปุ่มจากชุดภาพของเกม และเพลงคาวาอิแต่งใหม่ทุกเพลง</span></div><div class="opt">' + spr(['ui', 'i_card'], 50, 50) + '<span>เปิดการ์ดให้สีของคุณเรียงเป็นแถว 3 ช่องขึ้นไป รับโบนัสสูงสุด 5,000 G!</span></div><div class="opt">' + spr(['ui', 'i_district'], 50, 50) + '<span>ซื้อร้านในเขตเดียวกันหลายร้าน = ค่าเช่าและเพดานการลงทุนสูงขึ้น</span></div></div>', buttons: [{ t: '📖 อ่านคู่มือการเล่น', v: 'g', cls: 'purple' }, { t: 'ปิด', v: 0 }] }).then(function (v) { if (v === 'g') guideModal(); });
+    modal({ title: 'ข่าวสาร & คู่มือ', width: 700, body: '<div class="col"><div class="opt">' + spr(['ui', 'i_event'], 50, 50) + '<span>อัปเดต v0.4: หน้าตาใหม่น่ารักขึ้น แผนที่ใหญ่ขึ้น ปุ่มจากชุดภาพของเกม และเพลงคาวาอิแต่งใหม่ทุกเพลง</span></div><div class="opt">' + spr(['ui', 'i_card'], 50, 50) + '<span>เปิดการ์ดให้สีของคุณเรียงเป็นแถว 3 ช่องขึ้นไป รับโบนัสสูงสุด 5,000 G!</span></div><div class="opt">' + spr(['ui', 'i_district'], 50, 50) + '<span>ซื้อร้านในเขตเดียวกันหลายร้าน = ค่าเช่าและเพดานการลงทุนสูงขึ้น</span></div></div>', buttons: [{ t: '🎓 โหมดสอนเล่น', v: 't', cls: 'pink' }, { t: '📖 คู่มือ', v: 'g', cls: 'purple' }, { t: 'ปิด', v: 0 }] }).then(function (v) { if (v === 'g') guideModal(); if (v === 't') lessonsModal(); });
   }
   function mailModal() { modal({ title: '✉️ จดหมาย & ข่าวสาร', body: '<div class="col" style="max-width:640px">' + Meta.p.mail.map(function (m) { return '<div class="opt">📩 ' + esc(m.m) + '</div>'; }).join('') + '<div class="opt">📢 Version 0.1 — 4 แผนที่, 5 เขตธุรกิจต่อแผนที่, การ์ด 100 ใบ, หุ้น/ปันผล/ภาษี, AI 3 ระดับ, ร้านค้า & Loadout</div></div>', buttons: [{ t: 'ปิด', v: 1 }] }); }
   function settingsModal() {
     var body = document.createElement('div'); body.className = 'col'; body.style.minWidth = '460px';
     function draw() {
-      body.innerHTML = '<b>ความเร็ว AI / Animation</b><div class="seg">' + [1, 2, 4].map(function (s) { return '<div data-sp="' + s + '" class="' + (U.speed === s ? 'on' : '') + '">' + s + 'x</div>'; }).join('') + '</div>' +
+      body.innerHTML = '<b>ความเร็วเกม (AI / การเดิน / ลูกเต๋า)</b><div class="seg">' + SPEEDS.map(function (x) { return '<div data-sp="' + x[0] + '" class="' + (U.speed === x[0] ? 'on' : '') + '">' + x[1] + '</div>'; }).join('') + '</div>' +
         '<b>🎵 เพลงประกอบ (แต่งใหม่อัตโนมัติทุกเพลง)</b><div class="seg"><div data-mu="1" class="' + (U.music ? 'on' : '') + '">เปิด</div><div data-mu="0" class="' + (!U.music ? 'on' : '') + '">ปิด</div></div><div class="row"><span>ระดับเสียง</span><input id="volIn" type="range" min="0" max="1" step="0.05" value="' + U.vol + '" class="grow"><button class="small pink" id="nextSong">🎲 เพลงใหม่</button></div><div class="muted" style="font-size:13px">กำลังเล่น: ' + (Music.song ? esc(Music.song.title) + ' • ' + Music.song.bpm + ' BPM' : '-') + '</div>' +
         '<b>เสียงตอบสนอง</b><div class="seg"><div data-snd="1" class="' + (U.sound ? 'on' : '') + '">เปิด</div><div data-snd="0" class="' + (!U.sound ? 'on' : '') + '">ปิด</div></div>' +
         '<b>ชื่อผู้เล่น</b><div class="row"><input id="nmIn" value="' + esc(Meta.p.name) + '" maxlength="14" style="font-size:18px;padding:8px;border:3px solid #6b4226;border-radius:12px;flex:1;font-family:inherit"><button class="small green" id="nmSave">บันทึก</button></div>' +
@@ -343,6 +347,7 @@
   var CAM = { z: 1, tx: 0, ty: 0, follow: true };
   function startGame(state, isNew) {
     U.token++; var tok = U.token;
+    migrate(state); U.tut = state.tutorial ? Tutorial : null;
     var g = new Game(state, null); g.io = makeIO(g, tok); U.g = g;
     U.view = state.players.findIndex(function (p) { return !p.isAI; }); if (U.view < 0) U.view = 0;
     show('game'); buildBoard(); refresh();
@@ -355,19 +360,35 @@
       } catch (err) { if (err !== 'abort') { console.error(err); toast('⚠️ ' + (err && err.message || err)); } }
     })();
   }
-  // spinning die helper: faces change fast until stop() → returns the face shown
-  function spinner(el, size) {
-    var face = 1 + Math.floor(Math.random() * 6), iv = setInterval(function () { var n; do { n = 1 + Math.floor(Math.random() * 6); } while (n === face); face = n; el.innerHTML = spr(['ui', 'd' + face], size, size, 'transform:rotate(' + (Math.random() * 30 - 15) + 'deg)'); sfx('dice'); }, 75);
-    el.innerHTML = spr(['ui', 'd' + face], size, size);
-    return { stop: function () { clearInterval(iv); el.innerHTML = spr(['ui', 'd' + face], size, size); return face; } };
+  // ---------- 3D dice (faces from the project's dice art) ----------
+  var FACE_ROT = { 1: [0, 0], 6: [0, 180], 2: [0, -90], 5: [0, 90], 3: [-90, 0], 4: [90, 0] };
+  var TINT = { dice_1: '#ffe9c7', dice_2: '#ffd34d', dice_3: '#ffb3c6', dice_4: '#a9d8ff', dice_5: '#bfe8a8', dice_6: '#d9a066' };
+  function cubeHTML(size, tint) {
+    var h = size / 2, f = function (n, tr) { return '<div class="fc" style="background-position:' + (n - 1) * 20 + '% 0;transform:' + tr + ' translateZ(' + h + 'px)' + (tint ? ';--tint:' + tint : '') + '"></div>'; };
+    var inner = ['rotateY(0)', 'rotateY(180deg)', 'rotateY(90deg)', 'rotateY(-90deg)', 'rotateX(90deg)', 'rotateX(-90deg)'].map(function (tr) { return '<div class="in" style="transform:' + tr + ' translateZ(' + (h - 3) + 'px)"></div>'; }).join('');
+    return '<div class="dicewrap"><div class="cube spin" style="width:' + size + 'px;height:' + size + 'px">' + inner + f(1, 'rotateY(0)') + f(6, 'rotateY(180deg)') + f(2, 'rotateY(90deg)') + f(5, 'rotateY(-90deg)') + f(3, 'rotateX(90deg)') + f(4, 'rotateX(-90deg)') + '</div><div class="diceshadow"></div></div>';
   }
+  function spinner(el, size, tint) {
+    el.innerHTML = cubeHTML(size, tint); var cube = el.querySelector('.cube'), stopped = false, snd = setInterval(function () { sfx('dice'); }, 140);
+    return { stop: function (forced) {
+      if (stopped) return null; stopped = true; clearInterval(snd);
+      var v = forced || (1 + Math.floor(Math.random() * 6)), r = FACE_ROT[v];
+      var cs = getComputedStyle(cube).transform; cube.classList.remove('spin'); cube.style.transform = cs === 'none' ? '' : cs; void cube.offsetWidth;
+      cube.style.transition = 'transform .75s cubic-bezier(.15,1.35,.4,1)';
+      cube.style.transform = 'rotateX(' + (r[0] - 720 - 15) + 'deg) rotateY(' + (r[1] + 720 + 20) + 'deg)';
+      setTimeout(function () { cube.style.transform = 'rotateX(' + (r[0] - 12) + 'deg) rotateY(' + (r[1] + 18) + 'deg)'; }, 760);
+      el.querySelector('.dicewrap').classList.add('bounce'); sfx('card');
+      return v;
+    } };
+  }
+  function diceTint(p) { return !p.isAI && U.g && U.g.s.dice ? TINT[U.g.s.dice] : null; }
   async function orderIntro(g) {
     var s = g.s, res = {};
     var html = '<div class="row" style="gap:14px;justify-content:center">' + s.players.map(function (p) { return '<div id="oc' + p.id + '" style="text-align:center;border:5px solid ' + p.color + ';border-radius:22px;padding:8px;background:#fff;width:180px">' + spr(charSpec(p), 100, 100) + '<div style="font-weight:700">' + esc(p.name) + '</div><div class="ordice" id="od' + p.id + '"></div><div id="ol' + p.id + '" style="font-weight:700;font-size:15px;min-height:44px">' + (p.isAI ? 'กำลังทอย...' : '<button class="pink small" id="ob' + p.id + '">✋ หยุด!</button>') + '</div></div>'; }).join('') + '</div><div style="text-align:center;margin-top:8px;font-weight:700">แตะ “หยุด!” หรือแตะลูกเต๋าเพื่อหยุดลูกเต๋าของคุณ • แต้มมากสุดได้เริ่มก่อน</div>';
     await modal({ title: '🎲 ทอยลูกเต๋าจัดลำดับผู้เล่น', width: 840, body: html, close: false, buttons: [{ t: 'เริ่มเกม!', v: 1, cls: 'pink', dis: true }], mount: function (box) {
       var btn = box.querySelector('.mbtns button'), left = s.players.length;
       s.players.forEach(function (p) {
-        var sp = spinner(box.querySelector('#od' + p.id), 80);
+        var sp = spinner(box.querySelector('#od' + p.id), 70);
         var stop = function () { if (res[p.id]) return; res[p.id] = sp.stop(); sfx('card'); box.querySelector('#ol' + p.id).innerHTML = '<b style="font-size:22px">' + res[p.id] + ' แต้ม</b>'; if (--left === 0) { btn.disabled = false; finalize(); } };
         if (p.isAI) setTimeout(stop, 700 + Math.random() * 1600);
         else { box.querySelector('#ob' + p.id).onclick = stop; box.querySelector('#od' + p.id).onclick = stop; }
@@ -513,6 +534,7 @@
     refreshTiles(); refreshLabels(); placePieces(); renderPlayers(); renderStocks(); renderItems();
     $('#roundPill').innerHTML = spr(['items', 19], 36, 36) + 'รอบ ' + Math.min(s.round, s.settings.maxRounds) + ' / ' + s.settings.maxRounds;
     if (!$('#btnGameMenu').innerHTML) $('#btnGameMenu').innerHTML = spr(['ui', 'settings'], 70, 54);
+    $('#spdBtn').textContent = 'ความเร็ว: ' + speedLabel();
     $('#targetPill').innerHTML = '<span style="font-size:30px">🎯</span><div><small>เป้าหมายทรัพย์สิน</small><div class="v">' + fmt(s.settings.target) + ' G</div></div>';
   }
   U.refresh = refresh;
@@ -733,7 +755,7 @@
   // ---------- IO adapter: human = UI, AI = ai.js + short visual delays ----------
   function makeIO(g, tok) {
     var A = window.AI;
-    function aiWait(ms) { return wait(ms); }
+    function aiWait(ms) { return wait(ms * 1.8); }
     var io = {
       log: function (m, k) { addLog(m, k); },
       toast: toast,
@@ -741,8 +763,10 @@
       autosave: function (s) { consumeUsed(g); try { localStorage.setItem('rfs_save_auto', JSON.stringify(s)); localStorage.setItem('rfs_save_auto_meta', JSON.stringify({ map: MAPS[s.mapIdx].th, round: s.round, date: new Date().toLocaleString('th-TH') })); } catch (e) { } },
       turnStart: async function (p) {
         if (!p.isAI) U.view = p.id;
+        if (p.isAI) { try { await wait(350); } catch (e) { } }
         setTurn(p, !p.isAI);
         refresh(); if (CAM.follow && CAM.z > 1.05) centerOnTile(p.pos, true);
+        if (U.tut && !p.isAI) { await Tutorial.event('intro'); if (g.loadoutSlots(p).length) await Tutorial.event('items'); if (g.netWorth(p) >= g.s.settings.target) await Tutorial.event('win'); }
         if (!p.isAI && g.s.players.filter(function (q) { return !q.isAI; }).length > 1) await modal({ title: 'ตาของ ' + esc(p.name), body: '<div style="text-align:center">' + spr(charSpec(p), 140, 140) + '<div style="font-weight:800">ส่ง iPad ให้ ' + esc(p.name) + '</div></div>', buttons: [{ t: 'พร้อมแล้ว!', v: 1, cls: 'pink' }], close: false });
       },
       preRoll: function (p) {
@@ -765,22 +789,24 @@
         });
       },
       rollDice: function (p) {
-        return new Promise(function (resolve) {
-          var L = $('#diceLayer'); L.classList.add('on', 'tap'); L.innerHTML = '<div id="spinD"></div><div class="tapmsg">แตะเพื่อหยุดลูกเต๋า!</div>';
-          setAct(spr(['ui', 'roll'], 200, 96) + '<div>แตะลูกเต๋าเพื่อหยุด!</div>');
-          var sp = spinner(L.querySelector('#spinD'), 220), done = false;
+        return (U.tut ? Tutorial.event('dice') : Promise.resolve()).then(function () { return new Promise(function (resolve) {
+          var L = $('#diceLayer'); L.classList.add('on', 'tap'); L.innerHTML = '<div id="spinD"></div><div class="tapmsg">👆 แตะเพื่อหยุดลูกเต๋า!</div>';
+          setAct('<div style="font-size:17px">แตะลูกเต๋าเพื่อหยุด!</div>');
+          var sp = spinner(L.querySelector('#spinD'), 170, diceTint(p)), done = false;
           L.onclick = async function () {
-            if (done) return; done = true; var v = sp.stop(); sfx('card'); U.lastRoll = v;
-            L.innerHTML = spr(['ui', 'd' + v], 220, 220) + '<div class="num">' + v + '</div>'; L.classList.remove('tap');
-            try { await wait(650); } catch (e) { }
+            if (done) return; done = true; L.classList.remove('tap'); L.querySelector('.tapmsg').remove();
+            var v = sp.stop(U.tut ? U.tut.rig(p) : null); U.lastRoll = v;
+            try { await wait(900); } catch (e) { }
+            L.insertAdjacentHTML('beforeend', '<div class="dresult">' + v + '!</div>');
+            try { await wait(700); } catch (e) { }
             L.classList.remove('on'); L.innerHTML = ''; L.onclick = null;
-            setAct(spr(['ui', 'd' + v], 64, 64) + '<div>' + esc(p.name) + ' ได้ ' + v + ' แต้ม!</div>');
+            setAct(spr(['ui', 'd' + v], 56, 56) + '<div>' + esc(p.name) + ' ได้ ' + v + ' แต้ม!</div>');
             resolve(v);
           };
-        });
+        }); });
       },
       planPath: function (p, steps) {
-        return new Promise(function (resolve) {
+        return (U.tut ? Tutorial.event('plan') : Promise.resolve()).then(function () { return new Promise(function (resolve) {
           var path = [], manual = false, timer = null, B = $('#board');
           var curId = function () { return path.length ? path[path.length - 1] : p.pos; };
           var prevId = function () { return path.length >= 2 ? path[path.length - 2] : path.length === 1 ? p.pos : p.prev; };
@@ -811,22 +837,22 @@
           }
           function step(id) { path.push(id); sfx('step'); render(); }
           render();
-        });
+        }); });
       },
       showDice: async function (p, roll) {
-        setAct('<div class="msg">' + esc(p.name) + ' ทอยลูกเต๋า...</div>');
-        var L = $('#diceLayer'), skin = (!p.isAI && g.s.dice) ? +g.s.dice.split('_')[1] : 0;
-        L.classList.add('on');
-        for (var i = 0; i < 9; i++) { L.innerHTML = spr(['dice', i % 2 ? 13 + (i % 6) : skin], 200, 200, 'transform:rotate(' + (i * 40) + 'deg)'); sfx('dice'); await wait(70); }
-        L.innerHTML = spr(['dice', 6 + roll], 220, 220) + '<div class="num">' + roll + '</div>'; sfx('card'); U.lastRoll = roll;
-        await wait(750); L.classList.remove('on'); L.innerHTML = '';
-        setAct(spr(['dice', 6 + roll], 64, 64) + '<div>' + esc(p.name) + ' ได้ ' + roll + ' แต้ม!</div>');
+        setAct('<div>' + esc(p.name) + ' ทอยลูกเต๋า...</div>');
+        var L = $('#diceLayer'); L.classList.add('on'); L.innerHTML = '<div id="spinD"></div>';
+        var sp = spinner(L.querySelector('#spinD'), 150, null);
+        await wait(700); sp.stop(roll); await wait(900);
+        L.insertAdjacentHTML('beforeend', '<div class="dresult">' + roll + '!</div>'); await wait(600);
+        L.classList.remove('on'); L.innerHTML = '';
+        setAct(spr(['ui', 'd' + roll], 56, 56) + '<div>' + esc(p.name) + ' ได้ ' + roll + ' แต้ม</div>');
       },
       step: async function (p, id, rem, fast) {
-        if (fast) { placePieces(); await wait(60); return; }
+        if (fast) { placePieces(); await wait(110); return; }
         var el = document.getElementById('pc' + p.id); placePieces(); if (CAM.follow && CAM.z > 1.05) centerOnTile(id, true); el.classList.remove('hop'); void el.offsetWidth; el.classList.add('hop'); sfx('step');
         setAct(spr(['ui', 'walking'], 220, 44) + '<div style="font-size:18px">เหลืออีก ' + rem + ' ช่อง</div>');
-        await wait(200);
+        await wait(320);
       },
       teleport: async function (p, from, to) { var el = document.getElementById('pc' + p.id); el.style.opacity = 0; await wait(250); placePieces(); el.style.opacity = 1; await wait(250); },
       chooseDir: function (p, opts, rem) {
@@ -839,14 +865,16 @@
         });
       },
       landed: async function (p, t) { var el = document.getElementById('t' + t.id); if (el) { el.classList.add('hl'); setTimeout(function () { el.classList.remove('hl'); }, 900); } await wait(250); },
-      confirmBuy: function (p, t, price, disc) {
+      confirmBuy: async function (p, t, price, disc) {
+        if (U.tut && !p.isAI) await Tutorial.event('buy');
         if (p.isAI) { var r = A.confirmBuy(g, p, t, price); return aiWait(350).then(function () { if (r) toast('🏠 ' + esc(p.name) + ' ซื้อ ' + t.name); return r; }); }
         var d = g.s.districts[t.district], biz = BUSINESS.find(function (b) { return b.id === t.biz; }), c = g.ownedIn(p.id, t.district) + 1, n = d.tiles.length;
         var mult = (1 + CONFIG.distStep * (c - 1)) * (c >= n ? CONFIG.domination : 1), others = d.tiles.map(function (id) { return g.tile(id); }).filter(function (x) { return x.owner >= 0 && x.owner !== p.id; });
         return modal({ title: '🏪 ' + esc(t.name) + ' ว่างอยู่!', width: 640, body: '<div class="row" style="gap:16px;align-items:flex-start"><div style="border:5px dashed ' + d.color + ';border-radius:18px;padding:8px;background:#fff">' + spr(['lvl', biz.spr], 150, 130) + '</div><div class="kv"><span>เขต</span><b style="color:' + d.color + '">' + d.th + '</b><span>ธุรกิจ</span><b>' + biz.name + '</b><span>ราคา</span><b style="font-size:22px">' + fmt(price) + ' G</b>' + (disc.length ? '<span>ส่วนลด</span><b>' + disc.join(', ') + '</b>' : '') + '<span>ค่าเช่าเริ่มต้น</span><b>' + fmt(Math.round(g.priceFor(t.base * mult))) + ' G</b><span>ถ้าซื้อ: ถือในเขต</span><b>' + c + '/' + n + (c >= n ? ' 👑 ผูกขาด!' : '') + '</b><span>ตัวคูณเขต</span><b>×' + mult.toFixed(2) + '</b><span>ทุนสูงสุดที่ลงทุนได้</span><b>' + fmt(Math.round(t.base * (c + 1) * (c >= n ? CONFIG.domination : 1))) + ' G</b><span>เงินสดหลังซื้อ</span><b>' + fmt(p.cash - price) + ' G</b></div></div>' + (others.length ? '<div class="muted" style="text-align:center;font-weight:700;font-size:13px">เขตนี้มีร้านของคู่แข่งแล้ว ' + others.length + ' ร้าน</div>' : ''), buttons: [{ t: '🏠 ซื้อร้าน ' + fmt(price) + ' G', v: true, cls: 'green' }, { t: 'ไม่ซื้อ', v: false }] });
       },
-      chooseInvest: function (p, t, o) {
+      chooseInvest: async function (p, t, o) {
         if (p.isAI) { var r = A.chooseInvest(g, p, t, o); return aiWait(350).then(function () { if (r) toast('🏗️ ' + esc(p.name) + ' ลงทุน ' + esc(g.tile(r.id).name) + ' ' + fmt(r.amount) + ' G'); return r; }); }
+        if (U.tut) { await Tutorial.event('invest'); Tutorial.invested = true; }
         return investUI(p, t, o);
       },
       confirmBuyout: function (p, t, cost) {
@@ -856,6 +884,7 @@
       },
       dividend: async function (t, dist) { toast('💹 ปันผล ' + esc(U.g.s.districts[t.district].th) + ': ' + esc(dist.join(', ')), 2600); },
       rent: async function (p, owner, t, rent, ownerInc, city) {
+        if (U.tut) { if (!p.isAI) await Tutorial.event('rentPay'); else if (!owner.isAI) await Tutorial.event('rentGet'); }
         sfx('bad'); floatText(p, -rent); floatText(owner, ownerInc);
         var big = rent >= 2000, d = g.s.districts[t.district];
         var html = '<div style="text-align:center;min-width:460px"><div class="row" style="justify-content:center;gap:18px;align-items:flex-end">' + spr(charSpec(p), 110, 110) + '<div style="font-size:40px">➜</div><div style="border:6px solid ' + owner.color + ';border-radius:22px;padding:6px;background:' + hexA(owner.color, .2) + '">' + spr(['lvl', t.level - 1], 130, 116) + '</div>' + spr(charSpec(owner), 110, 110) + '</div>' +
@@ -867,20 +896,25 @@
       bank: async function (p, stopped) {
         refresh();
         if (p.isAI) { await aiWait(300); await A.bank(g, p, stopped); refresh(); return; }
+        if (U.tut) await Tutorial.event('bank');
         await stockPanel(p, 'buy', '🏦 ธนาคาร — ซื้อหุ้น' + (Game.suitsDone(p) ? '' : ' • สัญลักษณ์ ' + SUITS.map(function (k) { return p.suits[k] ? SUIT_GLYPH[k] : '·'; }).join(' ')));
         refresh();
       },
       broker: async function (p) { if (p.isAI) { await aiWait(300); await A.broker(g, p); refresh(); return; } await stockPanel(p, 'both', '📊 Stock Broker — ซื้อ/ขายหุ้น'); refresh(); },
       promotion: async function (p, sal) {
+        if (U.tut && !p.isAI) await Tutorial.event('promo');
         sfx('win');
         if (p.isAI) { toast('🎉 ' + esc(p.name) + ' เลื่อนเป็น Lv' + p.level + ' รับเงินเดือน ' + fmt(sal) + ' G'); floatText(p, sal); await aiWait(500); return; }
         var pv = g.propertyValue(p);
         await modal({ title: '🎉 เลื่อนระดับเป็น Lv' + p.level + '!', body: '<div class="kv" style="min-width:420px"><span>เงินเดือนพื้นฐาน</span><b>' + CONFIG.baseSalary + '</b><span>ระดับ ' + (p.level - 1) + ' × ' + fmt(CONFIG.salaryPerLevel) + '</span><b>' + fmt((p.level - 1) * CONFIG.salaryPerLevel) + '</b><span>10% ของมูลค่าร้าน (' + fmt(pv) + ')</span><b>' + fmt(Math.floor(pv * CONFIG.salaryPropPct)) + '</b><span>รวมเงินเดือน (รวมโบนัส)</span><b style="color:#2c8a2c">+' + fmt(sal) + ' G</b></div><div style="text-align:center;margin-top:6px;font-weight:800">สัญลักษณ์ถูกล้าง เริ่มเก็บรอบใหม่!</div>', buttons: [{ t: 'เยี่ยม!', v: 1, cls: 'green' }] });
         floatText(p, sal);
       },
-      suit: async function (p, suit) { sfx('card'); renderPlayers(); toast('<span style="color:' + SUIT_COLOR[suit] + ';font-size:22px">' + SUIT_GLYPH[suit] + '</span> ' + esc(p.name) + ' เก็บสัญลักษณ์!', 1200); },
-      built: async function (p, t, oldLv) { sfx('build'); refresh(); if (oldLv !== undefined && t.level > oldLv) toast('✨ ' + esc(t.name) + ' ขยายเป็น ' + CONFIG.levelName[t.level] + '!', 2000); var el = document.getElementById('t' + t.id); if (el) { el.classList.add('hl'); setTimeout(function () { el.classList.remove('hl'); }, 900); } await wait(300); },
+      suit: async function (p, suit) {
+        if (U.tut && !p.isAI) await Tutorial.event('suit'); sfx('card'); renderPlayers(); toast('<span style="color:' + SUIT_COLOR[suit] + ';font-size:22px">' + SUIT_GLYPH[suit] + '</span> ' + esc(p.name) + ' เก็บสัญลักษณ์!', 1200); },
+      built: async function (p, t, oldLv) {
+        if (U.tut && !p.isAI && t.district >= 0 && g.ownedIn(p.id, t.district) >= 2) await Tutorial.event('district'); sfx('build'); refresh(); if (oldLv !== undefined && t.level > oldLv) toast('✨ ' + esc(t.name) + ' ขยายเป็น ' + CONFIG.levelName[t.level] + '!', 2000); var el = document.getElementById('t' + t.id); if (el) { el.classList.add('hl'); setTimeout(function () { el.classList.remove('hl'); }, 900); } await wait(300); },
       pickCard: async function (p, grid) {
+        if (U.tut && !p.isAI) await Tutorial.event('card');
         var title = '🃏 ' + esc(p.name) + ' เลือกการ์ด 1 ใบจากตาราง 100 ช่อง';
         var body = cardGridHTML(grid, null) + '<div style="text-align:center;font-weight:800;margin-top:6px">เหลือ ' + grid.filter(function (x) { return !x; }).length + ' ใบ • เปิดการ์ดให้สีของคุณเรียงเป็นแถว (แนวนอน/ตั้ง/ทแยง) ตั้งแต่ 3 ช่องขึ้นไปรับโบนัส!</div>';
         if (p.isAI) {
@@ -946,6 +980,24 @@
     return io;
   }
 
+  $('#spdBtn').onclick = function () { var i = SPEEDS.findIndex(function (x) { return x[0] === U.speed; }); U.speed = SPEEDS[(i + 1) % SPEEDS.length][0]; saveSettings(); $('#spdBtn').textContent = 'ความเร็ว: ' + speedLabel(); toast('ความเร็วเกม: ' + speedLabel(), 1200); };
+  // ---------- save migration (older versions → current economy) ----------
+  function migrate(st) {
+    var C = CONFIG, counts = {};
+    st.tiles.forEach(function (t) {
+      if (t.type !== 'shop') return;
+      var k = counts[t.district] = (counts[t.district] || 0); counts[t.district]++;
+      if (!isFinite(t.base) || !t.base) t.base = Math.round((t.f || 1) * C.shopBase[k % C.shopBase.length] / 10) * 10;
+      if (!isFinite(t.invest)) t.invest = t.owner >= 0 ? Math.round(t.base * ((C.levelRatio[Math.max(0, (t.level || 1) - 1)] || 1) - 1)) : 0;
+      if (!isFinite(t.bonusVal)) t.bonusVal = 0; if (!isFinite(t.bonusPct)) t.bonusPct = 0;
+    });
+    st.settings = st.settings || {}; st.settings.rules = Object.assign({}, C.rules, st.settings.rules || {});
+    st.players.forEach(function (p) { if (!isFinite(p.cash)) p.cash = 0; p.shares = p.shares.map(function (n) { return isFinite(n) ? n : 0; }); });
+    var g = new Game(st, null);
+    st.tiles.forEach(function (t) { g.refreshLevel(t); });
+    st.districts.forEach(function (d, i) { if (!isFinite(d.adj)) d.adj = 1; d.price = Math.max(1, Math.round(g.fairPrice(i) * d.adj)); if (!d.hist || !d.hist.length) d.hist = [d.price]; });
+    return st;
+  }
   // ---------- game menu / save / load ----------
   $('#btnGameMenu').onclick = function () {
     if (modalOpen) return;
@@ -1100,6 +1152,57 @@
     });
   }
 
+  // =====================================================================
+  // TUTORIAL MODE — a guide (Korilakkuma) explains each system the first time it happens
+  // =====================================================================
+  var LESSONS = {
+    intro: ['ยินดีต้อนรับสู่ Fortune Street! 🐻', 'เป้าหมายของเกมคือทำให้ <b>ทรัพย์สินรวม</b> (เงินสด + มูลค่าร้าน + หุ้น) ถึง <b>เป้าหมาย</b> ที่มุมขวาบน แล้ว <b>กลับเข้าธนาคาร</b> 🏦 ก่อนคนอื่น<br>ด้านซ้ายคือการ์ดผู้เล่น ดูเงินสด ทรัพย์สิน และอันดับได้ตลอด แตะการ์ดเพื่อดูรายละเอียด'],
+    dice: ['ทอยลูกเต๋า 🎲', 'ลูกเต๋าจะ <b>หมุนอยู่ตลอด</b> — แตะที่ลูกเต๋าเมื่อไหร่ก็หยุดเมื่อนั้น<br>ได้กี่แต้มก็เดินเท่านั้น (1–6)'],
+    plan: ['เลือกทางเดิน 👣', 'ตัวเลขบนหัวคือ <b>ก้าวที่เหลือ</b> • ช่องที่มี <b>📍</b> คือจุดที่เราอาจไปตก<br>ถึงทางแยกให้แตะ <b>ลูกศรสีชมพู</b> เลือกทาง • เดินผิดกด <b>↩ ย้อน 1 ก้าว</b> ได้<br>ก้าวสุดท้ายจะบอกว่าตกช่องอะไร แล้วกด <b>✔ หยุดตรงนี้</b>'],
+    buy: ['ซื้อร้าน 🏠', 'ช่องร้านที่เป็น <b>กรอบเส้นประ</b> คือร้านว่าง ซื้อได้เลย!<br>ซื้อแล้วกรอบจะกลายเป็น <b>สีของเรา</b> ใครมาตกต้องจ่ายค่าเช่าให้เรา<br>ร้านที่ <b>สีพื้นเดียวกัน</b> อยู่ <b>เขตเดียวกัน</b> — ซื้อหลายร้านในเขตเดียวกันจะยิ่งแพงขึ้น'],
+    district: ['เขตธุรกิจ 🌈', 'ยิ่งถือหลายร้านใน <b>เขตเดียวกัน</b> มูลค่าและค่าเช่าทุกร้านในเขตยิ่งสูง (+25% ต่อร้าน)<br>ถ้าได้ <b>ครบทั้งเขต = ผูกขาด 👑</b> ค่าเช่าคูณเพิ่มอีก 1.5 เท่า และลงทุนได้เยอะขึ้นมาก!'],
+    invest: ['ลงทุนสร้างร้านให้แพง 🏗️ (หัวใจของเกม!)', 'ตกที่ <b>ร้านของตัวเอง</b> = ลงทุนได้! ใส่เงินในร้านใดก็ได้ของเราใน <b>เขตเดียวกัน</b><br>ร้านจะโตจากบ้านเล็ก ➜ <b>โรงแรมหรู</b> ค่าเช่าพุ่ง และ <b>ราคาหุ้นเขตก็ขึ้น</b><br>สร้างร้านแพง ๆ แล้วรอให้คู่แข่งมาตก! 💸'],
+    rentPay: ['จ่ายค่าเช่า 💸', 'ตกร้านคนอื่นต้องจ่ายค่าเช่า ร้านยิ่งลงทุนมากยิ่งแพง!<br>ถ้ามีเงินพอ ระบบจะถามว่าอยากซื้อกิจการร้านนั้นไหม (ต้องจ่าย 5 เท่าของมูลค่า)'],
+    rentGet: ['มีคนมาตกร้านเรา! 💰', 'เราได้ค่าเช่าเต็ม ๆ เลย — นี่แหละเหตุผลที่ต้องลงทุนร้านให้แพง!<br>และผู้ถือหุ้นเขตนั้นได้ <b>ปันผล 20%</b> จากธนาคารด้วย'],
+    bank: ['ธนาคาร & หุ้น 📈', 'ผ่านหรือหยุดที่ธนาคารซื้อหุ้นได้ (ครั้งละไม่เกิน 99 หุ้น)<br><b>ราคาหุ้นขึ้นเมื่อร้านในเขตถูกลงทุน</b> • ทุกครั้งที่มีคนจ่ายค่าเช่าในเขต ผู้ถือหุ้นได้ <b>ปันผล 20%</b><br>ทริค: ซื้อหุ้นเขตที่เราผูกขาด แล้วลงทุนร้านให้หุ้นพุ่ง!'],
+    suit: ['สัญลักษณ์ ♥ ♦ ♣ ♠', 'เดินผ่านช่องสัญลักษณ์เพื่อเก็บให้ <b>ครบ 4 แบบ</b> แล้วกลับธนาคาร<br>= <b>เลื่อนระดับ + รับเงินเดือน</b> (ยิ่งมีร้านมากเงินเดือนยิ่งเยอะ)'],
+    promo: ['เลื่อนระดับ! 🎉', 'เงินเดือน = พื้นฐาน + เลเวล + 10% ของมูลค่าร้านทั้งหมด<br>เก็บสัญลักษณ์ใหม่แล้ววนกลับมารับอีกได้เรื่อย ๆ'],
+    card: ['การ์ดเหตุการณ์ 🃏', 'ช่อง ? ให้เลือกการ์ด 1 ใบจากตาราง 100 ช่อง มีทั้งดีและร้าย<br>การ์ดที่เปิดจะเป็น <b>สีของเรา</b> — เรียงเป็นแถว 3 ช่องขึ้นไป (แนวนอน/ตั้ง/ทแยง) ได้ <b>โบนัส</b>!'],
+    items: ['ไอเทมติดตัว 🎒', 'ด้านล่างคือไอเทมที่เลือกไว้ก่อนเกม ใช้ได้อย่างละ 1 ครั้ง<br>ไอเทมที่ขึ้น “แตะเพื่อใช้” กดได้ก่อนทอย ส่วนอื่นระบบจะถามเองเมื่อถึงจังหวะ'],
+    win: ['ใกล้ชนะแล้ว! 🏆', 'ทรัพย์สินถึงเป้าแล้ว — รีบ <b>กลับเข้าธนาคาร</b> เพื่อชนะ!'],
+  };
+  var LESSON_ORDER = ['intro', 'dice', 'plan', 'buy', 'district', 'invest', 'rentPay', 'rentGet', 'bank', 'suit', 'promo', 'card', 'items', 'win'];
+  function coach(key) {
+    var L = LESSONS[key]; if (!L) return Promise.resolve();
+    return modal({ title: '🎓 ' + L[0], width: 860, close: false, bg: '#fffaf2', body: '<div class="coach"><div style="flex:none">' + spr(['cozy', 1], 150, 170) + '</div><div class="bub">' + L[1] + '</div></div>', buttons: [{ t: 'เข้าใจแล้ว! ▶', v: 1, cls: 'pink' }] });
+  }
+  var Tutorial = {
+    seen: {},
+    event: function (key) { if (!U.tut || this.seen[key]) return Promise.resolve(); this.seen[key] = 1; return coach(key); },
+    // rig the human's dice so the first lessons actually happen
+    rig: function (p) {
+      var g = U.g; if (!g) return null; var mine = g.shopsOf(p);
+      var want = !mine.length ? function (t) { return t.type === 'shop' && t.owner < 0; } : !this.invested ? function (t) { return t.type === 'shop' && t.owner === p.id; } : !this.seen.card ? function (t) { return t.type === 'chance'; } : null;
+      if (!want) return null;
+      var opts = [];
+      for (var n = 1; n <= 6; n++) if (g.endpoints(p.pos, p.prev, n).some(function (e) { return want(g.tile(e.end)); })) opts.push(n);
+      return opts.length ? opts[Math.floor(Math.random() * opts.length)] : null;
+    },
+    start: function () {
+      this.seen = {}; this.invested = false;
+      var P = Meta.p, ch = P.equip.char;
+      var s = Game.create({ mapIdx: 2, target: 20000, maxRounds: 60, rules: { tax: false, endOnBankrupt: true }, seed: Math.floor(Math.random() * 1e9),
+        players: [{ name: P.name, char: ch, costume: P.equip.costume, isAI: false, loadout: Meta.validLoadout(), owner: true }, { name: 'คิอิโระ (ฝึกซ้อม)', char: ch === 'b2' ? 'b1' : 'b2', isAI: true, aiLevel: 'beginner', persona: 'Balanced' }] });
+      s.ownerIdx = 0; s.dice = P.equip.dice; s.tutorial = true; s.lenName = 'โหมดสอนเล่น';
+      startGame(s, true);
+    },
+  };
+  function lessonsModal() {
+    modal({ title: '📚 บทเรียนทั้งหมด', width: 860, body: '<div class="lessons">' + LESSON_ORDER.map(function (k) { return '<div class="opt" data-ls="' + k + '">' + esc(LESSONS[k][0].replace(/<[^>]+>/g, '')) + '</div>'; }).join('') + '</div>', buttons: [{ t: '🎓 เริ่มโหมดสอนเล่น', v: 'start', cls: 'pink' }, { t: 'ปิด', v: null }],
+      mount: function (box, close) { box.querySelectorAll('[data-ls]').forEach(function (e) { e.onclick = function () { close('ls:' + e.dataset.ls); }; }); } })
+      .then(function (v) { if (v === 'start') Tutorial.start(); else if (v && v.indexOf('ls:') === 0) coach(v.slice(3)).then(lessonsModal); });
+  }
+  U.Tutorial = Tutorial;
   // ---------- music ----------
   Music.setVol(U.vol);
   Music.onSong(function (sg) { var n = $('#nowPlay'); if (n) n.textContent = '♪ ' + sg.title; if (U.music && Music.playing) toast('🎵 เพลงใหม่: ' + esc(sg.title), 1800); });

@@ -169,7 +169,8 @@
   P.noRent = function (t) { return this.s.effects.some(function (e) { return e.kind === 'noRent' && e.tile === t.id; }); };
   P.shopRent = function (t) {
     if (t.type !== 'shop' || t.owner < 0) return 0;
-    return Math.min(C.rentCap, Math.round(this.priceFor(this.shopValue(t)) * this.eventMod(t)));
+    var r = Math.min(C.rentCap, Math.round(this.priceFor(this.shopValue(t)) * this.eventMod(t)));
+    return isFinite(r) ? r : 0;
   };
   P.rentAfterInvest = function (t, add) { return Math.min(C.rentCap, Math.round(this.priceFor(this.valueAfterInvest(t, add)) * this.eventMod(t))); };
   P.districtValue = function (d) { var self = this; return this.s.districts[d].tiles.reduce(function (a, id) { var t = self.s.tiles[id]; return a + (t.owner >= 0 ? self.shopValue(t) : t.base); }, 0); };

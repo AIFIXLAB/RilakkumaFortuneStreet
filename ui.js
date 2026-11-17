@@ -351,7 +351,7 @@
   function startGame(state, isNew) {
     U.token++; var tok = U.token;
     migrate(state); U.tut = state.tutorial ? Tutorial : null;
-    if (!U.online) state.players.forEach(function (p) { if (p.remote) { p.remote = null; p.isAI = true; p.ai = { level: 'normal', persona: 'Balanced' }; } });
+    if (!U.online) state.players.forEach(function (p) { if (p.remote || p.seat) { p.seat = null; p.remote = null; p.isAI = true; p.ai = { level: 'normal', persona: 'Balanced' }; } });
     var g = new Game(state, null); g.io = makeIO(g, tok); U.g = g;
     if (U.online && U.online.role === 'host') g.io = Online.hostIO(g.io, g);
     U.view = state.players.findIndex(function (p) { return !p.isAI; }); if (U.view < 0) U.view = 0;
@@ -556,7 +556,7 @@
         '<div class="ptop"><span class="pno">P' + (p.id + 1) + '</span><span class="nm">' + esc(p.name) + '</span></div>' +
         '<div class="cash coin">' + fmt(p.cash) + '</div>' +
         '<span class="nwpill">ทรัพย์สิน ' + fmt(g.netWorth(p)) + '</span>' +
-        '<div class="lvl">Lv' + p.level + (p.isAI ? ' • AI ' + { beginner: 'Easy', normal: 'Normal', advanced: 'Adv' }[p.ai.level] : '') + '</div>' +
+        '<div class="lvl">' + (p.seat && !p.remote ? '<span style="color:#d0342c">📴 หลุด</span> • ' : '') + 'Lv' + p.level + (p.isAI ? ' • AI ' + { beginner: 'Easy', normal: 'Normal', advanced: 'Adv' }[p.ai.level] : '') + '</div>' +
         '<div class="suits">' + SUITS.map(function (k) { return '<span class="' + (p.suits[k] ? 'on' : '') + '" style="' + (p.suits[k] ? 'color:' + SUIT_COLOR[k] : '') + '">' + SUIT_GLYPH[k] + '</span>'; }).join('') + '</div>' +
         '<div class="rankb">' + spr(['ui', 'rank' + rk], 92, 30) + '</div></div>';
     }).join(''));
@@ -794,7 +794,7 @@
         setTurn(p, !p.isAI);
         refresh(); if (CAM.follow && CAM.z > 1.05) centerOnTile(p.pos, true);
         if (U.tut && !p.isAI) { await Tutorial.event('intro'); if (g.loadoutSlots(p).length) await Tutorial.event('items'); if (g.netWorth(p) >= g.s.settings.target) await Tutorial.event('win'); }
-        if (!p.isAI && !U.online && g.s.players.filter(function (q) { return !q.isAI && !q.remote; }).length > 1) await modal({ title: 'ตาของ ' + esc(p.name), body: '<div style="text-align:center">' + spr(charSpec(p), 140, 140) + '<div style="font-weight:800">ส่ง iPad ให้ ' + esc(p.name) + '</div></div>', buttons: [{ t: 'พร้อมแล้ว!', v: 1, cls: 'pink' }], close: false });
+        if (!p.isAI && !U.online && g.s.players.filter(function (q) { return !q.isAI && !q.remote && !q.seat; }).length > 1) await modal({ title: 'ตาของ ' + esc(p.name), body: '<div style="text-align:center">' + spr(charSpec(p), 140, 140) + '<div style="font-weight:800">ส่ง iPad ให้ ' + esc(p.name) + '</div></div>', buttons: [{ t: 'พร้อมแล้ว!', v: 1, cls: 'pink' }], close: false });
       },
       preRoll: function (p) {
         if (p.isAI) { setAct(spr(['ui', 'thinking'], 220, 44) + '<div>' + esc(p.name) + '</div>'); return aiWait(500).then(function () { return A.preRoll(g, p); }).then(function () { refresh(); }); }
@@ -1284,7 +1284,8 @@
   // ONLINE LOBBY
   // =====================================================================
   function onlineMenu() {
-    modal({ title: '🌐 โหมดออนไลน์', width: 680, body: '<div class="col" style="gap:14px;align-items:center">' +
+    var seat = Online.savedSeat();
+    modal({ title: '🌐 โหมดออนไลน์', width: 680, body: '<div class="col" style="gap:14px;align-items:center">' + (seat ? '<div class="opt bigopt pmD" data-on="rejoin" style="width:100%">' + spr(['ui', 'auto'], 96, 74) + '<div class="col" style="gap:0"><span style="font-size:22px">🔄 กลับเข้าห้อง ' + seat.code + '</span><span style="font-size:13px">เกมที่หลุดออกมา — กลับไปเล่นที่นั่งเดิมของคุณ</span></div></div>' : '') +
       '<div class="opt bigopt pmA" data-on="host" style="width:100%">' + spr(['ui', 'players'], 96, 74) + '<div class="col" style="gap:0"><span style="font-size:22px">สร้างห้อง</span><span style="font-size:13px">ได้รหัสห้อง 4 ตัว ส่งให้เพื่อนเพื่อเข้าห้อง (สูงสุด 4 คน)</span></div></div>' +
       '<div class="opt bigopt pmC" style="width:100%;cursor:default">' + spr(['ui', 'play'], 96, 74) + '<div class="col" style="gap:6px"><span style="font-size:22px">เข้าห้องด้วยรหัส</span><div class="row"><input class="codein" id="codeIn" maxlength="4" placeholder="รหัส" autocomplete="off"><button class="green" data-on="join">เข้าห้อง ▶</button></div></div></div>' +
       '<div class="muted" style="font-size:13px;font-weight:700;text-align:center">เชื่อมต่อแบบ Peer-to-Peer (WebRTC) ตรงถึงกัน ไม่ผ่านเซิร์ฟเวอร์เกม จึงลื่นไม่แลค • ทุกคนต้องเปิดเกมจากเว็บเดียวกันและต่ออินเทอร์เน็ต</div></div>',
@@ -1296,6 +1297,7 @@
         if (!v) return;
         toast('⏳ กำลังเชื่อมต่อ...');
         var cb = function (err) { if (err) { toast('⚠️ ' + err, 3500); Online.leave(); return; } lobbyModal(); };
+        if (v === 'rejoin') { Online.rejoin(function (err) { if (err) toast('⚠️ ' + err, 3500); }); return; }
         if (v === 'host') Online.host(cb); else Online.join(v.slice(5), cb);
       });
   }
@@ -1331,15 +1333,19 @@
     $('#logBox').innerHTML = ''; state.log.slice(-30).forEach(function (l) { addLog(l.m, l.k); });
     toast('🌐 เข้าเกมออนไลน์แล้ว! คุณคือ P' + (idx + 1));
   }
+  var wakeLock = null;
+  function keepAwake(on) { try { if (on && navigator.wakeLock && !wakeLock) navigator.wakeLock.request('screen').then(function (w) { wakeLock = w; w.addEventListener('release', function () { wakeLock = null; }); }).catch(function () { }); if (!on && wakeLock) { wakeLock.release(); wakeLock = null; } } catch (e) { } }
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && U.online) keepAwake(true); });
   function setOnline(o) {
-    U.online = o; var b = document.getElementById('netBadge');
+    U.online = o; keepAwake(!!o); var b = document.getElementById('netBadge');
     if (!o) { if (b) b.remove(); return; }
     if (!b) { b = document.createElement('div'); b.id = 'netBadge'; b.className = 'netbadge'; $('#boardWrap').appendChild(b); }
     b.textContent = '🌐 ห้อง ' + o.code + (o.role === 'host' ? ' (โฮสต์)' : '');
   }
   Online.init({
     refresh: function () { if (U.g) refresh(); }, toast: toast, esc: esc, game: function () { return U.g; },
-    setWaiting: function (p) { setTurn(p, false); setAct('<div style="font-size:17px">⏳ รอ ' + esc(p.name) + '<br>ตัดสินใจ...</div>'); },
+    setWaiting: function (p, off) { setTurn(p, false); setAct(off ? '<div style="font-size:16px">📴 ' + esc(p.name) + ' หลุดการเชื่อมต่อ<br>รอกลับเข้ามา...</div>' : '<div style="font-size:17px">⏳ รอ ' + esc(p.name) + '<br>ตัดสินใจ...</div>'); },
+    netStatus: function (msg) { var o = document.getElementById('netOverlay'); if (!msg) { if (o) o.remove(); return; } if (!o) { o = document.createElement('div'); o.id = 'netOverlay'; document.getElementById('stage').appendChild(o); } o.innerHTML = '<div>' + msg + '<br><span style="font-size:14px">เกมยังอยู่ ไม่ต้องปิดหน้านี้</span></div>'; },
     setTurnLabel: function (p, mine) { setTurn(p, mine); },
     renderLobby: renderLobby, closeModal: function () { if (U._closeModal) U._closeModal(); },
     startGame: startGame, startGuest: startGuest, setOnline: setOnline, consumeUsed: consumeUsed, addLog: addLog,

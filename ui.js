@@ -915,11 +915,11 @@
             if (rem > 0) {
               g.endpoints(cur.id, prevId(), rem).forEach(function (e) { var d = document.getElementById('t' + e.end); if (d) d.classList.add('dest'); });
               var opts = g.nextOptions(cur.id, prevId());
-              setAct('<div style="font-size:18px">เดินอีก <b style="font-size:26px;color:#ff5d8f">' + rem + '</b> ก้าว</div><div class="lp">' + (opts.length > 1 || manual ? '👆 แตะช่อง 📍 ที่กระพริบเพื่อเดินไปเลย<br>หรือแตะลูกศรเลือกทางทีละก้าว' : 'กำลังเดิน...') + '<br>📍 = จุดที่อาจตก</div>');
+              setAct('<div style="font-size:18px">เดินอีก <b style="font-size:26px;color:#ff5d8f">' + rem + '</b> ก้าว</div><div class="lp">' + (opts.length > 1 || manual ? '👆 แตะช่อง 📍 ที่กระพริบเพื่อเดินไปเลย' : 'กำลังเดิน...') + '<br>📍 = จุดที่อาจตก</div>');
               $('#actBtns').innerHTML = '<div class="mvbtns"><button class="blue" id="mvUndo" ' + (path.length ? '' : 'disabled') + '>↩ ย้อน 1 ก้าว</button><button class="small" id="mvReset" ' + (path.length ? '' : 'disabled') + '>⏮ เริ่มเดินใหม่</button></div>';
               if (busy) { }
               else if (opts.length === 1 && !manual) timer = setTimeout(function () { step(opts[0]); }, 230 / U.speed + 80);
-              else opts.forEach(function (id) { var t = g.tile(id), dx = t.x - cur.x, dy = t.y - cur.y, ch = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? '➜' : '⬅') : (dy > 0 ? '⬇' : '⬆'); var a = document.createElement('div'); a.className = 'dirArrow'; a.textContent = ch; var az = Math.max(46, BT * 1.05) / Math.max(1, CAM.z * 0.8); a.style.width = a.style.height = az + 'px'; a.style.fontSize = az * 0.55 + 'px'; a.style.left = (t.x * SC - az / 2) + 'px'; a.style.top = (t.y * SC - az / 2) + 'px'; a.onclick = function (e) { e.stopPropagation(); step(id); }; B.appendChild(a); });
+              // no direction arrows: tap a flashing 📍 tile to walk there
             } else {
               var e2 = document.getElementById('t' + cur.id); if (e2) e2.classList.add('dest');
               setAct('<div class="lp">' + landPreview(p, cur) + '</div>');
@@ -954,8 +954,9 @@
         return new Promise(function (resolve) {
           U.choosingDir = true;
           var cur = g.tile(p.pos);
-          setAct('<div class="msg">เลือกทิศทาง ➜<br><span style="font-size:14px">เหลืออีก ' + rem + ' ช่อง • แตะลูกศรสีชมพู</span></div>');
-          var arrows = opts.map(function (id) { var t = g.tile(id), dx = t.x - cur.x, dy = t.y - cur.y, ch = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? '➜' : '⬅') : (dy > 0 ? '⬇' : '⬆'); var a = document.createElement('div'); a.className = 'dirArrow'; a.textContent = ch; var az = Math.max(46, BT * 1.15) / CAM.z * (CAM.z > 1 ? 1.15 : 1); a.style.width = a.style.height = az + 'px'; a.style.fontSize = az * 0.55 + 'px'; a.style.left = (t.x * SC - az / 2) + 'px'; a.style.top = (t.y * SC - az / 2) + 'px'; a.onclick = function (e) { e.stopPropagation(); arrows.forEach(function (x) { x.remove(); }); U.choosingDir = false; resolve(id); }; $('#board').appendChild(a); return a; });
+          setAct('<div class="msg">เลือกทาง 👣<br><span style="font-size:14px">เหลืออีก ' + rem + ' ช่อง • แตะช่องที่กระพริบ</span></div>');
+          opts.forEach(function (id) { var e = document.getElementById('t' + id); if (e) e.classList.add('dest'); });
+          U.planTap = function (id) { if (opts.indexOf(id) < 0) return false; opts.forEach(function (x) { var e = document.getElementById('t' + x); if (e) e.classList.remove('dest'); }); U.planTap = null; U.choosingDir = false; resolve(id); return true; };
         });
       },
       landed: async function (p, t) { var el = document.getElementById('t' + t.id); if (el) { el.classList.add('hl'); setTimeout(function () { el.classList.remove('hl'); }, 900); } await wait(250); },
@@ -1333,7 +1334,7 @@
   var LESSONS = {
     intro: ['ยินดีต้อนรับสู่ Fortune Street! 🐻', 'เป้าหมายของเกมคือทำให้ <b>ทรัพย์สินรวม</b> (เงินสด + มูลค่าร้าน + หุ้น) ถึง <b>เป้าหมาย</b> ที่มุมขวาบน แล้ว <b>กลับเข้าธนาคาร</b> 🏦 ก่อนคนอื่น<br>ด้านซ้ายคือการ์ดผู้เล่น ดูเงินสด ทรัพย์สิน และอันดับได้ตลอด แตะการ์ดเพื่อดูรายละเอียด'],
     dice: ['ทอยลูกเต๋า 🎲', 'ลูกเต๋าจะ <b>หมุนอยู่ตลอด</b> — แตะที่ลูกเต๋าเมื่อไหร่ก็หยุดเมื่อนั้น<br>ได้กี่แต้มก็เดินเท่านั้น (1–6)'],
-    plan: ['เลือกทางเดิน 👣', 'ตัวเลขบนหัวคือ <b>ก้าวที่เหลือ</b> • ช่องที่มี <b>📍</b> คือจุดที่เราอาจไปตก<br><b>แตะช่อง 📍 ที่กระพริบ</b> เพื่อเดินไปช่องนั้นเลย หรือแตะ <b>ลูกศรสีชมพู</b> เลือกทางทีละก้าว • เดินผิดกด <b>↩ ย้อน 1 ก้าว</b> ได้<br>ก้าวสุดท้ายจะบอกว่าตกช่องอะไร แล้วกด <b>✔ หยุดตรงนี้</b>'],
+    plan: ['เลือกทางเดิน 👣', 'ตัวเลขบนหัวคือ <b>ก้าวที่เหลือ</b> • ช่องที่มี <b>📍</b> คือจุดที่เราอาจไปตก<br><b>แตะช่อง 📍 ที่กระพริบ</b> เพื่อเดินไปช่องนั้นเลย • เดินผิดกด <b>↩ ย้อน 1 ก้าว</b> ได้<br>ก้าวสุดท้ายจะบอกว่าตกช่องอะไร แล้วกด <b>✔ หยุดตรงนี้</b>'],
     buy: ['ซื้อร้าน 🏠', 'ช่องร้านที่เป็น <b>กรอบเส้นประ</b> คือร้านว่าง ซื้อได้เลย!<br>ซื้อแล้วกรอบจะกลายเป็น <b>สีของเรา</b> ใครมาตกต้องจ่ายค่าเช่าให้เรา<br>ร้านที่ <b>สีพื้นเดียวกัน</b> อยู่ <b>เขตเดียวกัน</b> — ซื้อหลายร้านในเขตเดียวกันจะยิ่งแพงขึ้น'],
     chain: ['ร้านติดกัน 🔗', 'ร้านของเราที่ <b>อยู่ติดกันบนถนน</b> จะเชื่อมกันเป็นแถว (แบบ Itadaki)!<br>ทุกร้านในแถว <b>ค่าเช่าเพิ่ม 20% ต่อร้านที่ติดกัน</b> (สูงสุด ×1.8) และ <b>อาคารขยายขึ้น 1 ขั้นต่อร้าน</b><br>ตัวเลข 🔗 บนร้านบอกความยาวแถว'],
     district: ['เขตธุรกิจ 🌈', 'ยิ่งถือหลายร้านใน <b>เขตเดียวกัน</b> มูลค่าและค่าเช่าทุกร้านในเขตยิ่งสูง (+25% ต่อร้าน)<br>ถ้าได้ <b>ครบทั้งเขต = ผูกขาด 👑</b> ค่าเช่าคูณเพิ่มอีก 1.5 เท่า และลงทุนได้เยอะขึ้นมาก!'],

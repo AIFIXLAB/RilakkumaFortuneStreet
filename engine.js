@@ -215,12 +215,12 @@
   P.buyFee = function (p) { return (!this.rules().tax || p.flags.stockFeeZero) ? 0 : C.stock.buyFee; };
   P.sellFee = function () { return this.rules().tax ? C.stock.sellFee : 0; };
   P.sharesAvail = function () { return 1e9; };
-  P.maxBuyShares = function (p, d) { var price = this.s.districts[d].price; return Math.max(0, Math.min(C.maxStockBuy, Math.floor(p.cash / (price * (1 + this.buyFee(p)))))); };
+  P.maxBuyShares = function (p, d) { if (p.flags && p.flags.stockBuyDone) return 0; var price = this.s.districts[d].price; return Math.max(0, Math.min(C.maxStockBuy, Math.floor(p.cash / (price * (1 + this.buyFee(p)))))); };
   P.buyStock = function (p, d, n) {
     n = Math.floor(n); if (n <= 0) return false;
     if (n > this.maxBuyShares(p, d)) return false; // atomic guard
     var price = this.s.districts[d].price, cost = Math.ceil(n * price * (1 + this.buyFee(p)));
-    p.cash -= cost; p.shares[d] += n; this.txid('buyStock');
+    p.cash -= cost; p.shares[d] += n; p.flags.stockBuyDone = 1; this.txid('buyStock');
     this.log('🧾 ' + p.name + ' ซื้อหุ้น ' + this.s.districts[d].name + ' ' + n + ' หุ้น (' + fmt(cost) + ' G)');
     if (n >= 10) this.stockMove(d, 0.03 + n / 2000, 'ซื้อหุ้นจำนวนมาก');
     return true;
@@ -261,6 +261,11 @@
     var s = this.s, self = this, sold = [];
     // 1) safe deposit 2) stocks 3) special buildings 4) shops (cheapest first)
     if (p.safe > 0) { p.cash += p.safe; sold.push('บัญชีคุ้มครอง ' + fmt(p.safe)); p.safe = 0; }
+    // human: choose what to sell yourself (Fortune Street style)
+    if (!p.isAI && this.io && this.io.debtSell) {
+      for (var gd = 0; gd < 40 && p.cash < 0 && this.hasAssets(p); gd++) { var r = await this.io.debtSell(p, -p.cash); if (r === 'auto') break; }
+      if (p.cash >= 0) return;
+    }
     var order = s.districts.map(function (d, i) { return i; }).sort(function (a, b) { return p.shares[b] * s.districts[b].price - p.shares[a] * s.districts[a].price; });
     for (var k = 0; k < order.length && p.cash < 0; k++) {
       var d = order[k]; if (!p.shares[d]) continue;
@@ -274,6 +279,15 @@
     if (sold.length && this.io && this.io.notify) await this.io.notify(p, '⚠️ ' + p.name + ' เงินสดติดลบ ระบบขายทรัพย์สินอัตโนมัติ', sold.join(' • '));
     if (p.cash < 0) await this.bankrupt(p);
   };
+  P.hasAssets = function (p) { var self = this; return p.shares.some(function (n) { return n > 0; }) || this.s.tiles.some(function (t) { return (t.type === 'shop' && t.owner === p.id) || (t.special && t.spOwner === p.id); }); };
+  P.specialSellValue = function (t) { var b = D.SPECIAL_BUILDINGS.find(function (x) { return x.id === t.special; }); return b ? Math.floor(b.cost * C.shopSellRate * (1 - C.shopSellFee)) : 0; };
+  P.sellSpecialToBank = function (p, t) {
+    if (!t.special || t.spOwner !== p.id) return 0;
+    var b = D.SPECIAL_BUILDINGS.find(function (x) { return x.id === t.special; }), v = this.specialSellValue(t);
+    p.cash += v; t.special = null; t.spOwner = -1; t.toll = 0; this.txid('sellSpecial');
+    this.log('🏚️ ' + p.name + ' ขาย ' + (b ? b.th : 'บ้านพิเศษ') + ' ให้ธนาคาร +' + fmt(v) + ' G'); return v;
+  };
+  P.shopSellValue = function (t) { return Math.floor(this.shopValue(t) * C.shopSellRate * (1 - C.shopSellFee)); };
   P.sellShopToBank = function (p, t, forced) {
     var before = this.districtValue(t.district), v = Math.floor(this.shopValue(t) * C.shopSellRate * (1 - C.shopSellFee));
     p.cash += v; t.owner = -1; t.level = 0; t.invest = 0; t.bonusPct = 0; t.bonusVal = 0;
@@ -394,7 +408,7 @@
     var s = this.s, p = this.cp(), io = this.io;
     if (s.over) return;
     if (p.bankrupt) { await this.nextPlayer(); return; }
-    s.phase = 'preRoll'; p.flags.rollOn = 0; s.forcedDice = null; s.teleportBank = false; p.flags.stockFeeZero = false; p.flags.investedTurn = 0;
+    s.phase = 'preRoll'; p.flags.rollOn = 0; s.forcedDice = null; s.teleportBank = false; p.flags.stockFeeZero = false; p.flags.investedTurn = 0; p.flags.stockBuyDone = 0;
     if (io.autosave) io.autosave(s);
     if (io.turnStart) await io.turnStart(p);
     await io.preRoll(p); // human: waits for roll button (may use items/sell); AI: decides & uses items
@@ -630,8 +644,14 @@
     return { list: list, turnLeft: left, cash: p.cash, disc: this.investDiscount(p), free: p.flags.freeUpgrade ? 1000 : 0, hotel: p.flags.hotelDisc ? 500 : 0 };
   };
   P.investCost = function (p, amount) { var c = amount * this.investDiscount(p); if (p.flags.freeUpgrade) c -= 1000; if (p.flags.hotelDisc) c -= 500; return Math.max(0, Math.round(c)); };
-  P.maxInvest = function (p, t) { // max amount of capital for this shop given cash, cap and per-turn limit
-    var cap = Math.min(this.maxCapital(t), Math.max(0, C.investCap - (p.flags.investedTurn || 0)));
+  P.levelStep = function (t) { // capital needed to raise the building by exactly one level
+    var cur = t.base + (t.invest || 0), r = cur / t.base, L = 1;
+    C.levelRatio.forEach(function (x, i) { if (r >= x) L = i + 1; });
+    if (L >= C.levelRatio.length) return Infinity;
+    return Math.max(10, Math.ceil((t.base * C.levelRatio[L] - cur) / 10) * 10);
+  };
+  P.maxInvest = function (p, t) { // max amount of capital for this shop: cash, capital cap, one level per investment
+    var cap = Math.min(this.maxCapital(t), Math.max(0, C.investCap - (p.flags.investedTurn || 0)), this.levelStep(t));
     for (var a = cap; a > 0; a -= 10) if (this.investCost(p, a) <= p.cash) return a;
     return 0;
   };
@@ -642,8 +662,8 @@
       if (o.turnLeft <= 0 || p.cash <= 0) return;
       var pick = await this.io.chooseInvest(p, t, o);
       if (!pick || !pick.amount) return;
-      if (!(await this.doInvest(p, this.tile(pick.id), pick.amount))) return;
-      if (this.s.over) return;
+      await this.doInvest(p, this.tile(pick.id), pick.amount);
+      return; // one shop, one level per landing
     }
   };
   P.doInvest = async function (p, t, amount) {

@@ -189,7 +189,7 @@
       '<b>🎲 ทอยลูกเต๋า:</b> ลูกเต๋าหมุนอยู่ตลอด แตะเพื่อหยุดเอง • ตอนเดินจะมีตัวเลขก้าวที่เหลือบนหัว มี 📍 บอกจุดที่อาจตก กด <b>↩ ย้อน</b> เพื่อเดินถอยกลับได้ก่อนกด “หยุดตรงนี้”<br>' +
       '<b>🏠 หัวใจของเกม = สร้างร้านแพง ๆ ให้คนอื่นมาตก!</b><br>' +
       '• ซื้อร้านว่าง → ร้านเปลี่ยนเป็นกรอบสีของคุณ<br>' +
-      '• <b>ตกที่ร้านตัวเอง = ลงทุน</b> ใส่เงินในร้านใดก็ได้ของคุณในเขตเดียวกัน (สูงสุด ' + fmt(C.investCap) + ' G ต่อครั้ง) ร้านจะขยายจากบ้านเล็กเป็นโรงแรมหรู<br>' +
+      '• <b>ตกที่ร้านตัวเอง = ลงทุน</b> เลือกอัปเกรดร้านของคุณในเขตเดียวกันได้ <b>1 หลัง ขึ้นได้ 1 ระดับ</b> ต่อครั้ง ร้านจะค่อย ๆ ขยายจากบ้านเล็กเป็นโรงแรมหรู<br>• <b>ซื้อหุ้นได้ 1 ครั้งต่อเทิร์น</b> (เลือก 1 เขต) • ถ้าเงินสดไม่พอจ่าย <b>เลือกขายหุ้น/ร้านเองได้</b><br>' +
       '• ถือหลายร้านในเขตเดียวกัน มูลค่าทุกร้าน ×(1 + 0.25 ต่อร้านที่เพิ่ม) และ <b>ผูกขาดทั้งเขต ×1.5</b> ทุนสูงสุดก็เพิ่มตาม<br>' +
       '• ค่าเช่า = มูลค่าร้าน × อัตราผลตอบแทน (13%→20% ยิ่งร้านแพงยิ่งสูง) — คนที่ตกต้องจ่ายเต็ม ๆ!<br>' +
       '• <b>🔗 ร้านติดกันบนถนน</b> ของเจ้าของเดียวกันเชื่อมเป็นแถว ค่าเช่า +20% ต่อร้าน (สูงสุด ×1.8) และอาคารขยายขึ้นทั้งแถว<br>' +
@@ -713,21 +713,20 @@
           var fee = g.buyFee(p), sfee = g.sellFee();
           var rows = s.districts.map(function (d, i) {
             var max = g.maxBuyShares(p, i);
-            var buyBtns = mode !== 'sell' ? [1, 5, 10, 25, 50, 99].map(function (n) { return '<button class="small green" data-b="' + i + ':' + n + '" ' + (n > max ? 'disabled' : '') + '>+' + n + '</button>'; }).join('') + '<input data-ci="' + i + '" type="number" min="1" placeholder="จำนวน" style="width:76px;font-size:16px;padding:6px;border:2px solid #6b4226;border-radius:10px;font-family:inherit" value="' + (custom[i] || '') + '"><button class="small" data-bc="' + i + '">ซื้อ</button>' : '';
+            var cq = Math.min(max, Math.floor(+custom[i] || 0)), buyBtns = mode !== 'sell' ? [5, 10, 25, 50, 99].map(function (n) { return '<button class="small ' + (cq === Math.min(n, max) && cq ? 'green' : '') + '" data-b="' + i + ':' + n + '" ' + (max <= 0 ? 'disabled' : '') + '>' + n + '</button>'; }).join('') + '<input data-ci="' + i + '" type="number" min="1" placeholder="จำนวน" style="width:84px;font-size:16px;padding:6px;border:2px solid #6b4226;border-radius:10px;font-family:inherit" value="' + (custom[i] || '') + '" ' + (max <= 0 ? 'disabled' : '') + '><button class="small green" data-bc="' + i + '" ' + (cq > 0 ? '' : 'disabled') + '>ซื้อ' + (cq > 0 ? ' ' + cq + ' หุ้น = ' + fmt(Math.ceil(cq * d.price * (1 + fee))) + ' G' : '') + '</button>' : '';
             var sellBtns = mode !== 'buy' ? [1, 5, 10, 25].map(function (n) { return '<button class="small pink" data-s="' + i + ':' + n + '" ' + (n > p.shares[i] ? 'disabled' : '') + '>-' + n + '</button>'; }).join('') + '<button class="small pink" data-s="' + i + ':' + p.shares[i] + '" ' + (!p.shares[i] ? 'disabled' : '') + '>ขายหมด</button>' : '';
             var own = d.tiles.map(function (id) { return s.tiles[id]; }); return '<div class="row" style="border-bottom:2px dashed #e5cfae;padding:6px 0;gap:8px"><span style="width:16px;height:30px;border-radius:5px;background:' + d.color + ';border:2px solid #6b4226"></span><div style="width:210px;cursor:pointer" data-peek="' + i + '"><b>' + esc(d.th) + ' <span style="font-size:13px;color:#3f86f0">📍ดูบนแผนที่</span></b><div style="display:flex;gap:2px;margin:1px 0">' + own.map(function (t) { return '<span title="' + esc(t.name) + '" style="width:16px;height:16px;border-radius:5px;border:2px solid ' + (t.owner >= 0 ? s.players[t.owner].color : '#ccc') + ';background:' + (t.owner >= 0 ? hexA(s.players[t.owner].color, .5) : '#fff') + ';font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:700">' + (t.owner >= 0 ? t.level : '') + '</span>'; }).join('') + '</div><div style="font-size:12px;font-weight:700">ราคา ' + d.price + ' G • ถือ ' + p.shares[i] + ' • ซื้อได้อีก ' + max + '</div></div>' + spark(d.hist, d.color, 90, 34) + '<div class="row" style="gap:4px;flex-wrap:wrap;flex:1">' + buyBtns + sellBtns + '</div></div>';
           }).join('');
-          body.innerHTML = '<div class="row" style="justify-content:center;gap:10px;margin-bottom:6px"><span class="chip coin">' + fmt(p.cash) + ' G</span>' + (fee || sfee ? '<span class="chip">ค่าธรรมเนียมซื้อ ' + (fee * 100) + '% • ขาย ' + (sfee * 100) + '%</span>' : '<span class="chip">ไม่มีค่าธรรมเนียม</span>') + '<span class="chip">ซื้อได้ครั้งละไม่เกิน 99 หุ้น/เขต</span><span class="chip">💡 แตะชื่อเขตเพื่อดูบนแผนที่</span></div>' + rows;
+          body.innerHTML = '<div class="row" style="justify-content:center;gap:10px;margin-bottom:6px"><span class="chip coin">' + fmt(p.cash) + ' G</span>' + (fee || sfee ? '<span class="chip">ค่าธรรมเนียมซื้อ ' + (fee * 100) + '% • ขาย ' + (sfee * 100) + '%</span>' : '<span class="chip">ไม่มีค่าธรรมเนียม</span>') + (mode !== 'sell' ? (p.flags.stockBuyDone ? '<span class="chip" style="background:#d8f5d0">✅ ซื้อหุ้นแล้วในเทิร์นนี้</span>' : '<span class="chip" style="background:#fff3c4">ซื้อหุ้นได้ 1 ครั้ง/เทิร์น • เลือก 1 เขต (สูงสุด 99 หุ้น)</span>') : '') + '<span class="chip">💡 แตะชื่อเขตเพื่อดูบนแผนที่</span></div>' + rows;
           body.querySelectorAll('[data-peek]').forEach(function (e) { e.onclick = function () { peekDistrict(+e.dataset.peek); }; });
-          body.querySelectorAll('[data-b]').forEach(function (b) { b.onclick = function () { var a = b.dataset.b.split(':'); if (g.buyStock(p, +a[0], +a[1])) { sfx('coin'); refresh(); draw(); } }; });
-          body.querySelectorAll('[data-ci]').forEach(function (inp) { inp.oninput = function () { custom[inp.dataset.ci] = inp.value; }; });
-          body.querySelectorAll('[data-bc]').forEach(function (b) { b.onclick = function () { var i = +b.dataset.bc, n = Math.floor(+custom[i] || 0); if (n <= 0) return; if (n > g.maxBuyShares(p, i)) { toast('ซื้อได้สูงสุด ' + g.maxBuyShares(p, i) + ' หุ้น'); return; } var d = s.districts[i]; var cost = Math.ceil(n * d.price * (1 + fee)); modal({ title: 'ยืนยันซื้อหุ้น', body: '<div style="text-align:center;font-weight:800">' + d.name + ' ' + n + ' หุ้น × ' + d.price + ' G + ค่าธรรมเนียม = <b>' + fmt(cost) + ' G</b></div>', buttons: [{ t: 'ซื้อ', v: 1, cls: 'green' }, { t: 'ยกเลิก', v: 0 }] }).then(function (ok) { if (ok && g.buyStock(p, i, n)) { custom[i] = ''; sfx('coin'); refresh(); } stockPanel(p, mode, title); }); }; });
+          body.querySelectorAll('[data-b]').forEach(function (b) { b.onclick = function () { var a = b.dataset.b.split(':'), i = +a[0]; custom = {}; custom[i] = Math.min(+a[1], g.maxBuyShares(p, i)); sfx('click'); draw(); }; });
+          body.querySelectorAll('[data-ci]').forEach(function (inp) { inp.onchange = function () { var i = +inp.dataset.ci; custom = {}; custom[i] = Math.max(0, Math.min(g.maxBuyShares(p, i), Math.floor(+inp.value || 0))); draw(); }; });
+          body.querySelectorAll('[data-bc]').forEach(function (b) { b.onclick = function () { var i = +b.dataset.bc, n = Math.min(g.maxBuyShares(p, i), Math.floor(+custom[i] || 0)); if (n <= 0) return; if (g.buyStock(p, i, n)) { custom = {}; sfx('coin'); refresh(); toast('🧾 ซื้อหุ้น ' + esc(s.districts[i].th) + ' ' + n + ' หุ้นแล้ว'); if (mode === 'buy' && U._closeModal) { U._closeModal(); return; } draw(); } }; });
           body.querySelectorAll('[data-s]').forEach(function (b) {
             b.onclick = function () {
               var a = b.dataset.s.split(':'), i = +a[0], n = +a[1], pv = g.sellPreview(p, i, n);
               var doSell = function () { g.sellStock(p, i, n); sfx('coin'); refresh(); };
-              if (n >= 25) { modal({ title: 'ยืนยันขายหุ้น ' + n + ' หุ้น', body: '<div style="text-align:center;font-weight:800">ได้รับสุทธิ ' + fmt(pv.net) + ' G (หักค่าธรรมเนียม 2%)<br>ผลกระทบแรงขาย: ราคาหุ้น ' + s.districts[i].price + ' → ' + pv.newPrice + ' G</div>', buttons: [{ t: 'ขาย', v: 1, cls: 'pink' }, { t: 'ยกเลิก', v: 0 }] }).then(function (ok) { if (ok) doSell(); stockPanel(p, mode, title); }); }
-              else { doSell(); draw(); }
+              doSell(); if (n >= 10) toast('📉 ขาย ' + n + ' หุ้น +' + fmt(pv.net) + ' G • ราคาหุ้นลดเป็น ' + pv.newPrice + ' G', 2200); draw();
             };
           });
         }
@@ -739,7 +738,7 @@
     var g = U.g, s = g.s;
     if (t.type === 'shop') {
       if (t.owner < 0) return '📍 <b>' + esc(t.name) + '</b><br>ร้านว่าง • ซื้อได้ ' + fmt(g.buyPrice(t)) + ' G' + (p.cash < g.buyPrice(t) ? '<br><span style="color:#d0342c">เงินไม่พอ</span>' : '');
-      if (t.owner === p.id) return '📍 <b>' + esc(t.name) + '</b> (ร้านคุณ)<br>ลงทุนเพิ่มได้ ' + fmt(g.maxCapital(t)) + ' G';
+      if (t.owner === p.id) return '📍 <b>' + esc(t.name) + '</b> (ร้านคุณ)<br>อัปเกรดร้าน 1 หลังได้ 1 ระดับ';
       return '📍 <b>' + esc(t.name) + '</b> ของ ' + esc(s.players[t.owner].name) + '<br><span style="color:#d0342c;font-size:16px">ต้องจ่าย ' + fmt(g.shopRent(t)) + ' G</span>';
     }
     if (t.type === 'bank') return '📍 <b>ธนาคาร</b><br>' + (Game.suitsDone(p) ? 'เลื่อนระดับ + เงินเดือน ' + fmt(g.salary(p)) + ' G!' : 'ซื้อหุ้น • เลือกทิศได้อิสระ');
@@ -750,13 +749,40 @@
     if (t.type === 'vacant' && t.special) { var b = SPECIAL_BUILDINGS.find(function (x) { return x.id === t.special; }); return '📍 ' + b.th + (t.spOwner >= 0 && t.spOwner !== p.id ? ' ของ ' + esc(s.players[t.spOwner].name) : ''); }
     return '📍 <b>' + esc((TILE_INFO[t.ch] || {}).name || t.name) + '</b>';
   }
+  // ---------- out of cash: the player picks what to sell ----------
+  function debtUI(p) {
+    var g = U.g, s = g.s;
+    return modal({ title: '💸 เงินสดไม่พอจ่าย! เลือกขายทรัพย์สินเอง', width: 1000, close: false, bgClose: false, body: '<div id="dbB"></div>', buttons: [], mount: function (box, close) {
+      var B = box.querySelector('#dbB');
+      function draw() {
+        var owe = Math.max(0, -p.cash), sfee = g.sellFee();
+        var st = s.districts.map(function (d, i) {
+          if (!p.shares[i]) return '';
+          var per = Math.floor(d.price * (1 - sfee)), needN = Math.min(p.shares[i], Math.ceil(owe / Math.max(1, per)));
+          return '<div class="row" style="border-bottom:2px dashed #e5cfae;padding:5px 0;gap:8px"><span style="width:14px;height:28px;border-radius:5px;background:' + d.color + ';border:2px solid #6b4226"></span><div style="width:230px"><b>' + esc(d.th) + '</b><div style="font-size:12px;font-weight:700">ถือ ' + p.shares[i] + ' หุ้น × ' + d.price + ' G = ' + fmt(p.shares[i] * per) + ' G</div></div><div class="row" style="gap:4px;flex-wrap:wrap;flex:1">' + [1, 5, 10, 25].map(function (n) { return '<button class="small pink" data-ds="' + i + ':' + n + '" ' + (n > p.shares[i] ? 'disabled' : '') + '>-' + n + '</button>'; }).join('') + (owe > 0 ? '<button class="small green" data-ds="' + i + ':' + needN + '">ขายพอใช้หนี้ (' + needN + ')</button>' : '') + '<button class="small pink" data-ds="' + i + ':' + p.shares[i] + '">ขายหมด</button></div></div>';
+        }).join('');
+        var shops = g.shopsOf(p).map(function (t) { return '<div class="row" style="gap:8px;padding:3px 0;border-bottom:2px dashed #e5cfae">' + spr(['lvl', t.level - 1], 44, 38) + '<div class="grow"><b style="color:' + s.districts[t.district].color + '">' + esc(t.name) + '</b><div style="font-size:12px;font-weight:700">ค่าเช่า ' + fmt(g.shopRent(t)) + ' • ขายได้ ' + fmt(g.shopSellValue(t)) + ' G</div></div><button class="small pink" data-dsh="' + t.id + '">ขายร้าน</button></div>'; }).join('');
+        var sps = s.tiles.filter(function (t) { return t.special && t.spOwner === p.id; }).map(function (t) { var b = SPECIAL_BUILDINGS.find(function (x) { return x.id === t.special; }); return '<div class="row" style="gap:8px;padding:3px 0;border-bottom:2px dashed #e5cfae"><div class="grow"><b>' + (b ? b.th : 'บ้านพิเศษ') + '</b><div style="font-size:12px;font-weight:700">ขายได้ ' + fmt(g.specialSellValue(t)) + ' G</div></div><button class="small pink" data-dsp="' + t.id + '">ขาย</button></div>'; }).join('');
+        B.innerHTML = '<div style="text-align:center;font-weight:800;font-size:18px">' + (owe > 0 ? 'ต้องหาเงินอีก <span style="color:#d0342c;font-size:30px">' + fmt(owe) + ' G</span>' : '<span style="color:#2c8a2c;font-size:24px">✅ ชำระหนี้ครบแล้ว! เงินสด ' + fmt(p.cash) + ' G</span>') + '</div>' +
+          '<div class="muted" style="text-align:center;font-weight:700;font-size:13px;margin-bottom:6px">แนะนำขายหุ้นก่อนเพื่อรักษาร้านไว้ • ขายร้านให้ธนาคารได้ราว 70% ของมูลค่า' + (sfee ? ' • ค่าธรรมเนียมขายหุ้น ' + (sfee * 100) + '%' : '') + '</div>' +
+          '<div class="row" style="align-items:flex-start;gap:14px"><div class="grow" style="max-height:430px;overflow:auto"><b>📈 หุ้นของคุณ</b>' + (st || '<div class="muted">ไม่มีหุ้น</div>') + '</div><div style="width:330px;max-height:430px;overflow:auto"><b>🏪 ร้าน / บ้านพิเศษ</b>' + ((shops + sps) || '<div class="muted">ไม่มีร้าน</div>') + '</div></div>' +
+          '<div class="row" style="justify-content:center;gap:10px;margin-top:8px">' + (owe > 0 ? '<button class="gray" id="dbAuto">🤖 ให้ระบบขายให้อัตโนมัติ</button>' : '<button class="green" id="dbOk">ตกลง</button>') + '</div>';
+        B.querySelectorAll('[data-ds]').forEach(function (e) { e.onclick = function () { var a = e.dataset.ds.split(':'); g.sellStock(p, +a[0], +a[1]); sfx('coin'); refresh(); draw(); }; });
+        B.querySelectorAll('[data-dsh]').forEach(function (e) { e.onclick = function () { g.sellShopToBank(p, g.tile(+e.dataset.dsh), true); sfx('coin'); refresh(); draw(); }; });
+        B.querySelectorAll('[data-dsp]').forEach(function (e) { e.onclick = function () { g.sellSpecialToBank(p, g.tile(+e.dataset.dsp)); sfx('coin'); refresh(); draw(); }; });
+        var a1 = B.querySelector('#dbAuto'); if (a1) a1.onclick = function () { close('auto'); };
+        var a2 = B.querySelector('#dbOk'); if (a2) a2.onclick = function () { close('ok'); };
+      }
+      draw();
+    } });
+  }
   function investUI(p, t, o) {
     var g = U.g, s = g.s, d = s.districts[t.district];
     var list = o.list.filter(function (x) { return !x.blocked; }), sel = (list.find(function (x) { return x.tile.id === t.id && x.cap > 0; }) || list.find(function (x) { return x.cap > 0; }) || list[0]).tile, amt = 0;
-    return modal({ title: '🏗️ ลงทุนร้านในเขต ' + esc(d.th), width: 980, xValue: null, bgClose: false, body: '<div id="invB"></div>', buttons: [], mount: function (box, close) {
+    return modal({ title: '🏗️ อัปเกรดร้าน 1 หลัง (ขึ้นได้ 1 ระดับ) • เขต ' + esc(d.th), width: 980, xValue: null, bgClose: false, body: '<div id="invB"></div>', buttons: [], mount: function (box, close) {
       var B = box.querySelector('#invB');
       function draw() {
-        var max = g.maxInvest(p, sel); amt = Math.min(amt, max); if (!amt && max) amt = Math.min(max, Math.round(sel.base * 0.5 / 10) * 10);
+        var max = g.maxInvest(p, sel); amt = Math.min(amt, max); if (!amt && max) amt = max;
         var cost = g.investCost(p, amt), nv = g.valueAfterInvest(sel, amt), nr = g.rentAfterInvest(sel, amt), curR = g.shopRent(sel);
         var newLv = (function () { var r = (sel.base + sel.invest + amt) / sel.base, L = 1; CONFIG.levelRatio.forEach(function (x, i) { if (r >= x) L = i + 1; }); return Math.min(8, L + g.chainLen(sel) - 1); })();
         var dv = g.districtValue(t.district) - g.shopValue(sel) + nv, newStock = Math.max(1, Math.round(dv / (CONFIG.stockDiv * d.tiles.length) * (d.adj || 1)));
@@ -768,7 +794,7 @@
           '<div style="text-align:center"><div style="font-size:15px;font-weight:700">จำนวนเงินลงทุน</div><div style="font-size:40px;font-weight:700;color:#2c9a2c">' + fmt(amt) + ' G</div>' +
           '<input type="range" id="invR" min="0" max="' + max + '" step="10" value="' + amt + '" style="width:90%">' +
           '<div class="row" style="justify-content:center;gap:6px;flex-wrap:wrap">' + [-1000, -100, 100, 500, 1000].map(function (v) { return '<button class="small rbtn" data-ia="' + v + '">' + (v > 0 ? '+' : '') + fmt(v) + '</button>'; }).join('') + '<button class="small rbtn pink" data-ia="max">สูงสุด ' + fmt(max) + '</button></div>' +
-          '<div style="font-size:13px;font-weight:700;margin-top:4px">จ่ายจริง ' + fmt(cost) + ' G' + (cost < amt ? ' (ส่วนลด)' : '') + ' • เงินสด ' + fmt(p.cash) + ' G • ลงทุนได้อีก ' + fmt(o.turnLeft) + ' G ในเทิร์นนี้</div></div>' +
+          '<div style="font-size:13px;font-weight:700;margin-top:4px">จ่ายจริง ' + fmt(cost) + ' G' + (cost < amt ? ' (ส่วนลด)' : '') + ' • เงินสด ' + fmt(p.cash) + ' G</div><div style="font-size:13px;font-weight:700;color:#b5651d">📌 เลือกได้ 1 ร้าน • อัปได้ทีละ 1 ระดับ' + (g.levelStep(sel) === Infinity ? ' (ระดับสูงสุดแล้ว)' : ' • ต้องใช้ทุน ' + fmt(g.levelStep(sel)) + ' G เพื่อขึ้นระดับถัดไป') + '</div></div>' +
           '<div class="row" style="justify-content:center;gap:10px;margin-top:8px"><button class="green" id="invOk" ' + (amt > 0 ? '' : 'disabled') + '>🏗️ ลงทุน ' + fmt(amt) + ' G</button><button class="gray" id="invNo">ไม่ลงทุน</button></div></div></div>';
         B.querySelectorAll('[data-is]').forEach(function (e) { e.onclick = function () { sel = g.tile(+e.dataset.is); amt = 0; draw(); }; });
         B.querySelectorAll('[data-ia]').forEach(function (e) { e.onclick = function () { var v = e.dataset.ia; amt = v === 'max' ? max : Math.max(0, Math.min(max, amt + +v)); draw(); }; });
@@ -967,6 +993,11 @@
         if (U.tut) await Tutorial.event('bank');
         await stockPanel(p, 'buy', '🏦 ธนาคาร — ซื้อหุ้น' + (Game.suitsDone(p) ? '' : ' • สัญลักษณ์ ' + SUITS.map(function (k) { return p.suits[k] ? SUIT_GLYPH[k] : '·'; }).join(' ')));
         refresh();
+      },
+      debtSell: async function (p, need) {
+        if (p.isAI) return 'auto';
+        refresh(); sfx('bad');
+        return debtUI(p);
       },
       broker: async function (p) { if (p.isAI) { await aiWait(300); await A.broker(g, p); refresh(); return; } await stockPanel(p, 'both', '📊 Stock Broker — ซื้อ/ขายหุ้น'); refresh(); },
       promotion: async function (p, sal) {
@@ -1302,10 +1333,10 @@
     buy: ['ซื้อร้าน 🏠', 'ช่องร้านที่เป็น <b>กรอบเส้นประ</b> คือร้านว่าง ซื้อได้เลย!<br>ซื้อแล้วกรอบจะกลายเป็น <b>สีของเรา</b> ใครมาตกต้องจ่ายค่าเช่าให้เรา<br>ร้านที่ <b>สีพื้นเดียวกัน</b> อยู่ <b>เขตเดียวกัน</b> — ซื้อหลายร้านในเขตเดียวกันจะยิ่งแพงขึ้น'],
     chain: ['ร้านติดกัน 🔗', 'ร้านของเราที่ <b>อยู่ติดกันบนถนน</b> จะเชื่อมกันเป็นแถว (แบบ Itadaki)!<br>ทุกร้านในแถว <b>ค่าเช่าเพิ่ม 20% ต่อร้านที่ติดกัน</b> (สูงสุด ×1.8) และ <b>อาคารขยายขึ้น 1 ขั้นต่อร้าน</b><br>ตัวเลข 🔗 บนร้านบอกความยาวแถว'],
     district: ['เขตธุรกิจ 🌈', 'ยิ่งถือหลายร้านใน <b>เขตเดียวกัน</b> มูลค่าและค่าเช่าทุกร้านในเขตยิ่งสูง (+25% ต่อร้าน)<br>ถ้าได้ <b>ครบทั้งเขต = ผูกขาด 👑</b> ค่าเช่าคูณเพิ่มอีก 1.5 เท่า และลงทุนได้เยอะขึ้นมาก!'],
-    invest: ['ลงทุนสร้างร้านให้แพง 🏗️ (หัวใจของเกม!)', 'ตกที่ <b>ร้านของตัวเอง</b> = ลงทุนได้! ใส่เงินในร้านใดก็ได้ของเราใน <b>เขตเดียวกัน</b><br>ร้านจะโตจากบ้านเล็ก ➜ <b>โรงแรมหรู</b> ค่าเช่าพุ่ง และ <b>ราคาหุ้นเขตก็ขึ้น</b><br>สร้างร้านแพง ๆ แล้วรอให้คู่แข่งมาตก! 💸'],
+    invest: ['ลงทุนสร้างร้านให้แพง 🏗️ (หัวใจของเกม!)', 'ตกที่ <b>ร้านของตัวเอง</b> = ลงทุนได้! เลือกอัปเกรดร้านของเราใน <b>เขตเดียวกัน</b> ได้ <b>1 หลัง ขึ้นทีละ 1 ระดับ</b><br>ร้านจะค่อย ๆ โตจากบ้านเล็ก ➜ <b>โรงแรมหรู</b> ค่าเช่าพุ่ง และ <b>ราคาหุ้นเขตก็ขึ้น</b><br>สร้างร้านแพง ๆ แล้วรอให้คู่แข่งมาตก! 💸'],
     rentPay: ['จ่ายค่าเช่า 💸', 'ตกร้านคนอื่นต้องจ่ายค่าเช่า ร้านยิ่งลงทุนมากยิ่งแพง!<br>ถ้ามีเงินพอ ระบบจะถามว่าอยากซื้อกิจการร้านนั้นไหม (ต้องจ่าย 5 เท่าของมูลค่า)'],
     rentGet: ['มีคนมาตกร้านเรา! 💰', 'เราได้ค่าเช่าเต็ม ๆ เลย — นี่แหละเหตุผลที่ต้องลงทุนร้านให้แพง!<br>และผู้ถือหุ้นเขตนั้นได้ <b>ปันผล 20%</b> จากธนาคารด้วย'],
-    bank: ['ธนาคาร & หุ้น 📈', 'ผ่านหรือหยุดที่ธนาคารซื้อหุ้นได้ (ครั้งละไม่เกิน 99 หุ้น)<br><b>ราคาหุ้นขึ้นเมื่อร้านในเขตถูกลงทุน</b> • ทุกครั้งที่มีคนจ่ายค่าเช่าในเขต ผู้ถือหุ้นได้ <b>ปันผล 20%</b><br>ทริค: ซื้อหุ้นเขตที่เราผูกขาด แล้วลงทุนร้านให้หุ้นพุ่ง!'],
+    bank: ['ธนาคาร & หุ้น 📈', 'ผ่านหรือหยุดที่ธนาคารซื้อหุ้นได้ <b>1 ครั้งต่อเทิร์น เลือก 1 เขต</b> (ไม่เกิน 99 หุ้น)<br><b>ราคาหุ้นขึ้นเมื่อร้านในเขตถูกลงทุน</b> • ทุกครั้งที่มีคนจ่ายค่าเช่าในเขต ผู้ถือหุ้นได้ <b>ปันผล 20%</b><br>ทริค: ซื้อหุ้นเขตที่เราผูกขาด แล้วลงทุนร้านให้หุ้นพุ่ง!'],
     suit: ['สัญลักษณ์ ♥ ♦ ♣ ♠', 'เดินผ่านช่องสัญลักษณ์เพื่อเก็บให้ <b>ครบ 4 แบบ</b> แล้วกลับธนาคาร<br>= <b>เลื่อนระดับ + รับเงินเดือน</b> (ยิ่งมีร้านมากเงินเดือนยิ่งเยอะ)<br>ถ้า <b>หยุดตรงช่องสัญลักษณ์พอดี</b> จะได้เปิดการ์ดด้วย! 🃏'],
     promo: ['เลื่อนระดับ! 🎉', 'เงินเดือน = พื้นฐาน + เลเวล + 10% ของมูลค่าร้านทั้งหมด<br>เก็บสัญลักษณ์ใหม่แล้ววนกลับมารับอีกได้เรื่อย ๆ'],
     special: ['บ้านพิเศษ 🏰', 'ช่อง <b>? สีม่วง</b> คือที่ดินบ้านพิเศษ! ตกแล้วเลือกสร้าง 1 ใน 4 แบบ<br>🌀 <b>ประตูทะลุมิติ</b> คนตกเลือกวาร์ปได้แต่จ่าย 10% ของทรัพย์สิน (ไม่วาร์ป 5%)<br>🎉 <b>บ้านปาร์ตี้</b> เรียกทุกคนมารวม จ่ายคนละ 100 G<br>🚧 <b>ประตูเก็บค่าผ่านทาง</b> ใครเดินผ่านต้องจ่าย และแพงขึ้น +10 G ทุกครั้ง<br>🌬️ <b>บ้านกังหันลม</b> สกิลการ์ดของคนที่ตกปลิวหาย 2 ใบ'],

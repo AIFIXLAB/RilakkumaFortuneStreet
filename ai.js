@@ -98,7 +98,7 @@
       if (spare < 300) return null;
       // best target: highest rent gain per gold (dominated / big districts first)
       var best = null, bv = 0;
-      o.list.forEach(function (x) { var m = g.maxInvest(p, x.tile); if (m <= 0) return; var a = Math.min(m, Math.floor(spare * aggr / 10) * 10); if (a < 200) return; var gain = g.rentAfterInvest(x.tile, a) - g.shopRent(x.tile); var v = gain / a + (x.tile.id === t.id ? 0.01 : 0); if (v > bv) { bv = v; best = { id: x.tile.id, amount: a }; } });
+      o.list.forEach(function (x) { var m = g.maxInvest(p, x.tile); if (m <= 0) return; var a = Math.min(m, Math.floor(spare * aggr / 10) * 10); if (a < Math.min(200, m)) return; var gain = g.rentAfterInvest(x.tile, a) - g.shopRent(x.tile); var v = gain / a + (x.tile.id === t.id ? 0.01 : 0); if (v > bv) { bv = v; best = { id: x.tile.id, amount: a }; } });
       return best;
     },
     confirmBuyout: function (g, p, t, cost) {

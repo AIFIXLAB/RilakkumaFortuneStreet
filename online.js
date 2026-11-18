@@ -6,7 +6,7 @@ var Online = (function () {
   var net = null;         // transport
   var room = null;        // { code, role, players:[{peer,name,char,costume,loadout}], settings }
   var pending = {}, rpcSeq = 0, chain = Promise.resolve(), dirty = false, dirtyT = null;
-  var DECIDE = ['preRoll', 'rollDice', 'planPath', 'chooseDir', 'confirmBuy', 'chooseInvest', 'confirmBuyout', 'bank', 'broker', 'pickCard', 'choose', 'chooseNumber', 'confirmUse', 'confirmDeal', 'auctionBid', 'casinoBet', 'chooseBuilding', 'chooseSpecialHouse', 'portalChoice', 'pickTile'];
+  var DECIDE = ['preRoll', 'rollDice', 'planPath', 'chooseDir', 'confirmBuy', 'chooseInvest', 'confirmBuyout', 'bank', 'broker', 'pickCard', 'choose', 'chooseNumber', 'confirmUse', 'confirmDeal', 'auctionBid', 'casinoBet', 'chooseBuilding', 'chooseSpecialHouse', 'portalChoice', 'pickTile', 'debtSell'];
   var DISPLAY = ['turnStart', 'showDice', 'step', 'teleport', 'landed', 'rent', 'dividend', 'money', 'promotion', 'suit', 'built', 'showCard', 'lineBonus', 'casinoShow', 'notify', 'info', 'party', 'windmill', 'toll'];
   var LOCAL_ONLY = { info: 1 };
 
@@ -128,6 +128,7 @@ var Online = (function () {
       if (o.f === 'buyStock') g.buyStock(p, o.a[1], o.a[2]);
       else if (o.f === 'sellStock') g.sellStock(p, o.a[1], o.a[2]);
       else if (o.f === 'sellShopToBank') { var t = g.s.tiles[o.a[1]]; if (t.owner === p.id) g.sellShopToBank(p, t); }
+      else if (o.f === 'sellSpecialToBank') { var t2 = g.s.tiles[o.a[1]]; if (t2.spOwner === p.id) g.sellSpecialToBank(p, t2); }
       else if (o.f === 'usePreRoll') { g._replay = (o.ans || []).slice(); await g.usePreRoll(p, g.loadoutSlots(p)[o.a[1]]); g._replay = null; }
     }
     A.refresh();
@@ -334,6 +335,7 @@ var Online = (function () {
   function instrumentGuest(g) {
     ['buyStock', 'sellStock'].forEach(function (f) { g[f] = function (p, d, n) { if (g._rec) g._rec.push({ f: f, a: [p.id, d, n] }); return Game.prototype[f].call(g, p, d, n); }; });
     g.sellShopToBank = function (p, t, forced) { if (g._rec) g._rec.push({ f: 'sellShopToBank', a: [p.id, t.id] }); return Game.prototype.sellShopToBank.call(g, p, t, forced); };
+    g.sellSpecialToBank = function (p, t) { if (g._rec) g._rec.push({ f: 'sellSpecialToBank', a: [p.id, t.id] }); return Game.prototype.sellSpecialToBank.call(g, p, t); };
     g.usePreRoll = async function (p, sl) {
       var rec = { f: 'usePreRoll', a: [p.id, g.loadoutSlots(p).indexOf(sl)], ans: [] }; g._ans = rec.ans;
       var r = await Game.prototype.usePreRoll.call(g, p, sl); g._ans = null; if (g._rec && r) g._rec.push(rec); return r;

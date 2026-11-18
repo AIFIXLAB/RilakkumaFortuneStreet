@@ -100,6 +100,7 @@
       seed: opts.seed || (Date.now() & 0xffffff), rngCalls: 0, cardHistory: [], phase: 'idle', forcedDice: null,
     };
     var g = new Game(s, null);
+    s.tiles.forEach(function (t) { if (t.type === 'chance') { t.type = 'splot'; t.ch = 'Q'; t.name = 'ที่ดินบ้านพิเศษ'; } });
     if (!s.settings.rules.tax) s.tiles.forEach(function (t) { if (t.type === 'tax') { t.type = 'chance'; t.ch = '?'; t.name = 'Chance'; } });
     s.districts.forEach(function (d, i) { d.adj = 1; d.price = Math.max(1, Math.round(g.fairPrice(i))); d.hist = [d.price]; });
     // turn order: roll dice, highest first
@@ -465,6 +466,17 @@
   P.onPass = async function (p, t, final) {
     if (t.type === 'bank') { await this.arriveBank(p, final); return; }
     if (t.type === 'suit' && !p.suits[t.suit]) { p.suits[t.suit] = true; this.log('🃏 ' + p.name + ' เก็บสัญลักษณ์ ' + D.SUIT_GLYPH[t.suit]); if (this.io.suit) await this.io.suit(p, t.suit); }
+    if (t.special === 'sp_toll' && t.spOwner >= 0) {
+      if (t.spOwner !== p.id) {
+        var tollOwner = this.s.players[t.spOwner], fee2 = t.toll || 100;
+        if (p.flags.freeRide) { p.flags.freeRide = 0; this.log('🚕 ' + p.name + ' ใช้สกิลผ่านด่านฟรี'); }
+        else if (!tollOwner.bankrupt) {
+          var paid2 = await this.lose(p, fee2, 'ค่าผ่านทางประตูของ ' + tollOwner.name);
+          if (paid2) { tollOwner.cash += paid2; if (this.io.toll) await this.io.toll(p, tollOwner, t, paid2); }
+        }
+        t.toll = (t.toll || 100) + 10;
+      }
+    }
     if (t.special === 'toll' && t.spOwner >= 0 && t.spOwner !== p.id) {
       if (p.flags.freeRide) { p.flags.freeRide = 0; this.log('🚕 Free Ride — ไม่ต้องจ่ายค่าผ่านทาง'); }
       else { var fee = Math.min(500, 100 + 20 * Math.floor(this.s.round / 2)); var owner = this.s.players[t.spOwner]; await this.lose(p, fee, 'ค่าผ่านทาง ' + owner.name); if (!owner.bankrupt) owner.cash += fee; }
@@ -496,6 +508,7 @@
       case 'shop': await this.landShop(p, t); break;
       case 'suit': this.log('🃏 ' + p.name + ' หยุดตรงช่องสัญลักษณ์พอดี — ได้เปิดการ์ด!', 'card'); await this.drawChance(p); break;
       case 'chance': await this.drawChance(p); break;
+      case 'splot': await this.landSpecialPlot(p, t); break;
       case 'lucky': { var amt = Math.max(C.luckyMin, Math.floor(s.taxPool * 0.5)); s.taxPool = Math.max(0, s.taxPool - amt); await this.gain(p, amt, 'ช่อง Lucky (กองภาษีเมือง)', true); break; }
       case 'superlucky': { var amt2 = Math.max(C.superLuckyMin, s.taxPool); s.taxPool = 0; await this.gain(p, amt2, 'ช่อง Super Lucky (กองภาษีทั้งหมด)', true); break; }
       case 'tax': {
@@ -653,9 +666,49 @@
   P.levelCap = function (t) { return t.owner < 0 ? 0 : 8; };
   P.upgradeCostRaw = function (t) { return Math.round(t.base * 0.5); };
   P.doUpgrade = async function (p, t) { return this.doInvest(p, t, Math.min(this.maxInvest(p, t), Math.round(t.base * 0.5))); };
+  // ---------- SPECIAL HOUSES on the purple “?” plots ----------
+  P.landSpecialPlot = async function (p, t) {
+    var io = this.io, s = this.s, self = this;
+    if (!t.special) {
+      var opts = D.SPECIAL_BUILDINGS.filter(function (b) { return b.plot; }).map(function (b) { return { b: b, cost: Math.max(0, b.cost - (p.flags.vacantDisc || 0)) }; });
+      if (!opts.some(function (o) { return o.cost <= p.cash; })) { if (io.info && !p.isAI) await io.info(p, t, 'เงินไม่พอสร้างบ้านพิเศษ'); return; }
+      var pick = await io.chooseSpecialHouse(p, t, opts);
+      var o = opts.find(function (x) { return x.b.id === pick; }); if (!o || p.cash < o.cost) return;
+      p.cash -= o.cost; t.special = o.b.id; t.spOwner = p.id; if (o.b.id === 'sp_toll') t.toll = 100; p.flags.vacantDisc = 0; this.txid('spHouse');
+      this.log('🏰 ' + p.name + ' สร้าง ' + o.b.th + ' (' + fmt(o.cost) + ' G)', 'buy');
+      if (io.built) await io.built(p, t);
+      return;
+    }
+    if (t.spOwner < 0 || t.spOwner === p.id) return;
+    var owner = s.players[t.spOwner]; if (owner.bankrupt) return;
+    if (t.special === 'sp_portal') {
+      var nw = Math.max(0, this.netWorth(p)), big = Math.round(nw * 0.10), small = Math.round(nw * 0.05);
+      var warp = await io.portalChoice(p, owner, t, big, small);
+      var pay = warp ? big : small;
+      var got = await this.lose(p, pay, 'ประตูทะลุมิติของ ' + owner.name); owner.cash += got;
+      this.log('🌀 ' + p.name + ' จ่าย ' + fmt(got) + ' G ให้ ' + owner.name + (warp ? ' แล้ววาร์ป!' : ' (ไม่วาร์ป)'), 'rent');
+      if (warp && !p.bankrupt && !s.over) {
+        var dest = await io.pickTile(p, '🌀 เลือกช่องที่จะวาร์ปไป', s.tiles.filter(function (x) { return x.id !== t.id; }).map(function (x) { return x.id; }));
+        if (dest === null || dest === undefined || !s.tiles[dest]) return;
+        var from = p.pos; p.pos = dest; p.prev = null; if (io.teleport) await io.teleport(p, from, dest);
+        var d2 = this.tile(dest); if (d2.type === 'bank') await this.arriveBank(p, true); else await this.land(p);
+      }
+    } else if (t.special === 'sp_party') {
+      this.log('🎉 ' + p.name + ' ตกบ้านปาร์ตี้ของ ' + owner.name + ' — ทุกคนมารวมกัน!', 'rent');
+      if (io.party) await io.party(p, owner, t);
+      var all = this.alive();
+      for (var i = 0; i < all.length; i++) { var q = all[i]; if (q.pos !== t.id) { var f0 = q.pos; q.pos = t.id; q.prev = null; if (io.teleport) await io.teleport(q, f0, t.id); } }
+      for (var j = 0; j < all.length; j++) { var q2 = all[j]; if (q2.id === owner.id || q2.bankrupt) continue; var g2 = await this.lose(q2, 100, 'ค่าเข้าร่วมปาร์ตี้ของ ' + owner.name); owner.cash += g2; if (s.over) return; }
+    } else if (t.special === 'sp_windmill') {
+      var list = this.activeBuffs(p), lost = [];
+      for (var k = 0; k < 2 && list.length; k++) { var idx = Math.floor(this.r() * list.length), b = list.splice(idx, 1)[0]; p.flags[b[0]] = 0; if (b[0] === 'upgDisc') p.flags.upgDiscUntil = 0; lost.push(b); }
+      this.log('🌬️ ' + p.name + ' ตกบ้านกังหันลมของ ' + owner.name + (lost.length ? ' — สกิลปลิวหาย: ' + lost.map(function (b) { return b[1] + b[2]; }).join(', ') : ' — ไม่มีสกิลการ์ดให้ปลิว'), 'bad');
+      if (io.windmill) await io.windmill(p, owner, t, lost);
+    }
+  };
   P.landVacant = async function (p, t) {
     if (!t.special) {
-      var opts = D.SPECIAL_BUILDINGS.map(function (b) { return { b: b, cost: Math.max(0, b.cost - (p.flags.vacantDisc || 0)) }; }).filter(function (o) { return o.cost <= p.cash; });
+      var opts = D.SPECIAL_BUILDINGS.filter(function (b) { return !b.plot; }).map(function (b) { return { b: b, cost: Math.max(0, b.cost - (p.flags.vacantDisc || 0)) }; }).filter(function (o) { return o.cost <= p.cash; });
       if (!opts.length) return;
       var pick = await this.io.chooseBuilding(p, t, opts);
       if (!pick) return;

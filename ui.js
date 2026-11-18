@@ -198,6 +198,8 @@
       '<b>💹 ปันผล:</b> ทุกครั้งที่มีคนจ่ายค่าเช่าในเขต ธนาคารจ่ายปันผล 20% ของค่าเช่าให้ผู้ถือหุ้นเขตนั้นตามสัดส่วน (รวมเจ้าของร้านเองด้วย ถ้าถือหุ้น)<br>' +
       '<b>🃏 เงินเดือน:</b> เก็บ ♥ ♦ ♣ ♠ ครบ แล้วผ่าน/หยุดธนาคาร → เลื่อนระดับ + เงินเดือน = ' + fmt(C.baseSalary) + ' + ' + fmt(C.salaryPerLevel) + '×Lv + 10% ของมูลค่าร้าน<br>' +
       '<b>⚖️ กติกาเลือกได้:</b> ภาษี เปิด/ปิด (ปิด = แบบเกมจริง) • มีคนล้มละลาย = จบเกม<br>' +
+      '<b>🏰 บ้านพิเศษ (ช่อง ? สีม่วง):</b> ตกแล้วสร้างได้ 1 ใน 4 — 🌀 ประตูทะลุมิติ (คนตกเลือกวาร์ป จ่าย 10% ทรัพย์สิน / ไม่วาร์ป 5%) • 🎉 บ้านปาร์ตี้ (เรียกทุกคนมารวม จ่ายคนละ 100) • 🚧 ประตูเก็บค่าผ่านทาง (ผ่านต้องจ่าย เพิ่ม +10 G ทุกครั้ง) • 🌬️ บ้านกังหันลม (สกิลการ์ดปลิวหาย 2 ใบ)<br>' +
+      '<b>🃏 การ์ด:</b> หยุดตรงช่องสัญลักษณ์พอดีเพื่อเปิดการ์ด<br>' +
       '<b>🌈 พิเศษ:</b> เปิดการ์ดให้สีตัวเองเรียงแถว 3+ ช่องรับโบนัส • ไอเทม/การ์ดพิเศษติดตัวใช้ได้อย่างละครั้ง</div>';
     return modal({ title: '📖 คู่มือการเล่น', width: 980, body: html, buttons: [{ t: 'เข้าใจแล้ว!', v: 1, cls: 'green' }] });
   }
@@ -487,6 +489,15 @@
         style += 'border:' + Math.max(2, T * 0.05) + 'px dashed ' + d.color + ';';
         html += '<div class="forsale">' + spr(['lvl', biz.spr], T * 0.78, T * 0.7) + '</div>' + lbl(fmt(g.buyPrice(t)), d.color);
       }
+    } else if (t.type === 'splot') {
+      if (t.special) {
+        var sb = SPECIAL_BUILDINGS.find(function (x) { return x.id === t.special; }), so = s.players[t.spOwner];
+        style += so ? 'border:' + Math.max(3, T * 0.09) + 'px solid ' + so.color + ';background:' + hexA(so.color, .3) + ';box-shadow:0 0 0 2px #fff,0 0 ' + T * 0.25 + 'px ' + so.color + ';' : '';
+        cls += ' owned';
+        html = '<div class="bld">' + spr(sb.spr, T * 1.2, T * 1.15) + '</div>' + (so ? '<div class="own" style="border-color:' + so.color + ';width:' + T * 0.5 + 'px;height:' + T * 0.5 + 'px">' + spr(charSpec(so), T * 0.42, T * 0.42) + '</div>' : '') + lbl(t.special === 'sp_toll' ? '🚧 ' + fmt(t.toll || 100) : sb.th.replace('บ้าน', '').replace('ประตูเก็บค่าผ่านทาง', 'ด่าน'), so && so.color);
+      } else {
+        html = '<div class="ico splot">' + spr(['sph', 0], T * 0.32, T * 0.32) + spr(['sph', 1], T * 0.32, T * 0.32) + '</div>' + lbl('บ้านพิเศษ', '#ab47bc');
+      }
     } else if (t.type === 'vacant' && t.special) {
       var b = SPECIAL_BUILDINGS.find(function (x) { return x.id === t.special; }), ow = s.players[t.spOwner];
       style += ow ? 'border:' + Math.max(3, T * 0.09) + 'px solid ' + ow.color + ';background:' + hexA(ow.color, .3) + ';' : '';
@@ -643,9 +654,10 @@
     var info = TILE_INFO[t.ch] || { name: t.name }, desc = {
       suit: 'เดินผ่านหรือหยุดเพื่อเก็บสัญลักษณ์ ' + SUIT_GLYPH[t.suit] + ' — ครบ 4 แบบแล้วกลับธนาคารเพื่อรับเงินเดือน • หยุดตรงช่องนี้พอดีได้เปิดการ์ด!', chance: 'เปิดการ์ด 1 ใบจากตาราง 100 ช่อง', lucky: 'รับเงินจากกองภาษีเมือง 50% (ขั้นต่ำ ' + CONFIG.luckyMin + ' G) • กองตอนนี้ ' + fmt(s.taxPool) + ' G', superlucky: 'รับกองภาษีเมืองทั้งหมด (ขั้นต่ำ ' + CONFIG.superLuckyMin + ' G) • กองตอนนี้ ' + fmt(s.taxPool) + ' G',
       tax: 'จ่ายภาษี 300 G หรือ 3% ของเงินสด (สูงสุด 1,000 G)', casino: 'เล่นสล็อตแมชชีน (เดิมพัน 100–500 G รางวัลสูงสุด 2,500 G)', broker: 'ซื้อ/ขายหุ้นทุกเขต', vacant: t.special ? SPECIAL_BUILDINGS.find(function (b) { return b.id === t.special; }).desc + (t.spOwner >= 0 ? ' • เจ้าของ: ' + s.players[t.spOwner].name : '') : 'ซื้อที่ดินและสร้างอาคารพิเศษ: ด่านเก็บเงิน, ที่จอดรถ, สวนดอกไม้, ตลาด, โรงแรม, ออนเซ็น',
+      splot: t.special ? (SPECIAL_BUILDINGS.find(function (x) { return x.id === t.special; }).desc + (t.spOwner >= 0 ? ' • เจ้าของ: ' + s.players[t.spOwner].name : '') + (t.special === 'sp_toll' ? ' • ค่าผ่านทางตอนนี้ ' + fmt(t.toll || 100) + ' G' : '')) : 'ตกช่องนี้ = สร้างบ้านพิเศษได้ 1 ใน 4 แบบ: ประตูทะลุมิติ, บ้านปาร์ตี้, ประตูเก็บค่าผ่านทาง, บ้านกังหันลม',
       warp: 'หยุดแล้ววาร์ปไปอีกฝั่งของแผนที่', switch: 'ตกช่องนี้แล้วทิศทางเดินจะกลับด้าน (เทิร์นหน้าเดินย้อนกลับ)', rollon: 'ตกช่องลูกเต๋า = ได้ทอยลูกเต๋าอีกครั้งทันที!', road: 'ทางเชื่อม', rest: 'พักผ่อน รับ ' + CONFIG.restBonus + ' G', festival: 'งานเทศกาล — ขายของได้เงิน หรือเป็นเจ้าภาพจ่ายให้ทุกคน', event: 'เหตุการณ์ในเมืองแบบสุ่ม (การ์ดหมวด I)',
     }[t.type];
-    modal({ title: (t.special ? SPECIAL_BUILDINGS.find(function (b) { return b.id === t.special; }).th : info.name), body: '<div class="col" style="align-items:center;min-width:420px">' + (t.type === 'suit' ? '<div style="font-size:90px;color:' + SUIT_COLOR[t.suit] + '">' + SUIT_GLYPH[t.suit] + '</div>' : spr(t.special ? SPECIAL_BUILDINGS.find(function (b) { return b.id === t.special; }).spr : info.icon, 140, 120)) + '<div style="font-size:18px;font-weight:800;text-align:center;max-width:520px">' + desc + '</div></div>', buttons: [{ t: 'ปิด', v: 1 }] });
+    modal({ title: (t.type === 'splot' && !t.special ? 'ที่ดินบ้านพิเศษ' : t.special ? SPECIAL_BUILDINGS.find(function (b) { return b.id === t.special; }).th : info.name), body: '<div class="col" style="align-items:center;min-width:420px">' + (t.type === 'suit' ? '<div style="font-size:90px;color:' + SUIT_COLOR[t.suit] + '">' + SUIT_GLYPH[t.suit] + '</div>' : spr(t.special ? SPECIAL_BUILDINGS.find(function (b) { return b.id === t.special; }).spr : info.icon, 140, 120)) + '<div style="font-size:18px;font-weight:800;text-align:center;max-width:520px">' + desc + '</div></div>', buttons: [{ t: 'ปิด', v: 1 }] });
   }
   function shopInfo(t) {
     var g = U.g, s = g.s, d = s.districts[t.district], biz = BUSINESS.find(function (b) { return b.id === t.biz; });
@@ -731,6 +743,7 @@
       return '📍 <b>' + esc(t.name) + '</b> ของ ' + esc(s.players[t.owner].name) + '<br><span style="color:#d0342c;font-size:16px">ต้องจ่าย ' + fmt(g.shopRent(t)) + ' G</span>';
     }
     if (t.type === 'bank') return '📍 <b>ธนาคาร</b><br>' + (Game.suitsDone(p) ? 'เลื่อนระดับ + เงินเดือน ' + fmt(g.salary(p)) + ' G!' : 'ซื้อหุ้น • เลือกทิศได้อิสระ');
+    if (t.type === 'splot') { if (!t.special) return '📍 <b>ที่ดินบ้านพิเศษ</b><br>สร้างบ้านพิเศษได้!'; var sb2 = SPECIAL_BUILDINGS.find(function (x) { return x.id === t.special; }); if (t.spOwner === p.id) return '📍 ' + sb2.th + ' (ของคุณ)'; return '📍 <b>' + sb2.th + '</b> ของ ' + esc(s.players[t.spOwner].name) + '<br><span style="color:#d0342c">' + (t.special === 'sp_portal' ? 'จ่าย 5–10% ของทรัพย์สิน' : t.special === 'sp_party' ? 'ทุกคนจ่ายคนละ 100 G' : t.special === 'sp_toll' ? 'จ่าย ' + fmt(t.toll || 100) + ' G' : 'สกิลการ์ดปลิวหาย 2 ใบ') + '</span>'; }
     if (t.type === 'switch') return '📍 <b>ช่องสลับ 🔄</b><br>เทิร์นหน้าจะเดินกลับทิศ';
     if (t.type === 'rollon') return '📍 <b>ช่องลูกเต๋า 🎲</b><br>ได้ทอยอีกครั้งทันที!';
     if (t.type === 'suit') return '📍 สัญลักษณ์ ' + SUIT_GLYPH[t.suit] + (p.suits[t.suit] ? ' (มีแล้ว)' : ' (ใหม่!)') + '<br>🃏 หยุดพอดี = ได้เปิดการ์ด!';
@@ -1024,6 +1037,35 @@
             var k = 0, iv = setInterval(function () { for (var i = 0; i < 3; i++) { var e = box.querySelector('#r' + i); if (e && k < 10 + i * 5) e.textContent = syms[(k + i * 2) % 5]; else if (e) e.textContent = reels[i]; } k++; sfx('dice'); if (k > 22) { clearInterval(iv); var r = box.querySelector('#cres'); if (r) r.innerHTML = win ? '🎉 ชนะ +' + fmt(win) + ' G!' : 'เสียใจด้วย ลองใหม่ครั้งหน้า'; sfx(win ? 'win' : 'bad'); } }, 80);
           } });
       },
+      chooseSpecialHouse: async function (p, t, opts) {
+        if (U.tut && !p.isAI) await Tutorial.event('special');
+        if (p.isAI) return aiWait(350).then(function () { var r = A.chooseSpecialHouse(g, p, t, opts); if (r) toast('🏰 ' + esc(p.name) + ' สร้าง ' + SPECIAL_BUILDINGS.find(function (b) { return b.id === r; }).th); return r; });
+        return modal({ title: '🏰 สร้างบ้านพิเศษ', width: 1000, xValue: null, body: '<div style="text-align:center;font-weight:700;margin-bottom:8px">เลือก 1 แบบ — ใครมาตก/เดินผ่านจะโดนเอฟเฟกต์ของบ้าน • เงินสด ' + fmt(p.cash) + ' G</div><div class="sphgrid">' + opts.map(function (o) { var ok = o.cost <= p.cash; return '<div class="sphopt ' + (ok ? '' : 'dimo') + '" data-sb="' + o.b.id + '">' + spr(o.b.spr, 170, 160) + '<b>' + o.b.th + '</b><span>' + o.b.desc + '</span><div class="coin" style="font-size:18px">' + fmt(o.cost) + '</div></div>'; }).join('') + '</div>', buttons: [{ t: 'ยังไม่สร้าง', v: null, cls: 'gray' }],
+          mount: function (box, close) { box.querySelectorAll('[data-sb]').forEach(function (e) { e.onclick = function () { if (e.classList.contains('dimo')) { toast('เงินไม่พอ'); return; } close(e.dataset.sb); }; }); } });
+      },
+      portalChoice: function (p, owner, t, big, small) {
+        if (p.isAI) return aiWait(400).then(function () { var r = A.portalChoice(g, p, owner, t, big, small); toast('🌀 ' + esc(p.name) + (r ? ' จ่าย ' + fmt(big) + ' G แล้ววาร์ป!' : ' จ่าย ' + fmt(small) + ' G (ไม่วาร์ป)')); return r; });
+        return modal({ title: '🌀 ประตูทะลุมิติของ ' + esc(owner.name), width: 680, close: false, body: '<div class="row" style="gap:16px;align-items:center">' + spr(['sph', 0], 160, 160) + '<div style="font-weight:700;font-size:17px;line-height:1.7">วาร์ปไปช่องไหนก็ได้ในแผนที่!<br>• วาร์ป: จ่าย <b style="color:#d0342c">' + fmt(big) + ' G</b> (10% ของทรัพย์สิน)<br>• ไม่วาร์ป: จ่าย <b style="color:#d0342c">' + fmt(small) + ' G</b> (5%)</div></div>', buttons: [{ t: '🌀 วาร์ป (' + fmt(big) + ' G)', v: true, cls: 'purple' }, { t: 'ไม่วาร์ป (' + fmt(small) + ' G)', v: false }] });
+      },
+      pickTile: function (p, title, ids) {
+        if (p.isAI) return aiWait(400).then(function () { return A.pickTile(g, p, title, ids); });
+        return new Promise(function (resolve) {
+          setAct('<div style="font-size:17px">' + title + '</div><div class="lp">แตะช่องที่กระพริบบนแผนที่</div>');
+          ids.forEach(function (id) { var e = document.getElementById('t' + id); if (e) e.classList.add('dest'); });
+          fitCam(true); toast('👆 แตะช่องบนแผนที่เพื่อวาร์ป', 2500);
+          U.planTap = function (id) { if (ids.indexOf(id) < 0) return false; ids.forEach(function (x) { var e = document.getElementById('t' + x); if (e) e.classList.remove('dest'); }); U.planTap = null; sfx('card'); resolve(id); return true; };
+        });
+      },
+      party: async function (p, owner, t) {
+        sfx('win');
+        await modal({ title: '🎉 ปาร์ตี้ที่บ้านของ ' + esc(owner.name) + '!', width: 700, close: false, body: '<div style="text-align:center">' + spr(['sph', 1], 180, 180) + '<div style="font-weight:700;font-size:18px">' + esc(p.name) + ' ตกบ้านปาร์ตี้ — ทุกคนถูกเรียกมารวมกันที่นี่!<br>ทุกคน (ยกเว้นเจ้าของ) จ่ายคนละ 100 G</div><div class="row" style="justify-content:center;gap:6px;margin-top:6px">' + g.alive().map(function (q) { return spr(charSpec(q), 70, 70); }).join('') + '</div></div>', buttons: [{ t: 'ไปปาร์ตี้!', v: 1, cls: 'pink' }], auto: p.isAI ? 2200 : 0 });
+      },
+      windmill: async function (p, owner, t, lost) {
+        sfx('bad');
+        await modal({ title: '🌬️ บ้านกังหันลมของ ' + esc(owner.name), width: 640, close: false, body: '<div style="text-align:center">' + spr(['sph', 3], 170, 170) + '<div style="font-weight:700;font-size:18px">' + (lost.length ? 'ลมพัดสกิลการ์ดของ ' + esc(p.name) + ' ปลิวหายไป ' + lost.length + ' ใบ!<div style="font-size:26px;margin-top:4px">' + lost.map(function (b) { return b[1] + ' ' + b[2]; }).join('<br>') + '</div>' : esc(p.name) + ' ไม่มีสกิลการ์ดสะสมไว้ — รอดตัว!') + '</div></div>', buttons: [{ t: 'ตกลง', v: 1 }], auto: p.isAI ? 2000 : 0 });
+        refresh();
+      },
+      toll: async function (p, owner, t, fee) { sfx('coin'); floatText(p, -fee); floatText(owner, fee); toast('🚧 ' + esc(p.name) + ' จ่ายค่าผ่านทาง ' + fmt(fee) + ' G ให้ ' + esc(owner.name) + ' (ครั้งหน้า ' + fmt((t.toll || 100) + 10) + ' G)', 2200); refreshTiles(); },
       chooseBuilding: function (p, t, opts) {
         if (p.isAI) return aiWait(300).then(function () { var r = A.chooseBuilding(g, p, t, opts); if (r) toast('🏗️ ' + esc(p.name) + ' สร้าง ' + SPECIAL_BUILDINGS.find(function (b) { return b.id === r; }).th); return r; });
         return modal({ title: '🌱 ที่ดินเปล่า — สร้างอาคารพิเศษ?', width: 900, body: '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">' + opts.map(function (o) { return '<div class="opt" data-b="' + o.b.id + '" style="flex-direction:column;text-align:center">' + spr(o.b.spr, 110, 90) + '<b>' + o.b.th + ' (' + o.b.name + ')</b><span style="font-size:12px">' + o.b.desc + '</span><span class="coin">' + fmt(o.cost) + '</span></div>'; }).join('') + '</div>', buttons: [{ t: 'ถือไว้ก่อน / ไม่สร้าง', v: null }], mount: function (box, close) { box.querySelectorAll('[data-b]').forEach(function (e) { e.onclick = function () { close(e.dataset.b); }; }); } });
@@ -1266,11 +1308,12 @@
     bank: ['ธนาคาร & หุ้น 📈', 'ผ่านหรือหยุดที่ธนาคารซื้อหุ้นได้ (ครั้งละไม่เกิน 99 หุ้น)<br><b>ราคาหุ้นขึ้นเมื่อร้านในเขตถูกลงทุน</b> • ทุกครั้งที่มีคนจ่ายค่าเช่าในเขต ผู้ถือหุ้นได้ <b>ปันผล 20%</b><br>ทริค: ซื้อหุ้นเขตที่เราผูกขาด แล้วลงทุนร้านให้หุ้นพุ่ง!'],
     suit: ['สัญลักษณ์ ♥ ♦ ♣ ♠', 'เดินผ่านช่องสัญลักษณ์เพื่อเก็บให้ <b>ครบ 4 แบบ</b> แล้วกลับธนาคาร<br>= <b>เลื่อนระดับ + รับเงินเดือน</b> (ยิ่งมีร้านมากเงินเดือนยิ่งเยอะ)<br>ถ้า <b>หยุดตรงช่องสัญลักษณ์พอดี</b> จะได้เปิดการ์ดด้วย! 🃏'],
     promo: ['เลื่อนระดับ! 🎉', 'เงินเดือน = พื้นฐาน + เลเวล + 10% ของมูลค่าร้านทั้งหมด<br>เก็บสัญลักษณ์ใหม่แล้ววนกลับมารับอีกได้เรื่อย ๆ'],
+    special: ['บ้านพิเศษ 🏰', 'ช่อง <b>? สีม่วง</b> คือที่ดินบ้านพิเศษ! ตกแล้วเลือกสร้าง 1 ใน 4 แบบ<br>🌀 <b>ประตูทะลุมิติ</b> คนตกเลือกวาร์ปได้แต่จ่าย 10% ของทรัพย์สิน (ไม่วาร์ป 5%)<br>🎉 <b>บ้านปาร์ตี้</b> เรียกทุกคนมารวม จ่ายคนละ 100 G<br>🚧 <b>ประตูเก็บค่าผ่านทาง</b> ใครเดินผ่านต้องจ่าย และแพงขึ้น +10 G ทุกครั้ง<br>🌬️ <b>บ้านกังหันลม</b> สกิลการ์ดของคนที่ตกปลิวหาย 2 ใบ'],
     card: ['การ์ดเหตุการณ์ 🃏', 'ช่อง ? ให้เลือกการ์ด 1 ใบจากตาราง 100 ช่อง มีทั้งดีและร้าย<br>การ์ดที่เปิดจะเป็น <b>สีของเรา</b> — เรียงเป็นแถว 3 ช่องขึ้นไป (แนวนอน/ตั้ง/ทแยง) ได้ <b>โบนัส</b>!'],
     items: ['ไอเทมติดตัว 🎒', 'ด้านล่างคือไอเทมที่เลือกไว้ก่อนเกม ใช้ได้อย่างละ 1 ครั้ง<br>ไอเทมที่ขึ้น “แตะเพื่อใช้” กดได้ก่อนทอย ส่วนอื่นระบบจะถามเองเมื่อถึงจังหวะ'],
     win: ['ใกล้ชนะแล้ว! 🏆', 'ทรัพย์สินถึงเป้าแล้ว — รีบ <b>กลับเข้าธนาคาร</b> เพื่อชนะ!'],
   };
-  var LESSON_ORDER = ['intro', 'dice', 'plan', 'buy', 'chain', 'district', 'invest', 'rentPay', 'rentGet', 'bank', 'suit', 'promo', 'card', 'items', 'win'];
+  var LESSON_ORDER = ['intro', 'dice', 'plan', 'buy', 'special', 'chain', 'district', 'invest', 'rentPay', 'rentGet', 'bank', 'suit', 'promo', 'card', 'items', 'win'];
   function coach(key) {
     var L = LESSONS[key]; if (!L) return Promise.resolve();
     return modal({ title: '🎓 ' + L[0], width: 860, close: false, bg: '#fffaf2', body: '<div class="coach"><div style="flex:none">' + spr(['cozy', 1], 150, 170) + '</div><div class="bub">' + L[1] + '</div></div>', buttons: [{ t: 'เข้าใจแล้ว! ▶', v: 1, cls: 'pink' }] });

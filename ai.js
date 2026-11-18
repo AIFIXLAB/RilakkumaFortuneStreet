@@ -14,7 +14,7 @@
         if (t.owner < 0) return p.cash >= g.buyPrice(t) ? 250 + g.ownedIn(p.id, t.district) * 120 : 0;
         if (t.owner === p.id) return 120 + (g.maxCapital(t) > 0 && p.cash > 1500 ? 260 : 0);
         return -g.shopRent(t) * (1 + (g.shopRent(t) > p.cash ? 3 : 0)) / 2;
-      case 'chance': return 90; case 'rollon': return 150; case 'switch': return 20; case 'road': return 0; case 'lucky': return 140; case 'superlucky': return 220; case 'tax': return -150;
+      case 'chance': return 90; case 'splot': return !t.special ? (p.cash > 2500 ? 140 : 20) : t.spOwner === p.id ? 10 : t.special === 'sp_portal' ? -g.netWorth(p) * 0.05 : t.special === 'sp_party' ? -100 * (g.alive().length - 1) : t.special === 'sp_windmill' ? -120 * g.activeBuffs(p).length : -50; case 'rollon': return 150; case 'switch': return 20; case 'road': return 0; case 'lucky': return 140; case 'superlucky': return 220; case 'tax': return -150;
       case 'casino': return 30; case 'broker': return 60; case 'vacant': return t.special ? (t.spOwner === p.id || t.spOwner < 0 ? 10 : -300) : 50;
       case 'suit': return (p.suits[t.suit] ? 10 : 160) + 90; case 'rest': return 50; case 'festival': return 60; case 'event': return 60; case 'warp': return 40;
     }
@@ -41,6 +41,7 @@
       if (t.type === 'suit' && !suits[t.suit]) { suits[t.suit] = 1; s += 140; }
       if (t.type === 'bank') s += D.SUITS.every(function (x) { return suits[x]; }) ? 1000 : 40;
       if (t.special === 'toll' && t.spOwner >= 0 && t.spOwner !== p.id) s -= 200;
+      if (t.special === 'sp_toll' && t.spOwner >= 0 && t.spOwner !== p.id) s -= (t.toll || 100) * 1.5;
     }
     var end = g.tile(path[path.length - 1]);
     s += g.landScore(p, end);
@@ -162,6 +163,23 @@
     confirmDeal: function (g, q, text, gainForQ) { return gainForQ >= 0 ? g.r() < 0.7 : (q.cash > 4000 && g.r() < 0.4); },
     auctionBid: function (g, q, t, current) { var v = g.shopValue(t), want = v * (g.ownedIn(q.id, t.district) ? 1.4 : 1.05); var bid = Math.round(Math.min(want, q.cash - reserve(g, q)) / 10) * 10; return bid > current ? bid : 0; },
     casinoBet: function (g, p, bets) { if (!bets.length || p.ai.persona === 'Defensive' || p.cash < 3000) return 0; return g.r() < 0.5 ? bets[0] : 0; },
+    chooseSpecialHouse: function (g, p, t, opts) {
+      var r = reserve(g, p), aff = opts.filter(function (o) { return p.cash - o.cost >= r * 0.8; });
+      if (!aff.length) return null;
+      var traffic = t.n.length > 2 || g.s.tiles.some(function (x) { return x.type === 'bank' && g.dist(x.id, t.id) <= 4; });
+      var pref = traffic ? ['sp_toll', 'sp_portal', 'sp_party', 'sp_windmill'] : ['sp_portal', 'sp_toll', 'sp_party', 'sp_windmill'];
+      if (p.ai.level === 'beginner') return aff[Math.floor(g.r() * aff.length)].b.id;
+      aff.sort(function (a, b) { return pref.indexOf(a.b.id) - pref.indexOf(b.b.id); });
+      return aff[0].b.id;
+    },
+    portalChoice: function (g, p, owner, t, big, small) {
+      if (p.ai.level === 'beginner') return false;
+      var best = -1e9; g.s.tiles.forEach(function (x) { if (x.id !== t.id) best = Math.max(best, g.landScore(p, x)); });
+      return best - (big - small) / 10 > 250 && p.cash > big + 500;
+    },
+    pickTile: function (g, p, title, ids) {
+      var best = ids[0], bv = -1e9; ids.forEach(function (id) { var v = g.landScore(p, g.tile(id)) + g.r() * 20; if (v > bv) { bv = v; best = id; } }); return best;
+    },
     chooseBuilding: function (g, p, t, opts) {
       var r = reserve(g, p); var aff = opts.filter(function (o) { return p.cash - o.cost >= r * 1.2; });
       if (!aff.length) return null;

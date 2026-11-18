@@ -6,8 +6,8 @@ var Online = (function () {
   var net = null;         // transport
   var room = null;        // { code, role, players:[{peer,name,char,costume,loadout}], settings }
   var pending = {}, rpcSeq = 0, chain = Promise.resolve(), dirty = false, dirtyT = null;
-  var DECIDE = ['preRoll', 'rollDice', 'planPath', 'chooseDir', 'confirmBuy', 'chooseInvest', 'confirmBuyout', 'bank', 'broker', 'pickCard', 'choose', 'chooseNumber', 'confirmUse', 'confirmDeal', 'auctionBid', 'casinoBet', 'chooseBuilding'];
-  var DISPLAY = ['turnStart', 'showDice', 'step', 'teleport', 'landed', 'rent', 'dividend', 'money', 'promotion', 'suit', 'built', 'showCard', 'lineBonus', 'casinoShow', 'notify', 'info'];
+  var DECIDE = ['preRoll', 'rollDice', 'planPath', 'chooseDir', 'confirmBuy', 'chooseInvest', 'confirmBuyout', 'bank', 'broker', 'pickCard', 'choose', 'chooseNumber', 'confirmUse', 'confirmDeal', 'auctionBid', 'casinoBet', 'chooseBuilding', 'chooseSpecialHouse', 'portalChoice', 'pickTile'];
+  var DISPLAY = ['turnStart', 'showDice', 'step', 'teleport', 'landed', 'rent', 'dividend', 'money', 'promotion', 'suit', 'built', 'showCard', 'lineBonus', 'casinoShow', 'notify', 'info', 'party', 'windmill', 'toll'];
   var LOCAL_ONLY = { info: 1 };
 
   function code() { var c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', s = ''; for (var i = 0; i < 4; i++) s += c[Math.floor(Math.random() * c.length)]; return s; }
@@ -302,7 +302,7 @@ var Online = (function () {
     g.s = s; A.consumeUsed(g); A.refresh();
   }
   var curRpc = null;
-  var FAST_TOAST = { showCard: function (a) { return '🃏 ' + a[0].name + ': ' + a[1].name; }, rent: function (a) { return '🏪 ' + a[0].name + ' จ่าย ' + Game.fmt(a[3]) + ' G ให้ ' + a[1].name; }, promotion: function (a) { return '🎉 ' + a[0].name + ' เลื่อนระดับ +' + Game.fmt(a[1]) + ' G'; }, lineBonus: function (a) { return '🌈 ' + a[0].name + ' แถวการ์ด +' + Game.fmt(a[2]) + ' G'; }, casinoShow: function (a) { return '🎰 ' + a[0].name + (a[3] ? ' ชนะ +' + Game.fmt(a[3]) : ' เสีย ' + a[2]) + ' G'; }, notify: function (a) { return a[1]; } };
+  var FAST_TOAST = { showCard: function (a) { return '🃏 ' + a[0].name + ': ' + a[1].name; }, rent: function (a) { return '🏪 ' + a[0].name + ' จ่าย ' + Game.fmt(a[3]) + ' G ให้ ' + a[1].name; }, promotion: function (a) { return '🎉 ' + a[0].name + ' เลื่อนระดับ +' + Game.fmt(a[1]) + ' G'; }, lineBonus: function (a) { return '🌈 ' + a[0].name + ' แถวการ์ด +' + Game.fmt(a[2]) + ' G'; }, casinoShow: function (a) { return '🎰 ' + a[0].name + (a[3] ? ' ชนะ +' + Game.fmt(a[3]) : ' เสีย ' + a[2]) + ' G'; }, notify: function (a) { return a[1]; }, party: function (a) { return '🎉 ปาร์ตี้ที่บ้าน ' + a[1].name + ' ทุกคนจ่าย 100 G'; }, windmill: function (a) { return '🌬️ ' + a[0].name + ' สกิลปลิวหาย ' + a[3].length + ' ใบ'; } };
   async function handle(g, d) {
     var io = g.io;
     if (d.t === 'end') { try { localStorage.removeItem('rfs_online_seat'); } catch (e) { } applyState(g, d.s); A.consumeUsed(g); leave(); A.showResult(g); return; }

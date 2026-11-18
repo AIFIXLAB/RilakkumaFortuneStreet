@@ -70,7 +70,7 @@ var SPECIAL_BUILDINGS = [
   { id: 'hotel',   name: 'Hotel',            th: 'โรงแรมพิเศษ',  cost: 3000, spr: ['deco', 31], desc: 'ผู้เล่นที่หยุดต้องจ่ายค่าที่พัก 500 G' },
   { id: 'onsen',   name: 'Spa & Onsen',      th: 'สปาออนเซ็น',   cost: 3500, spr: ['lvl', 20],  desc: 'ผู้เล่นที่หยุดต้องจ่าย 600 G' },
   // ---- Special houses: built on the purple “?” plots of every map ----
-  { id: 'sp_portal',   plot: true, name: 'Portal House',   th: 'บ้านประตูทะลุมิติ', cost: 2000, spr: ['sph', 0], desc: 'คนที่ตก: เลือกวาร์ปไปช่องใดก็ได้ จ่าย 10% ของทรัพย์สินให้เจ้าของ • ไม่วาร์ปจ่าย 5%' },
+  { id: 'sp_portal',   plot: true, name: 'Portal House',   th: 'บ้านประตูทะลุมิติ', cost: 2000, spr: ['sph', 0], desc: 'คนที่ตก: เลือกวาร์ปไปช่องใดก็ได้ จ่าย 10% ของทรัพย์สินให้เจ้าของ • ไม่วาร์ปจ่าย 5% • เจ้าของตกเอง: วาร์ปฟรี!' },
   { id: 'sp_party',    plot: true, name: 'Party House',    th: 'บ้านปาร์ตี้',        cost: 1600, spr: ['sph', 1], desc: 'คนที่ตก: เรียกผู้เล่นทุกคนมารวมที่ช่องนี้ ทุกคนจ่ายคนละ 100 G ให้เจ้าของ' },
   { id: 'sp_toll',     plot: true, name: 'Toll Gate',      th: 'ประตูเก็บค่าผ่านทาง', cost: 1800, spr: ['sph', 2], desc: 'ทุกคนที่เดินผ่านจ่ายค่าผ่านทางให้เจ้าของ เริ่ม 100 G และเพิ่มขึ้น 10 G ทุกครั้งที่มีคนผ่าน' },
   { id: 'sp_windmill', plot: true, name: 'Windmill House', th: 'บ้านกังหันลม',      cost: 1200, spr: ['sph', 3], desc: 'คนที่ตก: ลมพัดสกิลการ์ดที่สะสมไว้หายไป 2 ใบแบบสุ่ม' },

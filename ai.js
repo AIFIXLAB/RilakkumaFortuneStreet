@@ -173,8 +173,10 @@
       return aff[0].b.id;
     },
     portalChoice: function (g, p, owner, t, big, small) {
+      var best = -1e9;
+      if (owner.id === p.id) { g.s.tiles.forEach(function (x) { if (x.id !== t.id) best = Math.max(best, g.landScore(p, x)); }); return best > 60; }
       if (p.ai.level === 'beginner') return false;
-      var best = -1e9; g.s.tiles.forEach(function (x) { if (x.id !== t.id) best = Math.max(best, g.landScore(p, x)); });
+      best = -1e9; g.s.tiles.forEach(function (x) { if (x.id !== t.id) best = Math.max(best, g.landScore(p, x)); });
       return best - (big - small) / 10 > 250 && p.cash > big + 500;
     },
     pickTile: function (g, p, title, ids) {

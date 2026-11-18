@@ -699,14 +699,17 @@
       if (io.built) await io.built(p, t);
       return;
     }
-    if (t.spOwner < 0 || t.spOwner === p.id) return;
+    if (t.spOwner < 0) return;
+    if (t.spOwner === p.id && t.special !== 'sp_portal') return;
     var owner = s.players[t.spOwner]; if (owner.bankrupt) return;
     if (t.special === 'sp_portal') {
-      var nw = Math.max(0, this.netWorth(p)), big = Math.round(nw * 0.10), small = Math.round(nw * 0.05);
+      var mine = owner.id === p.id, nw = Math.max(0, this.netWorth(p)), big = mine ? 0 : Math.round(nw * 0.10), small = mine ? 0 : Math.round(nw * 0.05);
       var warp = await io.portalChoice(p, owner, t, big, small);
-      var pay = warp ? big : small;
-      var got = await this.lose(p, pay, 'ประตูทะลุมิติของ ' + owner.name); owner.cash += got;
-      this.log('🌀 ' + p.name + ' จ่าย ' + fmt(got) + ' G ให้ ' + owner.name + (warp ? ' แล้ววาร์ป!' : ' (ไม่วาร์ป)'), 'rent');
+      if (mine) { this.log('🌀 ' + p.name + (warp ? ' ใช้ประตูทะลุมิติของตัวเอง วาร์ปฟรี!' : ' อยู่ที่ประตูทะลุมิติของตัวเอง (ไม่วาร์ป)')); }
+      else {
+        var got = await this.lose(p, warp ? big : small, 'ประตูทะลุมิติของ ' + owner.name); owner.cash += got;
+        this.log('🌀 ' + p.name + ' จ่าย ' + fmt(got) + ' G ให้ ' + owner.name + (warp ? ' แล้ววาร์ป!' : ' (ไม่วาร์ป)'), 'rent');
+      }
       if (warp && !p.bankrupt && !s.over) {
         var dest = await io.pickTile(p, '🌀 เลือกช่องที่จะวาร์ปไป', s.tiles.filter(function (x) { return x.id !== t.id; }).map(function (x) { return x.id; }));
         if (dest === null || dest === undefined || !s.tiles[dest]) return;

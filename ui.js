@@ -504,6 +504,8 @@
       var b = SPECIAL_BUILDINGS.find(function (x) { return x.id === t.special; }), ow = s.players[t.spOwner];
       style += ow ? 'border:' + Math.max(3, T * 0.09) + 'px solid ' + ow.color + ';background:' + hexA(ow.color, .3) + ';' : '';
       html = '<div class="bld">' + spr(b.spr, T * 1.05, T * 0.95) + '</div>' + (ow ? '<div class="own" style="border-color:' + ow.color + ';width:' + T * 0.5 + 'px;height:' + T * 0.5 + 'px">' + spr(charSpec(ow), T * 0.42, T * 0.42) + '</div>' : '') + lbl(b.th);
+    } else if (t.type === 'dragon') {
+      cls += ' dragon'; html = lbl('🐉 ' + fmt(s.dragonPot || 0), '#e53935');
     } else if (t.ov && t.type === 'road') {
       cls += ' pad';
     } else if (t.ov && t.type === 'suit') {
@@ -657,6 +659,7 @@
       suit: 'เดินผ่านหรือหยุดเพื่อเก็บสัญลักษณ์ ' + SUIT_GLYPH[t.suit] + ' — ครบ 4 แบบแล้วกลับธนาคารเพื่อรับเงินเดือน • หยุดตรงช่องนี้พอดีได้เปิดการ์ด!', chance: 'เปิดการ์ด 1 ใบจากตาราง 100 ช่อง', lucky: 'รับเงินจากกองภาษีเมือง 50% (ขั้นต่ำ ' + CONFIG.luckyMin + ' G) • กองตอนนี้ ' + fmt(s.taxPool) + ' G', superlucky: 'รับกองภาษีเมืองทั้งหมด (ขั้นต่ำ ' + CONFIG.superLuckyMin + ' G) • กองตอนนี้ ' + fmt(s.taxPool) + ' G',
       tax: 'จ่ายภาษี 300 G หรือ 3% ของเงินสด (สูงสุด 1,000 G)', casino: 'เล่นสล็อตแมชชีน (เดิมพัน 100–500 G รางวัลสูงสุด 2,500 G)', broker: 'ซื้อ/ขายหุ้นทุกเขต', vacant: t.special ? SPECIAL_BUILDINGS.find(function (b) { return b.id === t.special; }).desc + (t.spOwner >= 0 ? ' • เจ้าของ: ' + s.players[t.spOwner].name : '') : 'ซื้อที่ดินและสร้างอาคารพิเศษ: ด่านเก็บเงิน, ที่จอดรถ, สวนดอกไม้, ตลาด, โรงแรม, ออนเซ็น',
       splot: t.special ? (SPECIAL_BUILDINGS.find(function (x) { return x.id === t.special; }).desc + (t.spOwner >= 0 ? ' • เจ้าของ: ' + s.players[t.spOwner].name : '') + (t.special === 'sp_toll' ? ' • ค่าผ่านทางตอนนี้ ' + fmt(t.toll || 100) + ' G' : '')) : 'ตกช่องนี้ = สร้างบ้านพิเศษได้ 1 ใน 4 แบบ: ประตูทะลุมิติ, บ้านปาร์ตี้, ประตูเก็บค่าผ่านทาง, บ้านกังหันลม',
+      dragon: 'วางเดิมพัน 100/300/500/1,000 G แล้วโจมตีมังกร! โดน = ได้เงินสะสมทั้งหมด (ตอนนี้ ' + fmt(s.dragonPot || 0) + ' G) • พลาด = เงินเข้ากองสะสม แล้วถูกลมพัดไปช่องสุ่ม',
       warp: 'หยุดแล้ววาร์ปไปอีกฝั่งของแผนที่', switch: 'ตกช่องนี้แล้วทิศทางเดินจะกลับด้าน (เทิร์นหน้าเดินย้อนกลับ)', rollon: 'ตกช่องลูกเต๋า = ได้ทอยลูกเต๋าอีกครั้งทันที!', road: 'ทางเชื่อม', rest: 'พักผ่อน รับ ' + CONFIG.restBonus + ' G', festival: 'งานเทศกาล — ขายของได้เงิน หรือเป็นเจ้าภาพจ่ายให้ทุกคน', event: 'เหตุการณ์ในเมืองแบบสุ่ม (การ์ดหมวด I)',
     }[t.type];
     modal({ title: (t.type === 'splot' && !t.special ? 'ที่ดินบ้านพิเศษ' : t.special ? SPECIAL_BUILDINGS.find(function (b) { return b.id === t.special; }).th : info.name), body: '<div class="col" style="align-items:center;min-width:420px">' + (t.type === 'suit' ? '<div style="font-size:90px;color:' + SUIT_COLOR[t.suit] + '">' + SUIT_GLYPH[t.suit] + '</div>' : spr(t.special ? SPECIAL_BUILDINGS.find(function (b) { return b.id === t.special; }).spr : info.icon, 140, 120)) + '<div style="font-size:18px;font-weight:800;text-align:center;max-width:520px">' + desc + '</div></div>', buttons: [{ t: 'ปิด', v: 1 }] });
@@ -746,6 +749,8 @@
     if (t.type === 'bank') return '📍 <b>ธนาคาร</b><br>' + (Game.suitsDone(p) ? 'เลื่อนระดับ + เงินเดือน ' + fmt(g.salary(p)) + ' G!' : 'ซื้อหุ้น • เลือกทิศได้อิสระ');
     if (t.type === 'splot') { if (!t.special) return '📍 <b>ที่ดินบ้านพิเศษ</b><br>สร้างบ้านพิเศษได้!'; var sb2 = SPECIAL_BUILDINGS.find(function (x) { return x.id === t.special; }); if (t.spOwner === p.id) return '📍 ' + sb2.th + ' (ของคุณ)' + (t.special === 'sp_portal' ? '<br><span style="color:#2c8a2c">🌀 วาร์ปฟรีไปช่องไหนก็ได้!</span>' : ''); return '📍 <b>' + sb2.th + '</b> ของ ' + esc(s.players[t.spOwner].name) + '<br><span style="color:#d0342c">' + (t.special === 'sp_portal' ? 'จ่าย 5–10% ของทรัพย์สิน' : t.special === 'sp_party' ? 'ทุกคนจ่ายคนละ 100 G' : t.special === 'sp_toll' ? 'จ่าย ' + fmt(t.toll || 100) + ' G' : 'สกิลการ์ดปลิวหาย 2 ใบ') + '</span>'; }
     if (t.type === 'switch') return '📍 <b>ช่องสลับ 🔄</b><br>เทิร์นหน้าจะเดินกลับทิศ';
+    if (t.type === 'dragon') return '📍 <b>ป้อมสู้มังกร 🐉</b><br>เงินสะสม <span style="color:#d0342c">' + fmt(s.dragonPot || 0) + ' G</span>';
+    if (t.type === 'chance') return '📍 <b>' + esc(t.name) + '</b><br>🃏 ได้เปิดการ์ด!';
     if (t.type === 'rollon') return '📍 <b>ช่องลูกเต๋า 🎲</b><br>ได้ทอยอีกครั้งทันที!';
     if (t.type === 'suit') return '📍 สัญลักษณ์ ' + SUIT_GLYPH[t.suit] + (p.suits[t.suit] ? ' (มีแล้ว)' : ' (ใหม่!)') + '<br>🃏 หยุดพอดี = ได้เปิดการ์ด!';
     if (t.type === 'vacant' && t.special) { var b = SPECIAL_BUILDINGS.find(function (x) { return x.id === t.special; }); return '📍 ' + b.th + (t.spOwner >= 0 && t.spOwner !== p.id ? ' ของ ' + esc(s.players[t.spOwner].name) : ''); }
@@ -1100,6 +1105,19 @@
         sfx('win');
         await modal({ title: '🎉 ปาร์ตี้ที่บ้านของ ' + esc(owner.name) + '!', width: 700, close: false, body: '<div style="text-align:center">' + spr(['sph', 1], 180, 180) + '<div style="font-weight:700;font-size:18px">' + esc(p.name) + ' ตกบ้านปาร์ตี้ — ทุกคนถูกเรียกมารวมกันที่นี่!<br>ทุกคน (ยกเว้นเจ้าของ) จ่ายคนละ 100 G</div><div class="row" style="justify-content:center;gap:6px;margin-top:6px">' + g.alive().map(function (q) { return spr(charSpec(q), 70, 70); }).join('') + '</div></div>', buttons: [{ t: 'ไปปาร์ตี้!', v: 1, cls: 'pink' }], auto: p.isAI ? 2200 : 0 });
       },
+      dragonBet: function (p, pot, opts) {
+        if (p.isAI) return aiWait(400).then(function () { var r = A.dragonBet(g, p, pot, opts); toast(r ? '⚔️ ' + esc(p.name) + ' พนัน ' + fmt(r) + ' G โจมตีมังกร!' : '🏰 ' + esc(p.name) + ' ไม่สู้มังกร'); return r; });
+        sfx('tap');
+        return modal({ title: '🐉 ป้อมสู้มังกร!', width: 820, close: false, bgClose: false, body: '<div class="row" style="gap:16px;align-items:center"><img src="assets/dragon.webp" style="width:230px;filter:drop-shadow(0 6px 6px rgba(0,0,0,.3))" draggable="false"><div class="grow" style="text-align:center"><div style="font-weight:800;font-size:16px">เงินสะสมในรังมังกร</div><div class="dragonpot">💰 ' + fmt(pot) + ' G</div><div style="font-weight:700;font-size:14px;line-height:1.6">วางเดิมพันแล้วโจมตี! ถ้า<b style="color:#2c8a2c">โดน</b> ได้เงินสะสมทั้งหมด + เงินเดิมพันคืน<br>ถ้า<b style="color:#d0342c">พลาด</b> เงินเดิมพันเข้ากองสะสม และโดนลมมังกรพัดกระเด็นไปช่องอื่น!</div></div></div>', buttons: CONFIG.dragon.bets.map(function (b) { var ok = opts.indexOf(b) >= 0; return { t: '⚔️ ' + fmt(b) + ' G<br><small>โอกาสโดน ' + Math.round(g.dragonChance(b) * 100) + '%</small>', v: b, cls: ok ? 'pink' : 'gray', dis: !ok }; }).concat([{ t: '🏃 ไม่สู้', v: 0 }]) });
+      },
+      dragonResult: async function (p, r) {
+        refreshTiles();
+        if (r.win) { sfx('win'); floatText(p, r.prize); }
+        else { sfx('bad'); floatText(p, -r.bet); }
+        var body = '<div style="text-align:center"><img src="assets/dragon.webp" class="' + (r.win ? 'dragonhit' : 'dragonroar') + '" style="width:220px" draggable="false"><div style="font-weight:800;font-size:22px;margin-top:6px">' + (r.win ? '⚔️ ' + esc(p.name) + ' โจมตีโดนมังกร!<div class="dragonpot">+' + fmt(r.prize) + ' G</div><div style="font-size:15px">ได้เงินสะสมทั้งหมดไป! กองใหม่เริ่มที่ ' + fmt(r.pot) + ' G</div>' : '💨 พลาด! มังกรพ่นลมใส่ ' + esc(p.name) + '<div style="font-size:16px;font-weight:700">เสีย ' + fmt(r.bet) + ' G • เงินสะสมตอนนี้ <b style="color:#d0342c">' + fmt(r.pot) + ' G</b><br>ถูกพัดกระเด็นไปที่ ' + esc(g.tile(r.dest).name || 'ช่องอื่น') + '!</div>') + '</div></div>';
+        if (p.isAI) { toast(r.win ? '⚔️ ' + esc(p.name) + ' ล้มมังกรได้ +' + fmt(r.prize) + ' G!' : '💨 ' + esc(p.name) + ' โจมตีพลาด ถูกลมพัดกระเด็น! (สะสม ' + fmt(r.pot) + ' G)', 2400); await aiWait(700); return; }
+        await modal({ title: r.win ? '🏆 ชนะมังกร!' : '🐉 มังกรรอดไปได้...', width: 640, close: false, body: body, buttons: [{ t: 'ตกลง', v: 1, cls: r.win ? 'green' : 'pink' }] });
+      },
       windmill: async function (p, owner, t, lost) {
         sfx('bad');
         await modal({ title: '🌬️ บ้านกังหันลมของ ' + esc(owner.name), width: 640, close: false, body: '<div style="text-align:center">' + spr(['sph', 3], 170, 170) + '<div style="font-weight:700;font-size:18px">' + (lost.length ? 'ลมพัดสกิลการ์ดของ ' + esc(p.name) + ' ปลิวหายไป ' + lost.length + ' ใบ!<div style="font-size:26px;margin-top:4px">' + lost.map(function (b) { return b[1] + ' ' + b[2]; }).join('<br>') + '</div>' : esc(p.name) + ' ไม่มีสกิลการ์ดสะสมไว้ — รอดตัว!') + '</div></div>', buttons: [{ t: 'ตกลง', v: 1 }], auto: p.isAI ? 2000 : 0 });
@@ -1405,7 +1423,7 @@
     bank: ['ธนาคาร & หุ้น 📈', 'ผ่านหรือหยุดที่ธนาคารซื้อหุ้นได้ <b>1 ครั้งต่อเทิร์น เลือก 1 เขต</b> (ไม่เกิน 99 หุ้น)<br><b>ราคาหุ้นขึ้นเมื่อร้านในเขตถูกลงทุน</b> • ทุกครั้งที่มีคนจ่ายค่าเช่าในเขต ผู้ถือหุ้นได้ <b>ปันผล 20%</b><br>ทริค: ซื้อหุ้นเขตที่เราผูกขาด แล้วลงทุนร้านให้หุ้นพุ่ง!'],
     suit: ['สัญลักษณ์ ♥ ♦ ♣ ♠', 'เดินผ่านช่องสัญลักษณ์เพื่อเก็บให้ <b>ครบ 4 แบบ</b> แล้วกลับธนาคาร<br>= <b>เลื่อนระดับ + รับเงินเดือน</b> (ยิ่งมีร้านมากเงินเดือนยิ่งเยอะ)<br>ถ้า <b>หยุดตรงช่องสัญลักษณ์พอดี</b> จะได้เปิดการ์ดด้วย! 🃏'],
     promo: ['เลื่อนระดับ! 🎉', 'เงินเดือน = พื้นฐาน + เลเวล + 10% ของมูลค่าร้านทั้งหมด<br>เก็บสัญลักษณ์ใหม่แล้ววนกลับมารับอีกได้เรื่อย ๆ'],
-    special: ['บ้านพิเศษ 🏰', 'ช่อง <b>? สีม่วง</b> คือที่ดินบ้านพิเศษ! ตกแล้วเลือกสร้าง 1 ใน 4 แบบ<br>🌀 <b>ประตูทะลุมิติ</b> คนตกเลือกวาร์ปได้แต่จ่าย 10% ของทรัพย์สิน (ไม่วาร์ป 5%) • <b>เจ้าของตกเองวาร์ปฟรี!</b><br>🎉 <b>บ้านปาร์ตี้</b> เรียกทุกคนมารวม จ่ายคนละ 100 G<br>🚧 <b>ประตูเก็บค่าผ่านทาง</b> ใครเดินผ่านต้องจ่าย และแพงขึ้น +10 G ทุกครั้ง<br>🌬️ <b>บ้านกังหันลม</b> สกิลการ์ดของคนที่ตกปลิวหาย 2 ใบ'],
+    special: ['บ้านพิเศษ 🏰', 'ช่อง <b>? สีม่วง</b> คือที่ดินบ้านพิเศษ! ตกแล้วเลือกสร้าง 1 ใน 4 แบบ<br>🌀 <b>ประตูทะลุมิติ</b> คนตกเลือกวาร์ปได้แต่จ่าย 10% ของทรัพย์สิน (ไม่วาร์ป 5%) • <b>เจ้าของตกเองวาร์ปฟรี!</b><br>🐉 <b>ป้อมสู้มังกร</b> (แผนที่ปราสาทลอยฟ้ามังกร): พนัน 100/300/500/1,000 G โจมตีมังกร ยิ่งพนันมากยิ่งโดนง่าย (15–50%) โดน = ได้เงินสะสมทั้งหมด • พลาด = เงินเข้ากองสะสม แล้วถูกลมพัดไปช่องสุ่ม<br>🎉 <b>บ้านปาร์ตี้</b> เรียกทุกคนมารวม จ่ายคนละ 100 G<br>🚧 <b>ประตูเก็บค่าผ่านทาง</b> ใครเดินผ่านต้องจ่าย และแพงขึ้น +10 G ทุกครั้ง<br>🌬️ <b>บ้านกังหันลม</b> สกิลการ์ดของคนที่ตกปลิวหาย 2 ใบ'],
     card: ['การ์ดเหตุการณ์ 🃏', 'ช่อง ? ให้เลือกการ์ด 1 ใบจากตาราง 100 ช่อง มีทั้งดีและร้าย<br>การ์ดที่เปิดจะเป็น <b>สีของเรา</b> — เรียงเป็นแถว 3 ช่องขึ้นไป (แนวนอน/ตั้ง/ทแยง) ได้ <b>โบนัส</b>!'],
     items: ['ไอเทมติดตัว 🎒', 'ด้านล่างคือไอเทมที่เลือกไว้ก่อนเกม ใช้ได้อย่างละ 1 ครั้ง<br>ไอเทมที่ขึ้น “แตะเพื่อใช้” กดได้ก่อนทอย ส่วนอื่นระบบจะถามเองเมื่อถึงจังหวะ'],
     win: ['ใกล้ชนะแล้ว! 🏆', 'ทรัพย์สินถึงเป้าแล้ว — รีบ <b>กลับเข้าธนาคาร</b> เพื่อชนะ!'],

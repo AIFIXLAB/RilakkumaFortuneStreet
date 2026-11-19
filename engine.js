@@ -83,7 +83,9 @@
     // opts: {mapIdx, players:[{name,char,costume,isAI,aiLevel,persona,loadout}], target, maxRounds, startCash, seed}
     var b = buildBoard(opts.mapIdx);
     var bank = b.tiles.find(function (t) { return t.type === 'bank'; });
+    var hasDragon = b.tiles.some(function (t) { return t.type === 'dragon'; });
     var s = {
+      dragonPot: hasDragon ? C.dragon.seed : undefined,
       v: 1, mapIdx: opts.mapIdx, tiles: b.tiles, districts: b.districts, w: b.w, h: b.h, painted: b.painted,
       settings: { target: opts.target || C.targetNetWorth, maxRounds: opts.maxRounds || C.maxRounds, startCash: opts.startCash || C.startCash, rules: Object.assign({}, C.rules, opts.rules || {}) },
       players: opts.players.map(function (o, i) {
@@ -100,7 +102,7 @@
       seed: opts.seed || (Date.now() & 0xffffff), rngCalls: 0, cardHistory: [], phase: 'idle', forcedDice: null,
     };
     var g = new Game(s, null);
-    s.tiles.forEach(function (t) { if (t.type === 'chance') { t.type = 'splot'; t.ch = 'Q'; t.name = 'ที่ดินบ้านพิเศษ'; } });
+    s.tiles.forEach(function (t) { if (t.type === 'chance' && t.ch === '?') { t.type = 'splot'; t.ch = 'Q'; t.name = 'ที่ดินบ้านพิเศษ'; } });
     if (!s.settings.rules.tax) s.tiles.forEach(function (t) { if (t.type === 'tax') { t.type = 'chance'; t.ch = '?'; t.name = 'Chance'; } });
     s.districts.forEach(function (d, i) { d.adj = 1; d.price = Math.max(1, Math.round(g.fairPrice(i))); d.hist = [d.price]; });
     // turn order: roll dice, highest first
@@ -513,6 +515,31 @@
   };
 
   // ---------- LANDING ----------
+  // ---------- dragon castle: bet, attack the dragon, win the whole pot ----------
+  P.dragonChance = function (bet) { return (C.dragon.hit[bet] || 0.15); };
+  P.landDragon = async function (p, t) {
+    var s = this.s, io = this.io, D2 = C.dragon;
+    if (s.dragonPot === undefined) s.dragonPot = D2.seed;
+    var opts = D2.bets.filter(function (b) { return p.cash >= b; });
+    if (!opts.length) { this.log('🐉 ' + p.name + ' เงินไม่พอสู้มังกร'); if (io.toast) io.toast('🐉 เงินไม่พอสู้มังกร'); return; }
+    var bet = await io.dragonBet(p, s.dragonPot, opts);
+    if (!bet || opts.indexOf(bet) < 0) { this.log('🏰 ' + p.name + ' ไม่สู้มังกร'); return; }
+    p.cash -= bet;
+    var win = this.r() < this.dragonChance(bet);
+    if (win) {
+      var prize = s.dragonPot + bet; p.cash += prize; s.dragonPot = D2.seed;
+      this.log('⚔️ ' + p.name + ' โจมตีมังกรสำเร็จ! ได้เงินสะสม ' + fmt(prize) + ' G', 'gain');
+      if (io.dragonResult) await io.dragonResult(p, { win: true, bet: bet, prize: prize, pot: s.dragonPot });
+      return;
+    }
+    s.dragonPot += bet;
+    var self = this, pool = s.tiles.filter(function (x) { return x.id !== t.id && x.type !== 'dragon' && x.type !== 'bank' && x.type !== 'road'; });
+    var dest = pool[Math.floor(this.r() * pool.length)].id;
+    this.log('💨 ' + p.name + ' โจมตีพลาด! เสีย ' + fmt(bet) + ' G (เงินสะสม ' + fmt(s.dragonPot) + ' G) และถูกลมมังกรพัดกระเด็น!', 'rent');
+    if (io.dragonResult) await io.dragonResult(p, { win: false, bet: bet, pot: s.dragonPot, dest: dest });
+    var from = p.pos; p.pos = dest; p.prev = null; if (io.teleport) await io.teleport(p, from, dest);
+    if (!s.over && !p.bankrupt) await this.land(p);
+  };
   P.land = async function (p) {
     var t = this.tile(p.pos), io = this.io, s = this.s, self = this;
     s.phase = 'land';
@@ -523,6 +550,7 @@
       case 'suit': this.log('🃏 ' + p.name + ' หยุดตรงช่องสัญลักษณ์พอดี — ได้เปิดการ์ด!', 'card'); await this.drawChance(p); break;
       case 'chance': await this.drawChance(p); break;
       case 'splot': await this.landSpecialPlot(p, t); break;
+      case 'dragon': await this.landDragon(p, t); break;
       case 'lucky': { var amt = Math.max(C.luckyMin, Math.floor(s.taxPool * 0.5)); s.taxPool = Math.max(0, s.taxPool - amt); await this.gain(p, amt, 'ช่อง Lucky (กองภาษีเมือง)', true); break; }
       case 'superlucky': { var amt2 = Math.max(C.superLuckyMin, s.taxPool); s.taxPool = 0; await this.gain(p, amt2, 'ช่อง Super Lucky (กองภาษีทั้งหมด)', true); break; }
       case 'tax': {

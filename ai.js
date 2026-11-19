@@ -172,6 +172,12 @@
       aff.sort(function (a, b) { return pref.indexOf(a.b.id) - pref.indexOf(b.b.id); });
       return aff[0].b.id;
     },
+    dragonBet: function (g, p, pot, opts) {
+      if (p.ai.level === 'beginner') return Math.random() < 0.4 ? opts[0] : 0;
+      var best = 0, bv = -120;
+      opts.forEach(function (b) { var c = g.dragonChance(b), ev = c * pot - (1 - c) * (b + 120); if (ev > bv && b <= p.cash * 0.3) { bv = ev; best = b; } });
+      return best;
+    },
     portalChoice: function (g, p, owner, t, big, small) {
       var best = -1e9;
       if (owner.id === p.id) { g.s.tiles.forEach(function (x) { if (x.id !== t.id) best = Math.max(best, g.landScore(p, x)); }); return best > 60; }

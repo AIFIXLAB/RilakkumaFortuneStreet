@@ -443,6 +443,13 @@ button.pink{background:linear-gradient(#fff0f5,#ffb0c8 60%,#ff8fb3)} button.gree
 .sphopt b{font-size:17px}.sphopt span{font-size:12px;font-weight:600;min-height:64px}
 .sphopt:active{transform:scale(.96)}.sphopt.dimo{filter:grayscale(.8);opacity:.5}
 .ico.splot{background:rgba(255,255,255,.9);gap:0;display:flex;align-items:flex-end;padding:2px 3px}
+/* dragon */
+.dragonpot{font-weight:900;font-size:40px;color:#d48a00;text-shadow:0 2px 0 #fff,0 0 12px rgba(255,200,0,.6);margin:4px 0}
+.ptile.dragon .lbl{background:#fff0f0;color:#c62828;font-weight:900}
+.dragonhit{animation:dhit .8s ease-in-out 2}
+.dragonroar{animation:droar .6s ease-in-out 3}
+@keyframes dhit{0%,100%{transform:none;filter:none}30%{transform:translateX(-10px) rotate(-6deg);filter:brightness(2)}60%{transform:translateX(8px) rotate(4deg)}}
+@keyframes droar{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
 /* v1.5: tap your own piece to roll */
 .piece.tapme{pointer-events:auto;cursor:pointer;z-index:40}
 .piece.tapme .spr{animation:tapbob 1s ease-in-out infinite}

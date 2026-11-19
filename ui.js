@@ -32,7 +32,7 @@
   function show(id) { document.querySelectorAll('.screen').forEach(function (e) { e.classList.toggle('on', e.id === id); }); if (id === 'menu') renderMenu(); if (window.Music) Music.setMood(id === 'game' ? 'game' : 'menu'); }
   function wait(ms) { var t = U.token; return new Promise(function (res, rej) { setTimeout(function () { t === U.token ? res() : rej('abort'); }, ms / U.speed); }); }
   function toast(msg, ms) { var d = document.createElement('div'); d.innerHTML = msg; $('#toast').appendChild(d); setTimeout(function () { d.remove(); }, ms || 2200); }
-  U.toast = toast;
+  U.toast = toast; U.boxModal = function () { return boxModal(); };
   // tiny WebAudio sfx
   var AC = null;
   function sfx(kind) {
@@ -96,6 +96,7 @@
     h += '<div class="hudnum" style="left:637px;top:22px;width:82px;height:34px">' + fmt(P.diamond) + '</div>';
     h += '<div class="hudnum" style="left:836px;top:22px;width:78px;height:34px">20/20</div>';
     h += '<div class="hudnum" style="left:172px;top:22px;width:84px;height:34px;background:#5a2a14">Lv. ' + P.level + '</div>';
+    if (P.boxes > 0) h += '<div class="hot giftbtn" data-act="boxes" style="left:120px;top:150px;width:150px;height:130px"><img src="assets/box.webp" draggable="false"><span>เปิดกล่อง ×' + P.boxes + '</span></div>';
     if (ls.canClaim) h += '<div class="badge" style="left:70px;top:140px">!</div><div class="badge" style="left:1176px;top:8px">!</div>';
     $('#menuHot').innerHTML = h; $('#menuHot').style.cssText = 'position:absolute;left:0;top:69px;width:1280px;height:721px';
   }
@@ -107,6 +108,7 @@
     else if (act === 'online') onlineMenu();
     else if (act === 'tour') alertBox('🏆 ทัวร์นาเมนต์', 'จะเปิดหลังระบบออนไลน์พร้อม — ระหว่างนี้ลองเล่น “Long Match” กับ AI ระดับ Advanced ได้เลย!');
     else if (act === 'shop') openShop('rec');
+    else if (act === 'boxes') boxModal().then(renderMenu);
     else if (act === 'login') dailyLogin();
     else if (act === 'rank') rankingModal();
     else if (act === 'trophy') achievements();
@@ -186,7 +188,7 @@
     var C = CONFIG;
     var html = '<div style="max-width:900px;font-size:15px;font-weight:600;line-height:1.6">' +
       '<b>🎯 เป้าหมาย:</b> ทรัพย์สินรวม (เงินสด + มูลค่าร้าน + หุ้น) ถึงเป้าหมาย แล้ว <b>กลับเข้าธนาคาร</b> = ชนะ (ตั้งเป้าเองได้ในหน้าเลือกแผนที่)<br>' +
-      '<b>🎲 ทอยลูกเต๋า:</b> ลูกเต๋าหมุนอยู่ตลอด แตะเพื่อหยุดเอง • ตอนเดินจะมีตัวเลขก้าวที่เหลือบนหัว มี 📍 บอกจุดที่อาจตก กด <b>↩ ย้อน</b> เพื่อเดินถอยกลับได้ก่อนกด “หยุดตรงนี้”<br>' +
+      '<b>🎲 ทอยลูกเต๋า:</b> ถึงตาเราให้แตะที่ตัวละครของเราบนแผนที่ (หรือรูปตัวเราที่แถบล่าง) • ลูกเต๋าหมุนอยู่ตลอด แตะเพื่อหยุดเอง • ตอนเดินจะมีตัวเลขก้าวที่เหลือบนหัว มี 📍 บอกจุดที่อาจตก กด <b>↩ ย้อน</b> เพื่อเดินถอยกลับได้ก่อนกด “หยุดตรงนี้”<br>' +
       '<b>🏠 หัวใจของเกม = สร้างร้านแพง ๆ ให้คนอื่นมาตก!</b><br>' +
       '• ซื้อร้านว่าง → ร้านเปลี่ยนเป็นกรอบสีของคุณ<br>' +
       '• <b>ตกที่ร้านตัวเอง = ลงทุน</b> เลือกอัปเกรดร้านของคุณในเขตเดียวกันได้ <b>1 หลัง ขึ้นได้ 1 ระดับ</b> ต่อครั้ง ร้านจะค่อย ๆ ขยายจากบ้านเล็กเป็นโรงแรมหรู<br>• <b>ซื้อหุ้นได้ 1 ครั้งต่อเทิร์น</b> (เลือก 1 เขต) • ถ้าเงินสดไม่พอจ่าย <b>เลือกขายหุ้น/ร้านเองได้</b><br>' +
@@ -220,9 +222,9 @@
   function renderSetup() {
     var sel = U.sel;
     $('#mapCards').innerHTML = MAPS.map(function (m, i) {
-      return '<div class="mapcard ' + (sel.map === i ? 'sel' : '') + '" data-map="' + i + '"><div class="thumb" style="background-image:url(assets/' + m.bg + '.webp)"></div><div class="nm">' + m.th + ' <span class="muted" style="font-size:14px">' + m.name + '</span></div><div class="row" style="gap:4px;padding:0 12px 10px">' + m.districts.map(function (d) { return '<span title="' + esc(d.th) + '" style="width:22px;height:14px;border-radius:5px;background:' + d.color + ';border:2px solid #6b4226"></span>'; }).join('') + '<span style="font-size:12px;font-weight:800;margin-left:4px">' + (function () { var b = Game.buildBoard(i); return 'แผนที่' + m.size + ' • ' + b.tiles.length + ' ช่อง • ' + b.districts.length + ' เขต • ' + b.tiles.filter(function (t) { return t.type === 'shop'; }).length + ' ร้าน'; })() + '</span></div></div>';
+      return '<div class="mapcard ' + (sel.map === i ? 'sel' : '') + '" data-map="' + i + '"><div class="thumb" style="background-image:url(assets/' + m.bg + '.webp)"><div class="mzoom" data-mz="' + i + '">🔍</div></div><div class="nm">' + m.th + ' <span class="muted" style="font-size:14px">' + m.name + '</span></div><div class="row" style="gap:4px;padding:0 12px 10px">' + m.districts.map(function (d) { return '<span title="' + esc(d.th) + '" style="width:22px;height:14px;border-radius:5px;background:' + d.color + ';border:2px solid #6b4226"></span>'; }).join('') + '<span style="font-size:12px;font-weight:800;margin-left:4px">' + (function () { var b = Game.buildBoard(i); return 'แผนที่' + m.size + ' • ' + b.tiles.length + ' ช่อง • ' + b.districts.length + ' เขต • ' + b.tiles.filter(function (t) { return t.type === 'shop'; }).length + ' ร้าน'; })() + '</span></div></div>';
     }).join('');
-    document.querySelectorAll('[data-map]').forEach(function (e) { e.onclick = function () { sel.map = +e.dataset.map; renderSetup(); }; });
+    document.querySelectorAll('[data-map]').forEach(function (e) { e.onclick = function (ev) { if (ev.target.closest('[data-mz]')) { ev.stopPropagation(); mapViewer(+e.dataset.map, function () { sel.map = +e.dataset.map; renderSetup(); }); return; } sel.map = +e.dataset.map; renderSetup(); }; });
     var used = sel.slots.map(function (s) { return s.char; });
     $('#slots').innerHTML = sel.slots.map(function (s, i) {
       var types = i === 0 ? [['human', 'คุณ (P1)']] : [['human', 'ผู้เล่น'], ['ai', 'AI'], ['off', 'ปิด']];
@@ -435,7 +437,7 @@
     M.districts.forEach(function (d, i) { h += '<div class="dlabel" id="dl' + i + '" style="left:' + d.label[0] * SC + 'px;top:' + (d.label[1] * SC - 10) + 'px;border-color:' + d.color + ';font-size:' + Math.max(9, Math.min(12, BT * 0.24)) + 'px"></div>'; });
     s.players.forEach(function (p) { h += '<div class="piece" id="pc' + p.id + '" style="--pc:' + p.color + '"><div class="pin">P' + (p.id + 1) + '</div><div class="ring"></div>' + spr(charSpec(p), BT * 1.05, BT * 1.15) + '</div>'; });
     B.innerHTML = h;
-    B.onclick = function (e) { if (U.dragMoved) return; var t = e.target.closest('[data-t]'); if (t && U.planTap && !modalOpen && U.planTap(+t.dataset.t)) return; if (t && !modalOpen && !U.choosingDir) tileInfo(+t.dataset.t); };
+    B.onclick = function (e) { if (U.dragMoved) return; if (U.tapRoll && e.target.closest('.piece.tapme')) { U.tapRoll(); return; } var t = e.target.closest('[data-t]'); if (t && U.planTap && !modalOpen && U.planTap(+t.dataset.t)) return; if (t && !modalOpen && !U.choosingDir) tileInfo(+t.dataset.t); };
     CAM.z = 1; fitCam(false);
   }
   function clampCam() {
@@ -858,12 +860,14 @@
         if (p.isAI) { setAct(spr(['ui', 'thinking'], 220, 44) + '<div>' + esc(p.name) + '</div>'); return aiWait(500).then(function () { return A.preRoll(g, p); }).then(function () { refresh(); }); }
         return new Promise(function (resolve) {
           U.preRollActive = true;
-          var done = function () { U.preRollActive = false; U.preRollResolve = null; U.preRollRender = null; renderItems(); resolve(); };
+          var me = document.getElementById('pc' + p.id), tc = $('#turnChar');
+          var done = function () { U.preRollActive = false; U.preRollResolve = null; U.preRollRender = null; U.tapRoll = null; if (me) me.classList.remove('tapme'); tc.classList.remove('tapme'); tc.onclick = null; renderItems(); resolve(); };
+          U.tapRoll = function () { if (modalOpen) return; $('#actBtns').innerHTML = ''; sfx('tap'); done(); };
+          if (me) me.classList.add('tapme'); tc.classList.add('tapme'); tc.onclick = function () { U.tapRoll && U.tapRoll(); };
           U.preRollResolve = done;
           var render = function () {
-            setAct('<div class="uibtn" id="rollBtn">' + spr(['ui', 'roll'], 244, 118) + '</div>' + (U.lastRoll ? '<div class="lastroll">ครั้งก่อน ' + U.lastRoll + '</div>' : ''));
+            setAct('<div class="taproll">👆 แตะที่<b>ตัวเรา</b><br>เพื่อทอยลูกเต๋า!</div>' + (U.lastRoll ? '<div class="lastroll">ครั้งก่อน ' + U.lastRoll + '</div>' : ''));
             $('#actBtns').innerHTML = '<div class="uibtn" id="aShops">' + spr(['ui', 'manage'], 150, 58) + '</div><div class="uibtn" id="aMine">' + spr(['ui', 'assets'], 150, 58) + '</div><div class="uibtn" id="aSellSh">' + spr(['ui', 'sell'], 150, 58) + '</div><div class="uibtn" id="aSellSt">' + spr(['ui', 'stockmkt'], 150, 58) + '</div>';
-            $('#rollBtn').onclick = function () { if (modalOpen) return; $('#actBtns').innerHTML = ''; done(); };
             $('#aSellSt').onclick = function () { stockPanel(p, 'sell', '📈 หุ้นของคุณ — ขายได้ต้นเทิร์น (ซื้อที่ธนาคาร/Broker)').then(function () { refresh(); render(); }); };
             $('#aSellSh').onclick = function () { sellShopsPanel(p).then(function () { refresh(); render(); }); };
             $('#aMine').onclick = function () { playerInfo(p); };
@@ -1199,6 +1203,62 @@
       setTimeout(function () { V.onclick = function (e) { if (e.target.id !== 'vNext') done(); }; }, 2500);
     });
   }
+  // ---------- mystery boxes ----------
+  function boxModal() {
+    var P = Meta.p, n = P.boxes || 0; if (!n) return Promise.resolve();
+    return modal({ title: '🎁 กล่องสุ่มของรางวัล', width: 1060, close: false, bgClose: false, body: '<div id="bxB"></div>', buttons: [], mount: function (box, close) {
+      var B = box.querySelector('#bxB'), cells = [];
+      for (var i = 0; i < n; i++) cells.push(null);
+      function cellHTML(c, i) {
+        if (!c) return '<div class="bxcell" data-bx="' + i + '"><img class="bximg" src="assets/box.webp" draggable="false"><div class="bxtap">แตะเพื่อเปิด!</div></div>';
+        var main = c.items[0], rest = c.items.slice(1);
+        var ic = main.spr ? spr(main.spr, 120, 104) : '<div style="font-size:80px;line-height:104px">' + main.ic + '</div>';
+        return '<div class="bxcell open ' + (main.big ? 'big' : '') + '"><div class="bxburst"></div>' + ic + (main.tag ? '<div class="bxtag">✨ ' + esc(main.tag) + ' ใหม่!</div>' : '') + '<div class="bxname">' + esc(main.name) + '</div>' + rest.map(function (r) { return '<div class="bxsub">' + esc(r.name) + '</div>'; }).join('') + '</div>';
+      }
+      function draw() {
+        var left = cells.filter(function (c) { return !c; }).length;
+        B.innerHTML = '<div style="text-align:center;font-weight:800;font-size:17px;margin-bottom:8px">' + (left ? 'มีกล่องสุ่มรอเปิด <b style="color:#ff5d8f;font-size:24px">' + left + '</b> กล่อง • แตะกล่องเพื่อเปิด!' : '🎉 เปิดครบแล้ว! ของรางวัลเข้ากระเป๋าแล้ว') + '</div>' +
+          '<div class="bxgrid">' + cells.map(cellHTML).join('') + '</div>' +
+          '<div class="row" style="justify-content:center;gap:10px;margin-top:12px">' + (left ? '<button class="pink" id="bxAll">🎁 เปิดทั้งหมด</button><button class="gray" id="bxLater">เก็บไว้เปิดทีหลัง</button>' : '<button class="green" id="bxOk">เยี่ยมเลย!</button>') + '</div>';
+        B.querySelectorAll('[data-bx]').forEach(function (e) { e.onclick = function () { openOne(+e.dataset.bx); }; });
+        var a = B.querySelector('#bxAll'); if (a) a.onclick = function () { var k = 0; cells.forEach(function (c, i) { if (!c) setTimeout(function () { openOne(i); }, 260 * k++); }); };
+        var l = B.querySelector('#bxLater'); if (l) l.onclick = function () { close(); };
+        var o = B.querySelector('#bxOk'); if (o) o.onclick = function () { close(); };
+      }
+      function openOne(i) {
+        if (cells[i]) return; var el = B.querySelector('[data-bx="' + i + '"]'); if (!el || el.classList.contains('shake')) return;
+        el.classList.add('shake'); sfx('tap');
+        setTimeout(function () { var r = Meta.openBox(); if (!r) return; cells[i] = r; sfx(r.items[0].big ? 'win' : 'coin'); draw(); try { renderMenu(); } catch (e) { } }, 520);
+      }
+      draw();
+    } });
+  }
+  // ---------- enlarge a map before choosing it ----------
+  function mapViewer(i, onPick) {
+    var m = MAPS[i], b = Game.buildBoard(i);
+    return modal({ title: '🗺️ ' + esc(m.th) + ' — ' + esc(m.name), width: 1180, body: '<div class="mview" id="mvW"><div id="mvI" style="background-image:url(assets/' + m.bg + '.webp)"></div><div class="zbtns mvz"><button class="small" id="mvP">＋</button><button class="small" id="mvM">－</button><button class="small" id="mvF">⤢</button></div></div><div style="text-align:center;font-weight:800;margin-top:6px;font-size:13px;line-height:1.7">' + m.districts.map(function (d) { return '<span style="display:inline-block;width:18px;height:12px;border-radius:4px;background:' + d.color + ';border:2px solid #6b4226;vertical-align:middle"></span> ' + esc(d.th); }).join(' &nbsp; ') + '<div class="muted" style="font-size:13px">' + b.tiles.length + ' ช่อง • ' + b.tiles.filter(function (t) { return t.type === 'shop'; }).length + ' ร้าน • ลากเพื่อเลื่อน • หมุนล้อ/จีบนิ้ว หรือกด ＋ － เพื่อซูม</div></div>', buttons: [{ t: '✔ เลือกแผนที่นี้', v: 1, cls: 'pink' }, { t: 'ปิด', v: 0 }], mount: function (box) {
+      var W = box.querySelector('#mvW'), I = box.querySelector('#mvI'), vw = W.clientWidth || 1000, vh = W.clientHeight || 540, iw = b.w || 1536, ih = b.h || 1024;
+      var base = Math.min(vw / iw, vh / ih), z = 1, tx = 0, ty = 0, pts = {}, st = null;
+      I.style.width = iw * base + 'px'; I.style.height = ih * base + 'px';
+      function clamp() { var w = iw * base * z, h = ih * base * z; tx = w <= vw ? (vw - w) / 2 : Math.min(0, Math.max(vw - w, tx)); ty = h <= vh ? (vh - h) / 2 : Math.min(0, Math.max(vh - h, ty)); }
+      function apply() { clamp(); I.style.transform = 'translate(' + tx + 'px,' + ty + 'px) scale(' + z + ')'; }
+      function zoomAt(nz, cx, cy) { nz = Math.max(1, Math.min(4, nz)); tx = cx - (cx - tx) * nz / z; ty = cy - (cy - ty) * nz / z; z = nz; apply(); }
+      function loc(e) { var r = W.getBoundingClientRect(), k = r.width / vw; return { x: (e.clientX - r.left) / k, y: (e.clientY - r.top) / k }; }
+      box.querySelector('#mvP').onclick = function () { zoomAt(z * 1.4, vw / 2, vh / 2); };
+      box.querySelector('#mvM').onclick = function () { zoomAt(z / 1.4, vw / 2, vh / 2); };
+      box.querySelector('#mvF').onclick = function () { z = 1; apply(); };
+      W.addEventListener('wheel', function (e) { e.preventDefault(); var p = loc(e); zoomAt(z * (e.deltaY < 0 ? 1.15 : 1 / 1.15), p.x, p.y); }, { passive: false });
+      W.addEventListener('pointerdown', function (e) { if (e.target.closest('.mvz')) return; W.setPointerCapture(e.pointerId); pts[e.pointerId] = loc(e); st = { tx: tx, ty: ty, z: z, p: Object.assign({}, pts) }; });
+      W.addEventListener('pointermove', function (e) {
+        if (!pts[e.pointerId]) return; pts[e.pointerId] = loc(e); var ids = Object.keys(pts), s0 = Object.keys(st.p);
+        if (ids.length >= 2 && s0.length >= 2) { var a = pts[ids[0]], c = pts[ids[1]], a0 = st.p[s0[0]], c0 = st.p[s0[1]]; if (!a0 || !c0) return; var d = Math.hypot(a.x - c.x, a.y - c.y), d0 = Math.hypot(a0.x - c0.x, a0.y - c0.y) || 1; z = st.z; tx = st.tx; ty = st.ty; zoomAt(st.z * d / d0, (a0.x + c0.x) / 2, (a0.y + c0.y) / 2); }
+        else if (ids.length === 1 && st.p[ids[0]]) { tx = st.tx + pts[ids[0]].x - st.p[ids[0]].x; ty = st.ty + pts[ids[0]].y - st.p[ids[0]].y; apply(); }
+      });
+      function up(e) { delete pts[e.pointerId]; st = { tx: tx, ty: ty, z: z, p: Object.assign({}, pts) }; }
+      W.addEventListener('pointerup', up); W.addEventListener('pointercancel', up);
+      apply();
+    } }).then(function (v) { if (v && onPick) onPick(); });
+  }
   function showResultPage(g) {
     var s = g.s, owner = s.players[s.ownerIdx || 0];
     var rk = s.ranking || s.players.map(function (p) { return { id: p.id, nw: g.netWorth(p) }; }).sort(function (a, b) { return b.nw - a.nw; });
@@ -1208,9 +1268,10 @@
     var W = 560, H = 220, mx = Math.max.apply(null, s.players.map(function (p) { return Math.max.apply(null, p.hist.concat([g.netWorth(p), 1])); }));
     var lines = s.players.map(function (p) { var h = p.hist.concat([g.netWorth(p)]); if (h.length < 2) h = [h[0], h[0]]; return '<polyline fill="none" stroke="' + p.color + '" stroke-width="4" points="' + h.map(function (v, i) { return (i / (h.length - 1) * W).toFixed(1) + ',' + (H - v / mx * (H - 10)).toFixed(1); }).join(' ') + '"/>'; }).join('');
     var ranks = rk.map(function (r, i) { var p = s.players[r.id]; return '<div class="row panel" style="padding:8px 14px;gap:14px;' + (i === 0 ? 'background:#fff3a8' : '') + '">' + spr(['ui', [55, 57, 59, 61][i]], 140, 40) + spr(charSpec(p), 70, 74) + '<div class="grow"><div style="font-weight:900;font-size:20px;color:' + p.color + '">' + esc(p.name) + (p.bankrupt ? ' 💥' : '') + '</div><div style="font-weight:800">ทรัพย์สิน ' + fmt(r.nw) + ' G • ร้าน ' + g.shopsOf(p).length + ' • Lv' + p.level + '</div></div></div>'; }).join('');
-    $('#result').innerHTML = '<div class="scrhead"><div class="title"><span class="ttl">🏆 ผลการแข่งขัน — ' + MAPS[s.mapIdx].th + '</span></div><div class="uibtn" id="resMenu">' + spr(['ui', 'home'], 110, 80) + '</div></div><div class="scrbody"><div class="row" style="align-items:flex-start;gap:20px"><div class="col" style="width:600px">' + ranks + '<div class="panel" style="padding:10px;font-weight:800">' + esc(s.endReason || '') + '</div></div><div class="col" style="width:610px"><div class="panel" style="padding:12px"><b>กราฟทรัพย์สินรายรอบ</b><svg width="' + W + '" height="' + H + '" style="margin-top:6px;background:#fffdf5;border-radius:12px">' + lines + '</svg></div>' + (reward ? '<div class="panel" style="padding:12px;text-align:center;font-weight:900;font-size:20px">🎁 รางวัล: +' + fmt(reward.gold) + ' Gold Coin' + (reward.diamond ? ' • +' + reward.diamond + ' 💎' : '') + '<div style="font-size:14px">ใช้ซื้อไอเทมในร้านค้าได้เลย!</div></div>' : '') + '<div class="panel" style="padding:12px;text-align:center">' + (s.winner !== null && s.winner !== undefined ? spr(charSpec(s.players[s.winner]), 200, 200) + '<div style="font-size:26px;font-weight:900">' + esc(s.players[s.winner].name) + ' ชนะ!</div>' : '') + '</div></div></div></div>';
+    $('#result').innerHTML = '<div class="scrhead"><div class="title"><span class="ttl">🏆 ผลการแข่งขัน — ' + MAPS[s.mapIdx].th + '</span></div><div class="uibtn" id="resMenu">' + spr(['ui', 'home'], 110, 80) + '</div></div><div class="scrbody"><div class="row" style="align-items:flex-start;gap:20px"><div class="col" style="width:600px">' + ranks + '<div class="panel" style="padding:10px;font-weight:800">' + esc(s.endReason || '') + '</div></div><div class="col" style="width:610px"><div class="panel" style="padding:12px"><b>กราฟทรัพย์สินรายรอบ</b><svg width="' + W + '" height="' + H + '" style="margin-top:6px;background:#fffdf5;border-radius:12px">' + lines + '</svg></div>' + (reward ? '<div class="panel" style="padding:12px;text-align:center;font-weight:900;font-size:20px">🎁 รางวัล: +' + fmt(reward.gold) + ' Gold Coin' + (reward.diamond ? ' • +' + reward.diamond + ' 💎' : '') + ' • 🎁 กล่องสุ่ม ×' + reward.boxes + '<div style="font-size:14px">ใช้ซื้อไอเทมในร้านค้าได้เลย!</div></div>' : '') + '<div class="panel" style="padding:12px;text-align:center">' + (s.winner !== null && s.winner !== undefined ? spr(charSpec(s.players[s.winner]), 200, 200) + '<div style="font-size:26px;font-weight:900">' + esc(s.players[s.winner].name) + ' ชนะ!</div>' : '') + '</div></div></div></div>';
     $('#resMenu').onclick = function () { show('menu'); };
     show('result'); sfx('win');
+    if (reward && Meta.p.boxes > 0) setTimeout(boxModal, 700);
   }
 
   // =====================================================================
@@ -1333,7 +1394,7 @@
   // =====================================================================
   var LESSONS = {
     intro: ['ยินดีต้อนรับสู่ Fortune Street! 🐻', 'เป้าหมายของเกมคือทำให้ <b>ทรัพย์สินรวม</b> (เงินสด + มูลค่าร้าน + หุ้น) ถึง <b>เป้าหมาย</b> ที่มุมขวาบน แล้ว <b>กลับเข้าธนาคาร</b> 🏦 ก่อนคนอื่น<br>ด้านซ้ายคือการ์ดผู้เล่น ดูเงินสด ทรัพย์สิน และอันดับได้ตลอด แตะการ์ดเพื่อดูรายละเอียด'],
-    dice: ['ทอยลูกเต๋า 🎲', 'ลูกเต๋าจะ <b>หมุนอยู่ตลอด</b> — แตะที่ลูกเต๋าเมื่อไหร่ก็หยุดเมื่อนั้น<br>ได้กี่แต้มก็เดินเท่านั้น (1–6)'],
+    dice: ['ทอยลูกเต๋า 🎲', 'ถึงตาเรา <b>แตะที่ตัวละครของเรา</b> บนแผนที่เพื่อทอย<br>ลูกเต๋าจะ <b>หมุนอยู่ตลอด</b> — แตะที่ลูกเต๋าเมื่อไหร่ก็หยุดเมื่อนั้น<br>ได้กี่แต้มก็เดินเท่านั้น (1–6)'],
     plan: ['เลือกทางเดิน 👣', 'ตัวเลขบนหัวคือ <b>ก้าวที่เหลือ</b> • ช่องที่มี <b>📍</b> คือจุดที่เราอาจไปตก<br><b>แตะช่อง 📍 ที่กระพริบ</b> เพื่อเดินไปช่องนั้นเลย • เดินผิดกด <b>↩ ย้อน 1 ก้าว</b> ได้<br>ก้าวสุดท้ายจะบอกว่าตกช่องอะไร แล้วกด <b>✔ หยุดตรงนี้</b>'],
     buy: ['ซื้อร้าน 🏠', 'ช่องร้านที่เป็น <b>กรอบเส้นประ</b> คือร้านว่าง ซื้อได้เลย!<br>ซื้อแล้วกรอบจะกลายเป็น <b>สีของเรา</b> ใครมาตกต้องจ่ายค่าเช่าให้เรา<br>ร้านที่ <b>สีพื้นเดียวกัน</b> อยู่ <b>เขตเดียวกัน</b> — ซื้อหลายร้านในเขตเดียวกันจะยิ่งแพงขึ้น'],
     chain: ['ร้านติดกัน 🔗', 'ร้านของเราที่ <b>อยู่ติดกันบนถนน</b> จะเชื่อมกันเป็นแถว (แบบ Itadaki)!<br>ทุกร้านในแถว <b>ค่าเช่าเพิ่ม 20% ต่อร้านที่ติดกัน</b> (สูงสุด ×1.8) และ <b>อาคารขยายขึ้น 1 ขั้นต่อร้าน</b><br>ตัวเลข 🔗 บนร้านบอกความยาวแถว'],

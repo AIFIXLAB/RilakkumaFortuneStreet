@@ -103,18 +103,42 @@ var Meta = (function () {
     P.hist.unshift({ tx: txid(), t: Date.now(), kind: 'login', name: 'Daily Login วันที่ ' + ((L.streak - 1) % 7 + 1), cur: r.gold ? 'gold' : 'diamond', amt: r.gold || r.diamond || 0 });
     save(); return r;
   }
+  var BOX_BY_RANK = [5, 3, 2, 1];
   function matchReward(rank, won, nw) {
-    var gold = [2500, 1200, 700, 400][rank] || 300, dia = won ? 10 : rank === 1 ? 3 : 0;
-    P.gold += gold; P.diamond += dia; P.stats.games++; if (won) P.stats.wins++; P.stats.best = Math.max(P.stats.best, nw);
+    var gold = [4000, 2000, 1200, 600][rank] || 400, dia = won ? 15 : rank === 1 ? 5 : 2, boxes = BOX_BY_RANK[rank] || 1;
+    P.gold += gold; P.diamond += dia; P.boxes = (P.boxes || 0) + boxes; P.jackpotNext = rank === 0 ? 1 : 0; P.stats.games++; if (won) P.stats.wins++; P.stats.best = Math.max(P.stats.best, nw);
     P.xp += 100 + (won ? 150 : 0); while (P.xp >= P.level * 300) { P.xp -= P.level * 300; P.level++; }
     P.hist.unshift({ tx: txid(), t: Date.now(), kind: 'reward', name: 'รางวัลจบเกม อันดับ ' + (rank + 1), cur: 'gold', amt: gold });
-    save(); return { gold: gold, diamond: dia };
+    save(); return { gold: gold, diamond: dia, boxes: boxes };
   }
+  // ---- mystery boxes (reward for finishing a match) ----
+  function pickW(list) { var t = list.reduce(function (a, x) { return a + x[0]; }, 0), r = Math.random() * t; for (var i = 0; i < list.length; i++) { r -= list[i][0]; if (r <= 0) return list[i][1]; } return list[list.length - 1][1]; }
+  function rnd(a) { return a[Math.floor(Math.random() * a.length)]; }
+  function openBox() {
+    if (!(P.boxes > 0)) return null;
+    P.boxes--;
+    var rare = all().filter(function (x) { return x.uniq && !owned(x.id); }), kind = P.jackpotNext && rare.length ? 'rare' : pickW([[26, 'gold'], [16, 'diamond'], [22, 'equip'], [16, 'card'], [10, 'deco'], [10, 'rare']]);
+    P.jackpotNext = 0;
+    var out = [];
+    if (kind === 'rare' && !rare.length) kind = 'gold';
+    if (kind === 'gold') { var g = rnd([1000, 1500, 2000, 2500, 3000, 5000]); P.gold += g; out.push({ ic: '🪙', name: fmtN(g) + ' Gold', big: g >= 3000 }); }
+    if (kind === 'diamond') { var d = rnd([8, 10, 15, 20, 30]); P.diamond += d; out.push({ ic: '💎', name: d + ' Diamond', big: d >= 20 }); }
+    if (kind === 'equip' || kind === 'card' || kind === 'deco') {
+      var pool = all().filter(function (x) { return x.cat === (kind === 'equip' ? 'equip' : kind === 'card' ? 'cards' : 'deco'); }), it = rnd(pool), n = kind === 'deco' ? 1 + Math.floor(Math.random() * 2) : 2 + Math.floor(Math.random() * 2);
+      addItem(it.id, n); out.push({ spr: it.spr, name: it.name + ' ×' + n });
+    }
+    if (kind === 'rare') { var it2 = rnd(rare); addItem(it2.id, 1); out.push({ spr: it2.spr, name: it2.name, big: true, tag: it2.type }); }
+    // every box also has a bonus pouch
+    var bonus = 300 + Math.floor(Math.random() * 6) * 100; P.gold += bonus; out.push({ ic: '🪙', name: '+' + fmtN(bonus) + ' Gold โบนัส', small: true });
+    P.hist.unshift({ tx: txid(), t: Date.now(), kind: 'box', name: 'กล่องสุ่ม: ' + out.map(function (o) { return o.name; }).join(', '), cur: '-', amt: 0 });
+    save(); return { kind: kind, items: out };
+  }
+  function fmtN(n) { return Math.round(n).toLocaleString('en-US'); }
   function charSprite(key, costume) {
     if (/^x\d$/.test(key)) return ['extra', +key.slice(1)];
     var i = +key.slice(1);
     return [costume === 'cozy' && P && P.costumes['cz' + i] ? 'cozy' : 'chars', i];
   }
   function charName(key) { return /^x/.test(key) ? EXTRA_CHARS[+key.slice(1)].name : CHARACTERS[+key.slice(1)].name; }
-  return { load: load, save: save, reset: reset, get p() { return P; }, all: all, item: item, tags: tags, priceOf: priceOf, owned: owned, buy: buy, exchange: exchange, consume: consume, validLoadout: validLoadout, loginState: loginState, claimLogin: claimLogin, matchReward: matchReward, charSprite: charSprite, charName: charName, addItem: addItem };
+  return { load: load, save: save, reset: reset, get p() { return P; }, all: all, item: item, tags: tags, priceOf: priceOf, owned: owned, buy: buy, exchange: exchange, consume: consume, validLoadout: validLoadout, loginState: loginState, claimLogin: claimLogin, matchReward: matchReward, openBox: openBox, BOX_BY_RANK: BOX_BY_RANK, charSprite: charSprite, charName: charName, addItem: addItem };
 })();

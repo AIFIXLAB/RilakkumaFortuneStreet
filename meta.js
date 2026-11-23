@@ -16,6 +16,10 @@ var Meta = (function () {
   function load() { try { P = JSON.parse(localStorage.getItem(KEY)); } catch (e) { P = null; } if (!P || P.v !== 1) P = fresh();
     Object.keys(P.deco).forEach(function (k) { if (!item(k)) delete P.deco[k]; }); P.town = P.town.filter(function (x) { return item(x.id); });
     Object.keys(P.inv).forEach(function (k) { if (!item(k)) delete P.inv[k]; });
+    // costumes were removed: refund what was paid
+    var cz = Object.keys(P.costumes || {}); if (cz.length) { var ref = cz.reduce(function (a, k) { return a + 2000 + (+k.slice(2) || 0) * 250; }, 0); P.gold += ref; P.costumeRefund = ref; P.costumes = {}; save(); }
+    if (P.equip) P.equip.costume = 'chars';
+    if (P.equip && !P.chars[P.equip.char]) P.equip.char = 'b0';
     return P; }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(P)); } catch (e) { } }
   function reset() { P = fresh(); save(); }
@@ -27,32 +31,31 @@ var Meta = (function () {
     SPECIAL_CARDS.forEach(function (e) { out.push({ id: e.id, cat: 'cards', type: 'Special Cards', name: e.name, desc: e.th, price: e.price, cur: e.cur, spr: e.spr, stack: true }); });
     PACKAGES.forEach(function (e) { out.push({ id: e.id, cat: 'packs', type: 'Packages', name: e.name, desc: e.th, price: e.price, cur: e.cur, spr: e.spr, pack: e.gives }); });
     DECOS.forEach(function (e) { out.push({ id: e.id, cat: 'deco', type: e.id.match(/deco_(2\d|3\d)$/) ? 'Buildings' : 'Decorations', name: e.name, desc: 'ของตกแต่งโปรไฟล์ — ไม่มีผลต่อการแข่งขัน', price: e.price, cur: e.cur, spr: e.spr, stack: true }); });
-    CHARACTERS.forEach(function (c, i) { if (c.price) out.push({ id: 'b' + i, cat: 'chars', type: 'Characters', name: c.name, desc: 'ตัวละคร ' + c.sub + ' สำหรับเดินบนกระดาน (Cosmetic)', price: c.price, cur: 'gold', spr: ['chars', i], uniq: true }); });
-    CHARACTERS.forEach(function (c, i) { out.push({ id: 'cz' + i, cat: 'chars', type: 'Costumes', name: 'ชุดพิเศษ: ' + c.name, desc: 'ชุดใหม่สำหรับ ' + c.name + ' เปลี่ยนก่อนเริ่มเกมได้', price: 2000 + i * 250, cur: 'gold', spr: ['cozy', i], uniq: true }); });
-    EXTRA_CHARS.forEach(function (c, i) { out.push({ id: 'x' + i, cat: 'chars', type: 'Characters', name: c.name, desc: 'ตัวละครใหม่ (Cosmetic)', price: c.d, cur: 'diamond', spr: ['extra', i], uniq: true }); });
+    CHARACTERS.forEach(function (c, i) { if (c.price) out.push({ id: 'b' + i, cat: 'chars', type: 'Characters', name: c.name, desc: skillDesc('b' + i), price: c.price, cur: 'gold', spr: ['chars', i], uniq: true }); });
+    JOB_CHARS.forEach(function (c, i) { out.push({ id: 'j' + i, cat: 'chars', type: 'Characters', name: c.name, desc: skillDesc('j' + i), price: c.price, cur: 'gold', spr: ['jobs', i], uniq: true }); });
+    GOLD_CHARS.forEach(function (c, i) { out.push({ id: 'g' + i, cat: 'chars', type: 'Characters', name: c.name, desc: skillDesc('g' + i), price: c.d, cur: 'diamond', spr: ['gold', i], uniq: true, gold: true }); });
+    EXTRA_CHARS.forEach(function (c, i) { out.push({ id: 'x' + i, cat: 'chars', type: 'Characters', name: c.name, desc: skillDesc('x' + i), price: c.d, cur: 'diamond', spr: ['extra', i], uniq: true }); });
     DICE_SKINS.forEach(function (d) { if (d.price) out.push({ id: d.id, cat: 'chars', type: 'Dice Skins', name: d.name, desc: 'สกินลูกเต๋า (Cosmetic)', price: d.price, cur: d.cur, spr: d.spr, uniq: true }); });
     return out;
   }
+  function skillDesc(k) { var s = CHAR_SKILLS[k]; return s ? '⭐ สกิลติดตัว “' + s.name + '”: ' + s.desc : ''; }
   var CAT = null;
   function item(id) { if (!CAT) CAT = catalog(); return CAT.find(function (x) { return x.id === id; }); }
   function all() { if (!CAT) CAT = catalog(); return CAT; }
   // tags for "Recommended" sorting
-  var TAGS = { pk_begin: ['hot', 'new'], eq_golden: ['hot'], SC_upg: ['hot'], pk_lucky: ['sale', 'limited'], x3: ['new'], eq_rent: ['hot'], deco_40: ['new'], cz0: ['sale'], pk_deco: ['limited'], SC_cash: ['hot'], eq_travel: ['new'], dice_2: ['sale'] };
+  var TAGS = { pk_begin: ['hot', 'new'], eq_golden: ['hot'], SC_upg: ['hot'], pk_lucky: ['sale', 'limited'], x3: ['new'], eq_rent: ['hot'], deco_40: ['new'], g2: ['new', 'limited'], j11: ['new'], pk_deco: ['limited'], SC_cash: ['hot'], eq_travel: ['new'], dice_2: ['sale'] };
   function tags(id) { return TAGS[id] || []; }
   function priceOf(it) { return tags(it.id).indexOf('sale') >= 0 ? Math.round(it.price * 0.8) : it.price; }
 
   function owned(id) {
-    if (/^b\d$/.test(id)) return P.chars[id] ? 1 : 0;
-    if (/^x\d$/.test(id)) return P.chars[id] ? 1 : 0;
-    if (/^cz\d$/.test(id)) return P.costumes[id] ? 1 : 0;
+    if (/^[bxjg]\d+$/.test(id)) return P.chars[id] ? 1 : 0;
     if (/^dice_/.test(id)) return P.dice[id] ? 1 : 0;
     if (/^deco_/.test(id)) return P.deco[id] || 0;
     return P.inv[id] || 0;
   }
   function addItem(id, n) {
     n = n || 1;
-    if (/^[bx]\d$/.test(id)) P.chars[id] = 1;
-    else if (/^cz\d$/.test(id)) P.costumes[id] = 1;
+    if (/^[bxjg]\d+$/.test(id)) P.chars[id] = 1;
     else if (/^dice_/.test(id)) P.dice[id] = 1;
     else if (/^deco_/.test(id)) P.deco[id] = (P.deco[id] || 0) + n;
     else P.inv[id] = (P.inv[id] || 0) + n;
@@ -134,11 +137,9 @@ var Meta = (function () {
     save(); return { kind: kind, items: out };
   }
   function fmtN(n) { return Math.round(n).toLocaleString('en-US'); }
-  function charSprite(key, costume) {
-    if (/^x\d$/.test(key)) return ['extra', +key.slice(1)];
-    var i = +key.slice(1);
-    return [costume === 'cozy' && P && P.costumes['cz' + i] ? 'cozy' : 'chars', i];
-  }
-  function charName(key) { return /^x/.test(key) ? EXTRA_CHARS[+key.slice(1)].name : CHARACTERS[+key.slice(1)].name; }
-  return { load: load, save: save, reset: reset, get p() { return P; }, all: all, item: item, tags: tags, priceOf: priceOf, owned: owned, buy: buy, exchange: exchange, consume: consume, validLoadout: validLoadout, loginState: loginState, claimLogin: claimLogin, matchReward: matchReward, openBox: openBox, BOX_BY_RANK: BOX_BY_RANK, charSprite: charSprite, charName: charName, addItem: addItem };
+  var SHEET = { b: 'chars', x: 'extra', j: 'jobs', g: 'gold' }, NAMES = { b: CHARACTERS, x: EXTRA_CHARS, j: JOB_CHARS, g: GOLD_CHARS };
+  function charSprite(key) { key = key || 'b0'; return [SHEET[key[0]] || 'chars', +key.slice(1) || 0]; }
+  function charName(key) { key = key || 'b0'; var L = NAMES[key[0]] || CHARACTERS, c = L[+key.slice(1)]; return c ? c.name : ''; }
+  function charSkill(key) { return CHAR_SKILLS[key] || null; }
+  return { load: load, save: save, reset: reset, get p() { return P; }, all: all, item: item, tags: tags, priceOf: priceOf, owned: owned, buy: buy, exchange: exchange, consume: consume, validLoadout: validLoadout, loginState: loginState, claimLogin: claimLogin, matchReward: matchReward, charSkill: charSkill, skillDesc: skillDesc, openBox: openBox, BOX_BY_RANK: BOX_BY_RANK, charSprite: charSprite, charName: charName, addItem: addItem };
 })();

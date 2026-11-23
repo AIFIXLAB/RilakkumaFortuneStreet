@@ -53,6 +53,70 @@ var EXTRA_CHARS = [
   { id: 'x_panda', name: 'แพนด้าซูชิ', d: 50 }, { id: 'x_samurai', name: 'กวางซามูไร', d: 50 },
 ];
 
+// 24 job characters (shop, Gold) and 8 golden characters (shop, Diamond)
+var JOB_CHARS = [
+  { name: 'หมีตำรวจ', price: 4500 }, { name: 'โคริพยาบาล', price: 4500 }, { name: 'หมีนักดับเพลิง', price: 5000 }, { name: 'เจี๊ยบคุณหมอ', price: 5500 }, { name: 'หมีนักวิทยาศาสตร์', price: 6000 }, { name: 'หมีนักบินอวกาศ', price: 6000 },
+  { name: 'หมีชาวไร่', price: 4500 }, { name: 'แมวชาวประมง', price: 5000 }, { name: 'หมีช่างก่อสร้าง', price: 5500 }, { name: 'เพนกวินช่างซ่อม', price: 4500 }, { name: 'โคริบุรุษไปรษณีย์', price: 5000 }, { name: 'หมีเชฟ', price: 5000 },
+  { name: 'หมีซามูไร', price: 5500 }, { name: 'หมีนินจา', price: 5500 }, { name: 'โคริพ่อมด', price: 6000 }, { name: 'กระรอกแม่มด', price: 6000 }, { name: 'กวางนักดนตรี', price: 4500 }, { name: 'โคริไอดอล', price: 6000 },
+  { name: 'หมีนักธุรกิจ', price: 5500 }, { name: 'เจี๊ยบนักข่าว', price: 5000 }, { name: 'หมีช่างภาพ', price: 5000 }, { name: 'โคริจิตรกร', price: 5000 }, { name: 'กวางร้านดอกไม้', price: 4500 }, { name: 'หมีนักผจญภัย', price: 5500 },
+];
+var GOLD_CHARS = [
+  { name: 'ราชาริลัคคุมะทองคำ', d: 120 }, { name: 'เจ้าหญิงโคริทองคำ', d: 120 }, { name: 'เชฟเจี๊ยบทองคำ', d: 150 }, { name: 'นักสำรวจชาอิทองคำ', d: 120 },
+  { name: 'กัปตันแมวทองคำ', d: 150 }, { name: 'กระรอกซากุระทองคำ', d: 120 }, { name: 'นักบินเพนกวินทองคำ', d: 120 }, { name: 'กวางนางฟ้าทองคำ', d: 150 },
+];
+// Character passive skill (one per character; golden ones are stronger). fx keys are read by Game.cs(p, key).
+var FOOD_BIZ = ['food', 'bakery', 'cafe'];
+var CHAR_SKILLS = {
+  b0: { name: 'นักเดินทางตัวยง', fx: { bankBonus: 150 }, desc: 'ผ่าน/หยุดที่ธนาคารได้ +150 G ทุกครั้ง' },
+  b1: { name: 'สาวหวานผ่านทาง', fx: { tollDisc: 0.2 }, desc: 'ลดค่าผ่านทาง (ประตูเก็บค่าผ่านทาง/ประตูทะลุมิติ) 20%' },
+  b2: { name: 'สายตานักสืบ', fx: { rentDodge: 0.08 }, desc: 'มีโอกาส 8% หลบค่าเช่าได้ทั้งหมด' },
+  b3: { name: 'นักสำรวจขยัน', fx: { salaryBonus: 0.1 }, desc: 'เงินเดือนตอนเลื่อนระดับ +10%' },
+  b4: { name: 'กะลาสีนักลงทุน', fx: { divBonus: 0.2 }, desc: 'เงินปันผลหุ้นที่ได้รับ +20%' },
+  b5: { name: 'นักต่อรอง', fx: { buyDisc: 0.1 }, desc: 'ซื้อร้านว่างถูกลง 10%' },
+  b6: { name: 'นักบินดวงดี', fx: { tileGold: 0.2 }, desc: 'เงินที่ได้จากช่อง Lucky/เหตุการณ์ +20%' },
+  b7: { name: 'ดอกไม้นำโชค', fx: { cardGold: 0.15 }, desc: 'เปิดการ์ดได้เงิน → ได้เพิ่มอีก 15%' },
+  x0: { name: 'วิชาหลบเงา', fx: { rentDodge: 0.12 }, desc: 'มีโอกาส 12% หลบค่าเช่าได้ทั้งหมด' },
+  x1: { name: 'สมบัติใต้ทะเล', fx: { divBonus: 0.25 }, desc: 'เงินปันผลหุ้นที่ได้รับ +25%' },
+  x2: { name: 'นักขุดโชคดี', fx: { cardLuck: 0.45 }, desc: 'เปิดการ์ด: โอกาส 45% เปลี่ยนการ์ดธรรมดา/ร้าย เป็นการ์ดได้เงิน' },
+  x3: { name: 'เงินเดือนอวกาศ', fx: { bankBonus: 250 }, desc: 'ผ่าน/หยุดที่ธนาคารได้ +250 G ทุกครั้ง' },
+  x4: { name: 'เวทมนตร์เงินทอง', fx: { cardGold: 0.2 }, desc: 'เปิดการ์ดได้เงิน → ได้เพิ่มอีก 20%' },
+  x5: { name: 'ประกันสุขภาพ', fx: { rentDisc: 0.12 }, desc: 'จ่ายค่าเช่าน้อยลง 12%' },
+  x6: { name: 'ร้านดังทั่วเมือง', fx: { rentBonus: 0.08 }, desc: 'คนอื่นจ่ายค่าเช่าร้านคุณ ได้โบนัสจากธนาคารอีก 8%' },
+  x7: { name: 'นักรบล่ามังกร', fx: { dragonLuck: 0.1, buyoutDisc: 0.1 }, desc: 'โจมตีมังกรโดนง่ายขึ้น +10% • ซื้อกิจการถูกลง 10%' },
+  j0: { name: 'จับโจรค่าเช่า', fx: { rentDodge: 0.1 }, desc: 'มีโอกาส 10% หลบค่าเช่าได้ทั้งหมด' },
+  j1: { name: 'ดูแลบัญชี', fx: { taxDisc: 0.5 }, desc: 'ภาษีทุกประเภทลดลงครึ่งหนึ่ง' },
+  j2: { name: 'สร้างไว ปลอดภัย', fx: { investDisc: 0.1 }, desc: 'อัปเกรดร้านถูกลง 10%' },
+  j3: { name: 'คุณหมอใจดี', fx: { negShield: 0.4 }, desc: 'มีโอกาส 40% ป้องกันผลเสียของการ์ดร้าย' },
+  j4: { name: 'วิเคราะห์ตลาด', fx: { stockDisc: 0.08 }, desc: 'ซื้อหุ้นถูกลง 8%' },
+  j5: { name: 'ภารกิจอวกาศ', fx: { bankBonus: 200 }, desc: 'ผ่าน/หยุดที่ธนาคารได้ +200 G ทุกครั้ง' },
+  j6: { name: 'ผลผลิตงอกงาม', fx: { salaryBonus: 0.15 }, desc: 'เงินเดือนตอนเลื่อนระดับ +15%' },
+  j7: { name: 'ตกปลาได้ตัวโต', fx: { tileGold: 0.25 }, desc: 'เงินที่ได้จากช่อง Lucky/เหตุการณ์ +25%' },
+  j8: { name: 'ผู้รับเหมามือโปร', fx: { investDisc: 0.15 }, desc: 'อัปเกรดร้านถูกลง 15%' },
+  j9: { name: 'ซ่อมแล้วขายได้', fx: { sellBonus: 0.2 }, desc: 'ขายร้านคืนธนาคารได้เงินเพิ่ม 20%' },
+  j10: { name: 'ส่งด่วนทางลัด', fx: { tollDisc: 0.35 }, desc: 'ลดค่าผ่านทางและค่าประตูทะลุมิติ 35%' },
+  j11: { name: 'เมนูขายดี', fx: { bizDisc: { biz: FOOD_BIZ, v: 0.25 } }, desc: 'ซื้อร้านอาหาร/คาเฟ่/เบเกอรี่ถูกลง 25%' },
+  j12: { name: 'ดาบปราบมังกร', fx: { dragonLuck: 0.12 }, desc: 'โจมตีมังกรโดนง่ายขึ้น +12%' },
+  j13: { name: 'นินจาหลบค่าเช่า', fx: { rentDisc: 0.15 }, desc: 'จ่ายค่าเช่าน้อยลง 15%' },
+  j14: { name: 'คาถาเรียกเงิน', fx: { cardGold: 0.2 }, desc: 'เปิดการ์ดได้เงิน → ได้เพิ่มอีก 20%' },
+  j15: { name: 'ไม้กวาดนำโชค', fx: { cardLuck: 0.3 }, desc: 'เปิดการ์ด: โอกาส 30% เปลี่ยนการ์ดธรรมดา/ร้าย เป็นการ์ดได้เงิน' },
+  j16: { name: 'เพลงแห่งโชค', fx: { casinoLuck: 0.3 }, desc: 'คาสิโน: ชนะได้เพิ่ม 30% และแพ้มีโอกาสได้เงินเดิมพันคืน' },
+  j17: { name: 'แฟนคลับล้นร้าน', fx: { rentBonus: 0.1 }, desc: 'คนอื่นจ่ายค่าเช่าร้านคุณ ได้โบนัสจากธนาคารอีก 10%' },
+  j18: { name: 'ดีลเทคโอเวอร์', fx: { buyoutDisc: 0.25 }, desc: 'ซื้อกิจการร้านคนอื่นถูกลง 25%' },
+  j19: { name: 'ข่าววงใน', fx: { divBonus: 0.2 }, desc: 'เงินปันผลหุ้นที่ได้รับ +20%' },
+  j20: { name: 'ภาพสวยได้รางวัล', fx: { tileGold: 0.2 }, desc: 'เงินที่ได้จากช่อง Lucky/เหตุการณ์ +20%' },
+  j21: { name: 'ศิลปินตกแต่งร้าน', fx: { buyDisc: 0.12 }, desc: 'ซื้อร้านว่างถูกลง 12%' },
+  j22: { name: 'ช่อดอกไม้ทองคำ', fx: { salaryBonus: 0.1, cardGold: 0.05 }, desc: 'เงินเดือน +10% • เปิดการ์ดได้เงินเพิ่ม 5%' },
+  j23: { name: 'ทุนนักผจญภัย', fx: { startCash: 1000 }, desc: 'เริ่มเกมด้วยเงินสดเพิ่ม 1,000 G' },
+  g0: { name: '👑 พระราชทานทรัพย์', fx: { rentBonus: 0.15, salaryBonus: 0.15 }, desc: 'โบนัสค่าเช่าจากธนาคาร +15% • เงินเดือน +15%' },
+  g1: { name: '👑 เจ้าหญิงช้อปปิ้ง', fx: { buyDisc: 0.2, tollDisc: 0.5 }, desc: 'ซื้อร้านว่างถูกลง 20% • ค่าผ่านทาง/ประตูทะลุมิติลดครึ่ง' },
+  g2: { name: '👑 เชฟทองคำ', fx: { bizFree: FOOD_BIZ }, desc: 'เปิดร้านอาหาร/คาเฟ่/เบเกอรี่ได้ฟรี ไม่เสียค่าเปิดร้าน!' },
+  g3: { name: '👑 ขุมทรัพย์นักสำรวจ', fx: { bankBonus: 400, tileGold: 0.2 }, desc: 'ผ่าน/หยุดธนาคาร +400 G • เงินจากช่อง Lucky/เหตุการณ์ +20%' },
+  g4: { name: '👑 กัปตันตลาดหุ้น', fx: { stockDisc: 0.2, divBonus: 0.3 }, desc: 'ซื้อหุ้นถูกลง 20% • ปันผล +30%' },
+  g5: { name: '👑 ซากุระรุ่งเรือง', fx: { investDisc: 0.25, rentDisc: 0.15 }, desc: 'อัปเกรดร้านถูกลง 25% • จ่ายค่าเช่าน้อยลง 15%' },
+  g6: { name: '👑 นักบินเหนือเมฆ', fx: { rentDodge: 0.18, dragonLuck: 0.15 }, desc: 'โอกาส 18% หลบค่าเช่าทั้งหมด • โจมตีมังกรโดนง่าย +15%' },
+  g7: { name: '👑 พรนางฟ้าทองคำ', fx: { cardGold: 0.25, cardLuck: 0.3 }, desc: 'เปิดการ์ดได้เงินเพิ่ม 25% (มากกว่ากวางดอกไม้ 10%) • โอกาส 30% ได้การ์ดเงิน' },
+};
+
 // Business types → sprite index in 'lvl' sheet (14..23)
 var BUSINESS = [
   { id: 'cafe', name: 'คาเฟ่', spr: 14 }, { id: 'bakery', name: 'เบเกอรี่', spr: 15 },
@@ -412,4 +476,4 @@ var DICE_SKINS = [
 ];
 var DAILY_REWARDS = [{ gold: 500 }, { diamond: 5 }, { item: 'eq_move' }, { gold: 1000 }, { diamond: 10 }, { item: 'eq_lucky', n: 2 }, { gold: 2000, diamond: 10, item: 'SC_cash' }];
 
-if (typeof module !== 'undefined') module.exports = { BUFFS, CONFIG, PLAYER_COLORS, AI_LEVELS, AI_PERSONAS, CHARACTERS, EXTRA_CHARS, BUSINESS, SPECIAL_BUILDINGS, MAPS, TILE_INFO, SUITS, SUIT_GLYPH, SUIT_COLOR, CARD_DEFS, CARD_CATS, EQUIPMENT, SPECIAL_CARDS, PACKAGES, EXCHANGE, DECOS, DICE_SKINS, DAILY_REWARDS };
+if (typeof module !== 'undefined') module.exports = { BUFFS, CONFIG, PLAYER_COLORS, AI_LEVELS, AI_PERSONAS, CHARACTERS, EXTRA_CHARS, JOB_CHARS, GOLD_CHARS, CHAR_SKILLS, BUSINESS, SPECIAL_BUILDINGS, MAPS, TILE_INFO, SUITS, SUIT_GLYPH, SUIT_COLOR, CARD_DEFS, CARD_CATS, EQUIPMENT, SPECIAL_CARDS, PACKAGES, EXCHANGE, DECOS, DICE_SKINS, DAILY_REWARDS };

@@ -92,7 +92,7 @@
         return {
           id: i, name: o.name, char: o.char, costume: o.costume || 'chars', color: D.PLAYER_COLORS[i], isAI: !!o.isAI,
           ai: { level: o.aiLevel || 'normal', persona: o.persona || 'Balanced' },
-          cash: opts.startCash || C.startCash, pos: bank.id, prev: null, level: 1, suits: {}, shares: b.districts.map(function () { return 0; }),
+          cash: (opts.startCash || C.startCash) + ((D.CHAR_SKILLS && D.CHAR_SKILLS[o.char] && D.CHAR_SKILLS[o.char].fx.startCash) || 0), pos: bank.id, prev: null, level: 1, suits: {}, shares: b.districts.map(function () { return 0; }),
           safe: 0, flags: {}, bankrupt: false, turns: 0, promotions: 0,
           loadout: { eq: (o.loadout && o.loadout.eq || []).map(function (id) { return { id: id, used: false }; }), sc: (o.loadout && o.loadout.sc) ? { id: o.loadout.sc, used: false } : null },
           hist: [],
@@ -115,6 +115,8 @@
   };
 
   var P = Game.prototype;
+  // character passive skill: value of effect k for player p (0 if none)
+  P.cs = function (p, k) { var sk = D.CHAR_SKILLS && D.CHAR_SKILLS[p.char]; return (sk && sk.fx[k]) || 0; };
   P.r = function () { this.s.rngCalls++; return this.rng(); };
   P.rand = function (a, b) { return a + Math.floor(this.r() * (b - a + 1)); };
   P.dice = function () { return this.rand(1, 6); };
@@ -195,6 +197,7 @@
     var sal = C.baseSalary + p.level * C.salaryPerLevel + Math.floor(this.propertyValue(p) * C.salaryPropPct);
     var gardens = this.s.tiles.filter(function (t) { return t.special === 'garden' && t.spOwner === p.id; }).length;
     if (gardens) sal += Math.min(400 * gardens, Math.round(sal * 0.05 * gardens));
+    if (this.cs(p, 'salaryBonus')) sal = Math.round(sal * (1 + this.cs(p, 'salaryBonus')));
     return sal;
   };
 
@@ -217,16 +220,17 @@
   P.buyFee = function (p) { return (!this.rules().tax || p.flags.stockFeeZero) ? 0 : C.stock.buyFee; };
   P.sellFee = function () { return this.rules().tax ? C.stock.sellFee : 0; };
   P.sharesAvail = function () { return 1e9; };
-  P.maxBuyShares = function (p, d) { if (p.flags && p.flags.stockBuyDone) return 0; var price = this.s.districts[d].price; return Math.max(0, Math.min(C.maxStockBuy, Math.floor(p.cash / (price * (1 + this.buyFee(p)))))); };
+  P.maxBuyShares = function (p, d) { if (p.flags && p.flags.stockBuyDone) return 0; var price = this.stockBuyPrice(p, d); return Math.max(0, Math.min(C.maxStockBuy, Math.floor(p.cash / (price * (1 + this.buyFee(p)))))); };
   P.buyStock = function (p, d, n) {
     n = Math.floor(n); if (n <= 0) return false;
     if (n > this.maxBuyShares(p, d)) return false; // atomic guard
-    var price = this.s.districts[d].price, cost = Math.ceil(n * price * (1 + this.buyFee(p)));
+    var price = this.stockBuyPrice(p, d), cost = Math.ceil(n * price * (1 + this.buyFee(p)));
     p.cash -= cost; p.shares[d] += n; p.flags.stockBuyDone = 1; this.txid('buyStock');
     this.log('🧾 ' + p.name + ' ซื้อหุ้น ' + this.s.districts[d].name + ' ' + n + ' หุ้น (' + fmt(cost) + ' G)');
     if (n >= 10) this.stockMove(d, 0.03 + n / 2000, 'ซื้อหุ้นจำนวนมาก');
     return true;
   };
+  P.stockBuyPrice = function (p, d) { var pr = this.s.districts[d].price, k = this.cs(p, 'stockDisc'); return k ? Math.max(1, Math.round(pr * (1 - k) * 100) / 100) : pr; };
   P.sellStock = function (p, d, n) {
     n = Math.min(Math.floor(n), p.shares[d]); if (n <= 0) return 0;
     var price = this.s.districts[d].price, net = Math.floor(n * price * (1 - this.sellFee()));
@@ -244,6 +248,7 @@
   // ---------- Money ----------
   P.gain = async function (p, amt, why, event) {
     amt = Math.round(amt); if (amt <= 0) return 0;
+    var gb = this._inCard ? this.cs(p, 'cardGold') : this.cs(p, 'tileGold'); if (gb) { var add = Math.round(amt * gb); amt += add; this.log('✨ สกิลตัวละคร ' + p.name + ' +' + fmt(add) + ' G'); }
     if (event) { var u = await this.offerReactive(p, 'gain', { amt: amt, why: why }); if (u) { var extra = Math.min(amt, 3000); amt += extra; this.log('✨ Double Coin! +' + fmt(extra) + ' G'); } }
     p.cash += amt; this.txid('gain'); this.log('💰 ' + p.name + ' +' + fmt(amt) + ' G' + (why ? ' (' + why + ')' : ''), 'gain');
     if (this.io && this.io.money) this.io.money(p, amt);
@@ -291,7 +296,7 @@
   };
   P.shopSellValue = function (t) { return Math.floor(this.shopValue(t) * C.shopSellRate * (1 - C.shopSellFee)); };
   P.sellShopToBank = function (p, t, forced) {
-    var before = this.districtValue(t.district), v = Math.floor(this.shopValue(t) * C.shopSellRate * (1 - C.shopSellFee));
+    var before = this.districtValue(t.district), v = Math.floor(this.shopValue(t) * C.shopSellRate * (1 - C.shopSellFee) * (1 + this.cs(p, 'sellBonus')));
     p.cash += v; t.owner = -1; t.level = 0; t.invest = 0; t.bonusPct = 0; t.bonusVal = 0;
     this.s.effects = this.s.effects.filter(function (e) { return e.tile !== t.id; });
     this.txid('sellShop'); this.log('🏚️ ' + p.name + ' ขาย ' + t.name + ' ให้ธนาคาร +' + fmt(v) + ' G' + (forced ? ' (ชำระหนี้)' : ''));
@@ -449,7 +454,7 @@
   };
   P.propertyTax = async function (p) {
     var dev = this.propertyValue(p); if (dev <= 0) return;
-    var tax = Math.min(C.propertyTaxCap, Math.round(dev * C.propertyTaxPct));
+    var tax = Math.round(Math.min(C.propertyTaxCap, Math.round(dev * C.propertyTaxPct)) * (1 - this.cs(p, 'taxDisc'))); if (tax <= 0) return;
     if (p.flags.taxExempt) { p.flags.taxExempt = 0; this.log('🧾 ' + p.name + ' ได้รับยกเว้นภาษีทรัพย์สิน (การ์ด)'); return; }
     var u = await this.offerReactive(p, 'tax', { amt: tax, kind: 'property' }); if (u) { this.log('🛡️ Tax Shield ป้องกันภาษีทรัพย์สิน'); return; }
     if (p.flags.taxHalf) { tax = Math.round(tax / 2); p.flags.taxHalf = 0; }
@@ -484,7 +489,7 @@
     if (t.type === 'suit' && !p.suits[t.suit]) { p.suits[t.suit] = true; this.log('🃏 ' + p.name + ' เก็บสัญลักษณ์ ' + D.SUIT_GLYPH[t.suit]); if (this.io.suit) await this.io.suit(p, t.suit); }
     if (t.special === 'sp_toll' && t.spOwner >= 0) {
       if (t.spOwner !== p.id) {
-        var tollOwner = this.s.players[t.spOwner], fee2 = t.toll || 100;
+        var tollOwner = this.s.players[t.spOwner], fee2 = Math.round((t.toll || 100) * (1 - this.cs(p, 'tollDisc')));
         if (p.flags.freeRide) { p.flags.freeRide = 0; this.log('🚕 ' + p.name + ' ใช้สกิลผ่านด่านฟรี'); }
         else if (!tollOwner.bankrupt) {
           var paid2 = await this.lose(p, fee2, 'ค่าผ่านทางประตูของ ' + tollOwner.name);
@@ -506,6 +511,7 @@
       p.cash += sal; this.txid('salary');
       if (this.io.promotion) await this.io.promotion(p, sal);
     }
+    if (this.cs(p, 'bankBonus')) { p.cash += this.cs(p, 'bankBonus'); this.log('✨ สกิล ' + p.name + ': ผ่านธนาคาร +' + fmt(this.cs(p, 'bankBonus')) + ' G', 'gain'); }
     if (p.safe > 0) { var back = Math.round(p.safe * 1.05); this.log('🏦 คืนเงินบัญชีคุ้มครอง ' + fmt(back) + ' G'); p.cash += back; p.safe = 0; }
     if (this.netWorth(p) >= s.settings.target) { this.finish(p, 'ทรัพย์สินถึงเป้าหมาย ' + fmt(s.settings.target) + ' G และกลับถึงธนาคาร'); return; }
     s.phase = 'bank';
@@ -516,7 +522,7 @@
 
   // ---------- LANDING ----------
   // ---------- dragon castle: bet, attack the dragon, win the whole pot ----------
-  P.dragonChance = function (bet) { return (C.dragon.hit[bet] || 0.15); };
+  P.dragonChance = function (bet, p) { return Math.min(0.9, (C.dragon.hit[bet] || 0.15) + (p ? this.cs(p, 'dragonLuck') : 0)); };
   P.landDragon = async function (p, t) {
     var s = this.s, io = this.io, D2 = C.dragon;
     if (s.dragonPot === undefined) s.dragonPot = D2.seed;
@@ -525,7 +531,7 @@
     var bet = await io.dragonBet(p, s.dragonPot, opts);
     if (!bet || opts.indexOf(bet) < 0) { this.log('🏰 ' + p.name + ' ไม่สู้มังกร'); return; }
     p.cash -= bet;
-    var win = this.r() < this.dragonChance(bet);
+    var win = this.r() < this.dragonChance(bet, p);
     if (win) {
       var prize = s.dragonPot + bet; p.cash += prize; s.dragonPot = D2.seed;
       this.log('⚔️ ' + p.name + ' โจมตีมังกรสำเร็จ! ได้เงินสะสม ' + fmt(prize) + ' G', 'gain');
@@ -554,7 +560,7 @@
       case 'lucky': { var amt = Math.max(C.luckyMin, Math.floor(s.taxPool * 0.5)); s.taxPool = Math.max(0, s.taxPool - amt); await this.gain(p, amt, 'ช่อง Lucky (กองภาษีเมือง)', true); break; }
       case 'superlucky': { var amt2 = Math.max(C.superLuckyMin, s.taxPool); s.taxPool = 0; await this.gain(p, amt2, 'ช่อง Super Lucky (กองภาษีทั้งหมด)', true); break; }
       case 'tax': {
-        var tax = Math.min(C.taxTile.cap, Math.max(C.taxTile.flat, Math.round(p.cash * C.taxTile.pct)));
+        var tax = Math.round(Math.min(C.taxTile.cap, Math.max(C.taxTile.flat, Math.round(p.cash * C.taxTile.pct))) * (1 - this.cs(p, 'taxDisc')));
         var u = await this.offerReactive(p, 'tax', { amt: tax }); if (u) { this.log('🛡️ Tax Shield ป้องกันภาษี'); break; }
         if (p.flags.taxHalf) { tax = Math.round(tax / 2); p.flags.taxHalf = 0; }
         await this.lose(p, tax, 'ช่องภาษี', false, true); break;
@@ -596,6 +602,9 @@
       var price = this.buyPrice(t), disc = [];
       if (p.flags.newBranch) { price = Math.max(0, price - 500); disc.push('New Branch -500'); }
       if (p.flags.winterSale) { price = Math.round(price * 0.9); disc.push('Winter Sale -10%'); }
+      var bf = this.cs(p, 'bizFree'), bd = this.cs(p, 'bizDisc'), bdi = this.cs(p, 'buyDisc');
+      if (bf && bf.indexOf(t.biz) >= 0) { price = 0; disc.push('สกิลตัวละคร: เปิดร้านนี้ฟรี!'); }
+      else { if (bd && bd.biz.indexOf(t.biz) >= 0) { price = Math.round(price * (1 - bd.v)); disc.push('สกิลตัวละคร -' + Math.round(bd.v * 100) + '%'); } if (bdi) { price = Math.round(price * (1 - bdi)); disc.push('สกิลตัวละคร -' + Math.round(bdi * 100) + '%'); } }
       if (p.cash < price) { this.log(p.name + ' เงินไม่พอซื้อ ' + t.name); if (io.info) await io.info(p, t, 'เงินไม่พอซื้อร้านนี้'); return; }
       var yes = await io.confirmBuy(p, t, price, disc);
       if (!yes) return;
@@ -619,12 +628,14 @@
       else { var used = await this.offerReactive(p, 'rent', { rent: rent, tile: t }); if (used) { shielded = true; this.log('🛡️ ' + p.name + ' ใช้ ' + used + ' ไม่ต้องจ่ายค่าเช่า'); } }
       if (!shielded) {
         if (p.flags.rentHalf) { rent = Math.round(rent / 2); p.flags.rentHalf = 0; this.log('⚖️ Rent Dispute ลดค่าเช่า 50%'); }
-        await this.payRent(p, owner, t, rent);
+        if (this.cs(p, 'rentDodge') && this.r() < this.cs(p, 'rentDodge')) { this.log('💨 สกิล ' + p.name + ': หลบค่าเช่าได้!'); if (this.io.toast) this.io.toast('💨 ' + p.name + ' ใช้สกิลหลบค่าเช่า!'); rent = 0; }
+        if (rent && this.cs(p, 'rentDisc')) rent = Math.round(rent * (1 - this.cs(p, 'rentDisc')));
+        if (rent > 0) await this.payRent(p, owner, t, rent);
       }
     }
     if (s.over || p.bankrupt || owner.bankrupt || t.owner !== owner.id) return;
     // buyout (5x)
-    var cost = Math.round(this.shopValue(t) * C.buyoutMult * (1 - (p.flags.buyoutDisc || 0)));
+    var cost = Math.round(this.shopValue(t) * C.buyoutMult * (1 - (p.flags.buyoutDisc || 0)) * (1 - this.cs(p, 'buyoutDisc')));
     if (p.cash >= cost) {
       var go = await io.confirmBuyout(p, t, cost);
       if (go) {
@@ -639,11 +650,12 @@
     }
   };
   P.payRent = async function (p, owner, t, rent) {
-    var s = this.s, tx = this.txid('rent');
+    var self = this, s = this.s, tx = this.txid('rent');
     var city = this.rules().tax ? Math.floor(rent * C.split.city) : 0, ownerInc = rent - city;
     this.log('🏪 ' + p.name + ' จ่ายค่าเช่า ' + t.name + ' ' + fmt(rent) + ' G → ' + owner.name + ' ' + fmt(ownerInc) + ' G', 'rent');
     if (this.io.rent) await this.io.rent(p, owner, t, rent, ownerInc, city);
     p.cash -= rent; owner.cash += ownerInc; s.taxPool += city;
+    var rb = this.cs(owner, 'rentBonus'); if (rb) { var rbx = Math.round(rent * rb); owner.cash += rbx; this.log('✨ สกิล ' + owner.name + ': โบนัสค่าเช่า +' + fmt(rbx) + ' G'); }
     // dividends: 20% of the price, paid by the bank, split among the district's stockholders by share ratio
     if (!s.paidTx) s.paidTx = {};
     if (!s.paidTx[tx]) {
@@ -653,7 +665,7 @@
       if (total > 0) s.players.forEach(function (q) {
         if (q.bankrupt || !q.shares[t.district]) return;
         var boost = s.effects.some(function (e) { return e.kind === 'divBoost' && e.owner === q.id; }) ? 1.5 : 1;
-        var amt = Math.floor(pool * q.shares[t.district] / total * boost);
+        var amt = Math.floor(pool * q.shares[t.district] / total * boost * (1 + self.cs(q, 'divBonus')));
         if (amt > 0) { q.cash += amt; dist.push(q.name + ' +' + fmt(amt)); }
       });
       if (dist.length) { this.log('💹 ปันผล ' + s.districts[t.district].name + ': ' + dist.join(', '), 'div'); if (this.io.dividend) await this.io.dividend(t, dist); }
@@ -671,7 +683,7 @@
     });
     return { list: list, turnLeft: left, cash: p.cash, disc: this.investDiscount(p), free: p.flags.freeUpgrade ? 1000 : 0, hotel: p.flags.hotelDisc ? 500 : 0 };
   };
-  P.investCost = function (p, amount) { var c = amount * this.investDiscount(p); if (p.flags.freeUpgrade) c -= 1000; if (p.flags.hotelDisc) c -= 500; return Math.max(0, Math.round(c)); };
+  P.investCost = function (p, amount) { var c = amount * this.investDiscount(p) * (1 - this.cs(p, 'investDisc')); if (p.flags.freeUpgrade) c -= 1000; if (p.flags.hotelDisc) c -= 500; return Math.max(0, Math.round(c)); };
   P.levelStep = function (t) { // capital needed to raise the building by exactly one level
     var cur = t.base + (t.invest || 0), r = cur / t.base, L = 1;
     C.levelRatio.forEach(function (x, i) { if (r >= x) L = i + 1; });
@@ -731,7 +743,7 @@
     if (t.spOwner === p.id && t.special !== 'sp_portal') return;
     var owner = s.players[t.spOwner]; if (owner.bankrupt) return;
     if (t.special === 'sp_portal') {
-      var mine = owner.id === p.id, nw = Math.max(0, this.netWorth(p)), big = mine ? 0 : Math.round(nw * 0.10), small = mine ? 0 : Math.round(nw * 0.05);
+      var mine = owner.id === p.id, nw = Math.max(0, this.netWorth(p)), big = mine ? 0 : Math.round(nw * 0.10 * (1 - this.cs(p, 'tollDisc'))), small = mine ? 0 : Math.round(nw * 0.05 * (1 - this.cs(p, 'tollDisc')));
       var warp = await io.portalChoice(p, owner, t, big, small);
       if (mine) { this.log('🌀 ' + p.name + (warp ? ' ใช้ประตูทะลุมิติของตัวเอง วาร์ปฟรี!' : ' อยู่ที่ประตูทะลุมิติของตัวเอง (ไม่วาร์ป)')); }
       else {
@@ -780,6 +792,8 @@
     var win = 0;
     if (reels[0] === reels[1] && reels[1] === reels[2]) win = bet * (reels[0] === '7' ? 5 : reels[0] === '🐻' ? 4 : 3);
     else if (reels[0] === reels[1] || reels[1] === reels[2] || reels[0] === reels[2]) win = Math.round(bet * 1.5);
+    if (win && this.cs(p, 'casinoLuck')) win = Math.round(win * (1 + this.cs(p, 'casinoLuck')));
+    else if (!win && this.cs(p, 'casinoLuck') && this.r() < this.cs(p, 'casinoLuck') / 2) win = bet;
     win = Math.min(win, C.casino.maxWin);
     p.cash -= bet; this.s.taxPool += Math.round(bet * 0.2); this.txid('casino');
     if (this.io.casinoShow) await this.io.casinoShow(p, reels, bet, win);
@@ -794,7 +808,13 @@
     if (s.grid[cell]) cell = s.grid.indexOf(false);
     s.grid[cell] = true; if (!s.gridOwner) s.gridOwner = s.grid.map(function () { return -1; }); s.gridOwner[cell] = p.id;
     var run = this.cardRun(cell, p.id);
-    await this.applyCard(p, s.deck[cell], cell);
+    var lk = this.cs(p, 'cardLuck'), cd0 = this.cardDef(s.deck[cell]);
+    if (lk && (cd0.neg || cd0.cat !== 'A') && this.r() < lk) { // lucky character: swap for an unopened money card
+      var self0 = this, alt = s.deck.map(function (id, i) { return i; }).filter(function (i) { return !s.grid[i] && self0.cardDef(s.deck[i]).cat === 'A' && !self0.cardDef(s.deck[i]).neg; });
+      if (alt.length) { var j0 = alt[Math.floor(this.r() * alt.length)], tmp = s.deck[cell]; s.deck[cell] = s.deck[j0]; s.deck[j0] = tmp; this.log('🍀 สกิล ' + p.name + ': ได้การ์ดเงินแทน!'); }
+    }
+    this._inCard = true;
+    try { await this.applyCard(p, s.deck[cell], cell); } finally { this._inCard = false; }
     if (run >= 3 && !s.over && !p.bankrupt) {
       var bonus = C.cardLine[Math.min(10, run)] || 0;
       this.log('🌈 ' + p.name + ' ต่อแถวสีของตัวเองได้ ' + run + ' ช่อง! โบนัส ' + fmt(bonus) + ' G', 'gain');
@@ -819,6 +839,7 @@
     s.cardHistory.push({ r: s.round, p: p.id, id: id }); if (s.cardHistory.length > 100) s.cardHistory.shift();
     this.log('🃏 ' + p.name + ' เปิดการ์ด #' + id + ' ' + c.name + ': ' + c.desc, 'card');
     if (this.io.showCard) await this.io.showCard(p, c, cell);
+    if (c.neg && this.cs(p, 'negShield') && this.r() < this.cs(p, 'negShield')) { this.log('🩺 สกิล ' + p.name + ': ป้องกันผลเสียของการ์ด'); if (this.io.toast) this.io.toast('🩺 สกิล ' + p.name + ' ป้องกันผลเสียการ์ด!'); return; }
     if (c.neg) {
       if (p.flags.insurance > 0) { p.flags.insurance = 0; this.log('🛡️ Insurance ป้องกันผลเสียของการ์ด'); if (this.io.toast) this.io.toast('🛡️ Insurance ป้องกันผลเสีย!'); return; }
       var u = await this.offerReactive(p, 'negative', { card: c }); if (u) { this.log('🛡️ ป้องกันผลเสียด้วย ' + u); return; }

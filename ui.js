@@ -228,7 +228,7 @@
     var used = sel.slots.map(function (s) { return s.char; });
     $('#slots').innerHTML = sel.slots.map(function (s, i) {
       var types = i === 0 ? [['human', 'คุณ (P1)']] : [['human', 'ผู้เล่น'], ['ai', 'AI'], ['off', 'ปิด']];
-      var charSp = s.type === 'off' ? '<div style="height:90px;display:flex;align-items:center;font-size:40px">—</div>' : s.char ? spr(Meta.charSprite(s.char, i === 0 ? Meta.p.equip.costume : 'chars'), 90, 90) : '<div style="height:90px;display:flex;align-items:center;font-weight:900">🎲 สุ่มตัวละคร</div>';
+      var charSp = s.type === 'off' ? '<div style="height:90px;display:flex;align-items:center;font-size:40px">—</div>' : s.char ? spr(Meta.charSprite(s.char), 90, 90) : '<div style="height:90px;display:flex;align-items:center;font-weight:900">🎲 สุ่มตัวละคร</div>';
       return '<div class="slot" style="border-color:' + PLAYER_COLORS[i] + ';border-width:5px"><div class="row"><b style="color:' + PLAYER_COLORS[i] + ';font-size:20px">P' + (i + 1) + '</b><div class="seg grow">' + types.map(function (t) { return '<div data-ty="' + i + ':' + t[0] + '" class="' + (s.type === t[0] ? 'on' : '') + '">' + t[1] + '</div>'; }).join('') + '</div></div>' +
         '<div class="row" style="justify-content:center;cursor:pointer;margin:6px 0" data-ch="' + i + '">' + charSp + '</div>' +
         (s.type === 'ai' ? '<div class="seg">' + AI_LEVELS.map(function (l, k) { return '<div data-lv="' + i + ':' + k + '" class="' + (s.lv === k ? 'on' : '') + '">' + l.name + '</div>'; }).join('') + '</div>' : s.type === 'human' ? '<div style="text-align:center;font-weight:800">' + (i === 0 ? esc(Meta.p.name) + ' • ใช้ Loadout ของคุณ' : 'เล่นบนเครื่องเดียวกัน (Hot-seat)') + '</div>' : '<div style="text-align:center" class="muted">ไม่มีผู้เล่น</div>') + '</div>';
@@ -276,16 +276,19 @@
   // PRE-MATCH LOADOUT (Character • Costume • Equipment x2 • Special Card x1 • Inventory • Map Preview • Ready)
   // =====================================================================
   var LO = { slot: 0 };
+  function allCharKeys() { var k = []; CHARACTERS.forEach(function (c, i) { k.push('b' + i); }); EXTRA_CHARS.forEach(function (c, i) { k.push('x' + i); }); JOB_CHARS.forEach(function (c, i) { k.push('j' + i); }); GOLD_CHARS.forEach(function (c, i) { k.push('g' + i); }); return k; }
+  function skillChip(k, big) { var s = Meta.charSkill(k); if (!s) return ''; return '<div class="skillchip' + (k[0] === 'g' ? ' gold' : '') + (big ? ' big' : '') + '"><b>⭐ ' + esc(s.name) + '</b><span>' + esc(s.desc) + '</span></div>'; }
+  U.skillChip = skillChip;
   function openLoadout() { var e = Meta.p.equip, v = Meta.validLoadout(); e.eq = v.eq; e.sc = v.sc; renderLoadout(); show('loadout'); }
   function renderLoadout() {
     var P = Meta.p, e = P.equip, m = MAPS[U.sel.map];
     var taken = U.sel.slots.slice(1).map(function (s) { return s.char; });
-    var keys = ['b0', 'b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'x0', 'x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7'];
+    var keys = allCharKeys().sort(function (a, b) { return (P.chars[b] ? 1 : 0) - (P.chars[a] ? 1 : 0); });
     var chars = keys.map(function (k) {
       var own = P.chars[k], dis = !own || taken.indexOf(k) >= 0;
-      return '<div class="charbtn ' + (e.char === k ? 'sel ' : '') + (dis ? 'lock' : '') + '" data-c="' + k + '" style="height:84px">' + spr(Meta.charSprite(k, e.costume), 54, 72) + (!own ? '<span class="who">🔒</span>' : '') + '</div>';
+      var sk = Meta.charSkill(k);
+      return '<div class="charbtn ' + (e.char === k ? 'sel ' : '') + (dis ? 'lock ' : '') + (k[0] === 'g' ? 'goldc' : '') + '" data-c="' + k + '" title="' + esc(Meta.charName(k) + (sk ? ' — ' + sk.name + ': ' + sk.desc : '')) + '" style="height:84px">' + spr(Meta.charSprite(k), 54, 72) + (!own ? '<span class="who">🔒</span>' : '') + '</div>';
     }).join('');
-    var ci = /^b/.test(e.char) ? +e.char.slice(1) : -1, hasCozy = ci >= 0 && P.costumes['cz' + ci];
     var slot = function (idx, kind) {
       var id = kind === 'sc' ? e.sc : e.eq[idx], it = id && Meta.item(id);
       return '<div class="eqslot ' + (it ? 'filled' : '') + '" data-slot="' + (kind === 'sc' ? 'sc' : idx) + '" style="' + (LO.slot === (kind === 'sc' ? 'sc' : idx) ? 'outline:5px solid #ff7aa8' : '') + '">' +
@@ -297,16 +300,15 @@
     }).join('');
     var html = '<div class="row" style="align-items:flex-start;gap:16px">' +
       '<div class="col" style="width:560px"><div class="panel" style="padding:10px"><b>1) Character Selection</b><div class="charpick" style="margin-top:6px">' + chars + '</div>' +
-      '<div class="row" style="margin-top:8px"><b>2) Character Costume</b><div class="seg grow"><div data-cos="chars" class="' + (e.costume !== 'cozy' ? 'on' : '') + '">ชุดเริ่มต้น</div><div data-cos="cozy" class="' + (e.costume === 'cozy' ? 'on' : '') + '" style="' + (hasCozy ? '' : 'opacity:.4') + '">ชุดพิเศษ ' + (hasCozy ? '' : '🔒') + '</div></div></div></div>' +
+      '<div style="margin-top:8px"><b>2) สกิลติดตัว</b> ' + skillChip(e.char) + '</div></div>' +
       '<div class="panel" style="padding:10px"><b>6) Inventory — แตะเพื่อใส่ช่องที่เลือก</b> <span class="muted" style="font-size:13px">(ใช้ได้เมื่อมีใน Inventory • ไอเทมจะถูกหักเมื่อใช้งานจริงในเกม)</span><div class="invgrid" style="margin-top:6px;max-height:300px;overflow:auto">' + inv + '</div></div></div>' +
-      '<div class="col" style="width:330px;align-items:center"><div class="panel" style="padding:12px;width:100%;text-align:center">' + spr(Meta.charSprite(e.char, e.costume), 200, 190) + '<div style="font-weight:900;font-size:20px">' + Meta.charName(e.char) + '</div></div>' +
+      '<div class="col" style="width:330px;align-items:center"><div class="panel" style="padding:12px;width:100%;text-align:center">' + spr(Meta.charSprite(e.char), 200, 190) + '<div style="font-weight:900;font-size:20px">' + Meta.charName(e.char) + '</div>' + skillChip(e.char, true) + '</div>' +
       '<div class="row" style="gap:10px">' + slot(0) + slot(1) + '</div>' + slot(0, 'sc') + '</div>' +
       '<div class="col" style="width:300px"><div class="panel" style="padding:10px"><b>7) Map Preview</b><div style="height:170px;border-radius:14px;border:3px solid #6b4226;margin-top:6px;background:url(assets/' + m.bg + '.webp) center/cover"></div><div style="font-weight:900;font-size:18px;margin-top:4px">' + m.th + '</div>' + m.districts.map(function (d) { return '<div class="row" style="font-size:13px;font-weight:800;gap:6px"><span style="width:16px;height:12px;border-radius:4px;background:' + d.color + ';border:2px solid #6b4226"></span>' + d.th + '</div>'; }).join('') + '</div>' +
       '<div class="panel" style="padding:10px;font-weight:800;font-size:14px"><b>5) ตรวจสอบความพร้อม</b><div>ตัวละคร: ' + Meta.charName(e.char) + '</div><div>อุปกรณ์: ' + (e.eq.map(function (id) { return Meta.item(id).name; }).join(', ') || '-') + ' (' + e.eq.length + '/2)</div><div>การ์ดพิเศษ: ' + (e.sc ? Meta.item(e.sc).name : '-') + ' (' + (e.sc ? 1 : 0) + '/1)</div><div>โหมด: ' + LENGTHS[U.sel.len].n + '</div></div></div></div>';
     $('#loadoutBody').innerHTML = html;
     var B = $('#loadoutBody');
     B.querySelectorAll('[data-c]').forEach(function (x) { x.onclick = function () { if (x.classList.contains('lock')) { toast(Meta.p.chars[x.dataset.c] ? 'ตัวละครนี้ถูกเลือกแล้ว' : '🔒 ปลดล็อกตัวละครนี้ได้ที่ร้านค้า'); return; } e.char = x.dataset.c; Meta.save(); renderLoadout(); }; });
-    B.querySelectorAll('[data-cos]').forEach(function (x) { x.onclick = function () { if (x.dataset.cos === 'cozy' && !hasCozy) { toast('🔒 ซื้อชุดพิเศษได้ที่ร้านค้า หมวด Characters & Costumes'); return; } e.costume = x.dataset.cos; Meta.save(); renderLoadout(); }; });
     B.querySelectorAll('[data-slot]').forEach(function (x) { x.onclick = function () { var s = x.dataset.slot === 'sc' ? 'sc' : +x.dataset.slot; if (LO.slot === s) { if (s === 'sc') e.sc = null; else e.eq.splice(s, 1); Meta.save(); } LO.slot = s; renderLoadout(); }; });
     B.querySelectorAll('[data-it]').forEach(function (x) {
       x.onclick = function () {
@@ -418,7 +420,7 @@
       return '<div data-c="' + i + '" class="' + (u ? 'used ' : '') + (on ? 'pick' : '') + '" style="' + (q ? 'background:' + q.color + ';box-shadow:inset 0 0 0 3px rgba(255,255,255,.7)' + (on ? ',0 0 0 4px #fff,0 0 12px ' + q.color : '') : '') + '">' + (q ? '<span class="gi">' + spr(charSpec(q), 30, 30) + '</span>' : '') + '</div>';
     }).join('') + '</div></div>';
   }
-  function charSpec(p) { if (/^x/.test(p.char)) return ['extra', +p.char.slice(1)]; var i = +p.char.slice(1); return [p.costume === 'cozy' ? 'cozy' : 'chars', i]; }
+  function charSpec(p) { return Meta.charSprite(p.char); }
   U.charSpec = charSpec;
   function consumeUsed(g) {
     var p = g.s.players[g.s.ownerIdx || 0]; if (!p || p.isAI) return;
@@ -573,7 +575,7 @@
     setHTML($('#pbar'), s.players.map(function (p) {
       var rk = rank.indexOf(p.id) + 1;
       return '<div class="pcard ' + (p.id === cur.id && !s.over ? 'turn ' : '') + (p.bankrupt ? 'bk' : '') + '" data-p="' + p.id + '" style="--pc:' + p.color + ';--pcl:' + hexA(p.color, .35) + '">' + (rk === 1 && !p.bankrupt ? '<div class="crown">👑</div>' : '') +
-        '<div class="pchar">' + spr(charSpec(p), 84, 92) + '</div>' +
+        '<div class="pchar">' + spr(charSpec(p), 84, 92) + (Meta.charSkill(p.char) ? '<span class="pskill' + (p.char[0] === 'g' ? ' gold' : '') + '" title="' + esc(Meta.charSkill(p.char).name + ': ' + Meta.charSkill(p.char).desc) + '">⭐</span>' : '') + '</div>' +
         '<div class="ptop"><span class="pno">P' + (p.id + 1) + '</span><span class="nm">' + esc(p.name) + '</span></div>' +
         '<div class="cash coin">' + fmt(p.cash) + '</div>' +
         '<span class="nwpill">ทรัพย์สิน ' + fmt(g.netWorth(p)) + '</span>' +
@@ -699,7 +701,7 @@
     var shops = g.shopsOf(p).map(function (t) { return '<div class="row" style="font-size:14px;font-weight:800"><span style="color:' + s.districts[t.district].color + '">■</span><span class="grow">' + t.name + ' Lv' + t.level + '</span><span>' + fmt(g.shopValue(t)) + '</span></div>'; }).join('') || '<div class="muted">ยังไม่มีร้าน</div>';
     var st = p.shares.map(function (n, i) { return n ? '<div class="row" style="font-size:14px;font-weight:800"><span style="color:' + s.districts[i].color + '">■</span><span class="grow">' + s.districts[i].name + '</span><span>' + n + ' × ' + s.districts[i].price + '</span></div>' : ''; }).join('') || '<div class="muted">ไม่มีหุ้น</div>';
     var rank = s.players.slice().sort(function (a, b) { return g.netWorth(b) - g.netWorth(a); }).indexOf(p) + 1;
-    modal({ title: esc(p.name) + (p.isAI ? ' (AI ' + p.ai.level + ' • ' + p.ai.persona + ')' : ''), width: 760, body: '<div class="row" style="align-items:flex-start;gap:16px"><div style="text-align:center">' + spr(charSpec(p), 150, 160) + '<div class="chip">อันดับ #' + rank + '</div></div><div class="col grow"><div class="kv"><span>เงินสด</span><b>' + fmt(p.cash) + ' G</b><span>มูลค่าร้าน/อาคาร</span><b>' + fmt(g.propertyValue(p)) + ' G</b><span>มูลค่าหุ้น</span><b>' + fmt(g.stockValue(p)) + ' G</b>' + (p.safe ? '<span>บัญชีคุ้มครอง</span><b>' + fmt(p.safe) + ' G</b>' : '') + '<span>ทรัพย์สินรวม</span><b>' + fmt(g.netWorth(p)) + ' G</b><span>ระดับ</span><b>Lv' + p.level + ' (เงินเดือนถัดไป ' + fmt(g.salary(p)) + ' G)</b><span>หนี้ค้างชำระ</span><b>' + (p.cash < 0 ? fmt(-p.cash) : 0) + ' G</b></div>' + (p.hist.length > 1 ? '<div><b>ประวัติทรัพย์สิน</b><br>' + spark(p.hist, p.color, 480, 60) + '</div>' : '') + '<div><b>🛡️ สกิลจากการ์ดที่มีอยู่</b><div class="col" style="margin-top:4px">' + buffsHTML(p) + '</div></div><div class="row" style="align-items:flex-start;gap:14px"><div class="col grow"><b>ร้านค้า</b>' + shops + '</div><div class="col grow"><b>หุ้น</b>' + st + '</div></div></div></div>', buttons: [{ t: 'ปิด', v: 1 }] });
+    modal({ title: esc(p.name) + (p.isAI ? ' (AI ' + p.ai.level + ' • ' + p.ai.persona + ')' : ''), width: 760, body: '<div class="row" style="align-items:flex-start;gap:16px"><div style="text-align:center">' + spr(charSpec(p), 150, 160) + '<div class="chip">อันดับ #' + rank + '</div>' + skillChip(p.char) + '</div><div class="col grow"><div class="kv"><span>เงินสด</span><b>' + fmt(p.cash) + ' G</b><span>มูลค่าร้าน/อาคาร</span><b>' + fmt(g.propertyValue(p)) + ' G</b><span>มูลค่าหุ้น</span><b>' + fmt(g.stockValue(p)) + ' G</b>' + (p.safe ? '<span>บัญชีคุ้มครอง</span><b>' + fmt(p.safe) + ' G</b>' : '') + '<span>ทรัพย์สินรวม</span><b>' + fmt(g.netWorth(p)) + ' G</b><span>ระดับ</span><b>Lv' + p.level + ' (เงินเดือนถัดไป ' + fmt(g.salary(p)) + ' G)</b><span>หนี้ค้างชำระ</span><b>' + (p.cash < 0 ? fmt(-p.cash) : 0) + ' G</b></div>' + (p.hist.length > 1 ? '<div><b>ประวัติทรัพย์สิน</b><br>' + spark(p.hist, p.color, 480, 60) + '</div>' : '') + '<div><b>🛡️ สกิลจากการ์ดที่มีอยู่</b><div class="col" style="margin-top:4px">' + buffsHTML(p) + '</div></div><div class="row" style="align-items:flex-start;gap:14px"><div class="col grow"><b>ร้านค้า</b>' + shops + '</div><div class="col grow"><b>หุ้น</b>' + st + '</div></div></div></div>', buttons: [{ t: 'ปิด', v: 1 }] });
   }
   function bankInfo(p) {
     var g = U.g;
@@ -1296,7 +1298,7 @@
   // SHOP (7 categories) — real purchases into Inventory, atomic, with history
   // =====================================================================
   var SH = { cat: 'rec', sort: 'popular' };
-  var SHOP_CATS = [['rec', '⭐ ไอเทมแนะนำ'], ['deco', '🏠 อาคาร/ของตกแต่ง'], ['chars', '🐻 ตัวละคร/ชุด'], ['equip', '🎲 อุปกรณ์เกม'], ['cards', '🃏 การ์ดพิเศษ'], ['packs', '🎁 แพ็กเกจพิเศษ'], ['exch', '💱 แลกเปลี่ยน'], ['hist', '🧾 ประวัติ']];
+  var SHOP_CATS = [['rec', '⭐ ไอเทมแนะนำ'], ['deco', '🏠 อาคาร/ของตกแต่ง'], ['chars', '🐻 ตัวละคร'], ['equip', '🎲 อุปกรณ์เกม'], ['cards', '🃏 การ์ดพิเศษ'], ['packs', '🎁 แพ็กเกจพิเศษ'], ['exch', '💱 แลกเปลี่ยน'], ['hist', '🧾 ประวัติ']];
   function openShop(cat) { SH.cat = cat || 'rec'; renderShop(); show('shop'); }
   function renderShop() {
     var P = Meta.p;
@@ -1310,7 +1312,7 @@
     } else {
       var list;
       if (SH.cat === 'rec') {
-        var ids = ['pk_begin', 'eq_golden', 'SC_upg', 'pk_lucky', 'x3', 'eq_rent', 'cz0', 'deco_40', 'SC_cash', 'eq_travel', 'dice_2', 'pk_deco', 'b4', 'eq_lucky', 'SC_stock'];
+        var ids = ['pk_begin', 'eq_golden', 'SC_upg', 'pk_lucky', 'x3', 'eq_rent', 'g2', 'deco_40', 'SC_cash', 'eq_travel', 'dice_2', 'pk_deco', 'b4', 'eq_lucky', 'SC_stock'];
         list = ids.map(Meta.item).filter(Boolean);
         var srt = SH.sort;
         if (srt === 'new') list = list.filter(function (i) { return Meta.tags(i.id).indexOf('new') >= 0; });
@@ -1343,13 +1345,12 @@
   // =====================================================================
   // INVENTORY
   // =====================================================================
-  var INV_TABS = ['Characters', 'Costumes', 'Buildings', 'Decorations', 'Game Equipment', 'Special Cards', 'Packages', 'Dice Skins', 'Other Items'];
+  var INV_TABS = ['Characters', 'Buildings', 'Decorations', 'Game Equipment', 'Special Cards', 'Packages', 'Dice Skins', 'Other Items'];
   var IV = { tab: 'Game Equipment' };
   function openInventory(tab) { if (tab) IV.tab = tab; renderInventory(); show('inventory'); }
   function renderInventory() {
     var P = Meta.p, items = [];
-    if (IV.tab === 'Characters') { ['b0', 'b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'x0', 'x1', 'x2', 'x3', 'x4', 'x5', 'x6', 'x7'].forEach(function (k) { if (P.chars[k]) items.push({ id: k, name: Meta.charName(k), spr: Meta.charSprite(k, 'chars'), q: 1, eq: P.equip.char === k }); }); }
-    else if (IV.tab === 'Costumes') { CHARACTERS.forEach(function (c, i) { items.push({ id: 'chars' + i, name: 'ชุดเริ่มต้น ' + c.name, spr: ['chars', i], q: 1 }); if (P.costumes['cz' + i]) items.push({ id: 'cz' + i, name: 'ชุดพิเศษ ' + c.name, spr: ['cozy', i], q: 1 }); }); }
+    if (IV.tab === 'Characters') { allCharKeys().forEach(function (k) { if (P.chars[k]) items.push({ id: k, name: Meta.charName(k), spr: Meta.charSprite(k), q: 1, eq: P.equip.char === k }); }); }
     else if (IV.tab === 'Dice Skins') { DICE_SKINS.forEach(function (d) { if (P.dice[d.id]) items.push({ id: d.id, name: d.name, spr: d.spr, q: 1, eq: P.equip.dice === d.id }); }); }
     else if (IV.tab === 'Packages') { items = []; }
     else if (IV.tab === 'Other Items') { items = []; }
@@ -1366,7 +1367,6 @@
         var id = e.dataset.iv;
         if (IV.tab === 'Characters') { P.equip.char = id; Meta.save(); toast('ตั้ง ' + Meta.charName(id) + ' เป็นตัวละครหลัก'); renderInventory(); }
         else if (IV.tab === 'Dice Skins') { P.equip.dice = id; Meta.save(); toast('เปลี่ยนสกินลูกเต๋าแล้ว'); renderInventory(); }
-        else if (IV.tab === 'Costumes') { var i = +id.replace(/\D/g, ''); P.equip.char = 'b' + i; P.equip.costume = /^cz/.test(id) ? 'cozy' : 'chars'; Meta.save(); toast('เปลี่ยนชุดแล้ว'); renderInventory(); }
         else if (IV.tab === 'Buildings' || IV.tab === 'Decorations') openProfile();
         else { var it = Meta.item(id); modal({ title: it.name, body: '<div class="col" style="align-items:center;min-width:380px">' + spr(it.spr, 130, 110) + '<div style="font-weight:800">' + it.desc + '</div><div class="chip">มี ' + Meta.owned(id) + ' ชิ้น</div><div class="muted" style="font-size:13px">ติดตั้งได้ในหน้า Pre-Match Setup ก่อนเริ่มเกม</div></div>', buttons: [{ t: 'ปิด', v: 1 }] }); }
       };
@@ -1388,7 +1388,7 @@
     }
     var owned = Object.keys(P.deco).filter(function (k) { return P.deco[k] > 0; });
     var side = owned.map(function (k) { var it = Meta.item(k), free = P.deco[k] - (placedCount[k] || 0); return '<div class="invitem ' + (PF.sel === k ? 'eqd' : '') + (free <= 0 ? ' dim' : '') + '" data-dk="' + k + '"><span class="q">' + free + '/' + P.deco[k] + '</span>' + spr(it.spr, 70, 64) + '<div style="font-size:11px">' + it.name + '</div></div>'; }).join('') || '<div class="muted">ยังไม่มีของตกแต่ง — ซื้อได้ที่ร้านค้า</div>';
-    $('#profile').innerHTML = '<div class="scrhead">' + '<div class="uibtn backbtn" id="pfBack">' + spr(['ui', 'prev'], 70, 70) + '</div>' + spr(Meta.charSprite(P.equip.char, P.equip.costume), 64, 70) + '<div class="title"><span class="ttl">เมืองของ ' + esc(P.name) + '</span></div><span class="chip">Lv ' + P.level + '</span><span class="chip">ชนะ ' + P.stats.wins + '/' + P.stats.games + '</span><button class="small pink" id="pfShop">ซื้อของตกแต่ง</button></div>' +
+    $('#profile').innerHTML = '<div class="scrhead">' + '<div class="uibtn backbtn" id="pfBack">' + spr(['ui', 'prev'], 70, 70) + '</div>' + spr(Meta.charSprite(P.equip.char), 64, 70) + '<div class="title"><span class="ttl">เมืองของ ' + esc(P.name) + '</span></div><span class="chip">Lv ' + P.level + '</span><span class="chip">ชนะ ' + P.stats.wins + '/' + P.stats.games + '</span><button class="small pink" id="pfShop">ซื้อของตกแต่ง</button></div>' +
       '<div class="scrbody"><div class="row" style="align-items:flex-start;gap:14px"><div><div class="town">' + cells + '</div><div style="font-weight:800;margin-top:6px;font-size:14px">' + (PF.move ? '👉 แตะช่องว่างเพื่อย้าย' : PF.sel ? '👉 แตะช่องในเมืองเพื่อวาง ' + Meta.item(PF.sel).name : 'เลือกของตกแต่งด้านขวา แล้วแตะช่องเพื่อวาง • แตะของที่วางแล้วเพื่อย้าย/หมุน/ถอด') + ' • ของตกแต่งไม่มีผลต่อการแข่งขัน</div></div><div class="panel" style="padding:8px;width:270px;max-height:640px;overflow:auto"><b>ของตกแต่งที่มี</b><div class="invgrid" style="grid-template-columns:1fr 1fr">' + side + '</div></div></div></div>';
     $('#pfBack').onclick = function () { PF.sel = null; PF.move = null; show('menu'); };
     $('#pfShop').onclick = function () { openShop('deco'); };
@@ -1489,7 +1489,7 @@
   function renderLobby() {
     var B = document.getElementById('lobbyB'), R = Online.room; if (!B || !R) return;
     var host = R.role === 'host', S = R.settings || {}, ps = R.players || [];
-    var slots = [0, 1, 2, 3].map(function (i) { var x = ps[i]; return '<div style="border-color:' + PLAYER_COLORS[i] + '">' + (x ? spr(Meta.charSprite(x.char, x.costume || 'chars'), 80, 90) + '<div>P' + (i + 1) + ' ' + esc(x.name) + '</div><div style="font-size:12px;color:#2c9a2c">' + (i === 0 ? '👑 โฮสต์' : '✅ พร้อม') + '</div>' : '<div style="padding-top:40px;opacity:.5">' + (S.fillAI ? '🤖 AI จะมาเติม' : 'รอผู้เล่น...') + '</div>') + '</div>'; }).join('');
+    var slots = [0, 1, 2, 3].map(function (i) { var x = ps[i]; return '<div style="border-color:' + PLAYER_COLORS[i] + '">' + (x ? spr(Meta.charSprite(x.char), 80, 90) + '<div>P' + (i + 1) + ' ' + esc(x.name) + '</div><div style="font-size:12px;color:#2c9a2c">' + (i === 0 ? '👑 โฮสต์' : '✅ พร้อม') + '</div>' : '<div style="padding-top:40px;opacity:.5">' + (S.fillAI ? '🤖 AI จะมาเติม' : 'รอผู้เล่น...') + '</div>') + '</div>'; }).join('');
     var settings = host ?
       '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:10px"><b>แผนที่:</b>' + MAPS.map(function (m, i) { return '<button class="small rbtn ' + (S.map === i ? 'on' : '') + '" data-lm="' + i + '">' + m.th + '</button>'; }).join('') + '</div>' +
       '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px"><b>เป้าหมาย:</b>' + [25000, 40000, 60000, 100000].map(function (t) { return '<button class="small rbtn ' + (S.target === t ? 'on' : '') + '" data-lt="' + t + '">' + fmt(t) + '</button>'; }).join('') +

@@ -19,13 +19,14 @@
   // ---------- helpers ----------
   function spr(spec, w, h, extraStyle) {
     if (!spec) return '';
+    if (spec[0] === 'cdice') { var z = Math.min(w, h) * 0.62; return '<div class="cdiceIcon" style="width:' + w + 'px;height:' + h + 'px">' + cubeHTML(z, 'fx:' + spec[1], true) + '</div>'; }
     var S = ATLAS[spec[0]]; if (!S) return '';
     var b = typeof spec[1] === 'string' ? S.n[spec[1]] : S.b[spec[1]]; if (!b) return '';
     if (spec[2]) { var n = spec[2], k = spec[3] || 0; b = [b[0] + b[2] / n * k, b[1], b[2] / n, b[3]]; }
     var sc = Math.min(w / b[2], h / b[3]);
     return '<div class="spr" style="width:' + (b[2] * sc).toFixed(1) + 'px;height:' + (b[3] * sc).toFixed(1) + 'px;background-image:url(' + S.url + ');background-size:' + (S.W * sc).toFixed(1) + 'px ' + (S.H * sc).toFixed(1) + 'px;background-position:-' + (b[0] * sc).toFixed(1) + 'px -' + (b[1] * sc).toFixed(1) + 'px;' + (extraStyle || '') + '"></div>';
   }
-  U.spr = spr;
+  U.spr = spr; U.spinner = function (el, size, tint) { return spinner(el, size, tint); };
   function setHTML(el, html) { if (el && el._h !== html) { el._h = html; el.innerHTML = html; } }
   function hexA(hex, a) { var n = parseInt(hex.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')'; }
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -374,15 +375,44 @@
   // ---------- 3D dice (faces from the project's dice art) ----------
   var FACE_ROT = { 1: [0, 0], 6: [0, 180], 2: [0, -90], 5: [0, 90], 3: [-90, 0], 4: [90, 0] };
   var TINT = { dice_1: '#ffe9c7', dice_2: '#ffd34d', dice_3: '#ffb3c6', dice_4: '#a9d8ff', dice_5: '#bfe8a8', dice_6: '#d9a066' };
-  function cubeHTML(size, tint) {
+  // effect dice skins: drawn with CSS (face colour, pip shape, glow, particles)
+  var DFX = {
+    heart: { pip: '♥', parts: ['💗', '💖', '♥', '💕'] },
+    sakura: { pip: '🌸', parts: ['🌸', '🌸', '💮'] },
+    crystal: { pip: '❄', parts: ['❄', '✦', '✧'] },
+    galaxy: { pip: '●', parts: ['✦', '✧', '⭐', '✨'] },
+    rainbow: { pip: '★', parts: ['✨', '🌈', '⭐', '💫'] },
+    royal: { pip: '★', parts: ['✨', '⭐', '💛', '👑'] },
+  };
+  var PIPS = { 1: [[50, 50]], 2: [[27, 27], [73, 73]], 3: [[25, 25], [50, 50], [75, 75]], 4: [[27, 27], [73, 27], [27, 73], [73, 73]], 5: [[25, 25], [75, 25], [50, 50], [25, 75], [75, 75]], 6: [[28, 22], [72, 22], [28, 50], [72, 50], [28, 78], [72, 78]] };
+  function skinFx(tint) { if (!tint) return null; var k = /^fx:/.test(tint) ? tint.slice(3) : (DICE_SKINS.find(function (d) { return d.id === tint; }) || {}).fx; return k && DFX[k] ? k : null; }
+  function cubeHTML(size, tint, still) {
+    var fx = skinFx(tint);
+    if (fx) {
+      var h2 = size / 2, ps = size * (fx === 'sakura' ? 0.2 : 0.22);
+      var ff = function (n, tr) { return '<div class="fc sk" style="transform:' + tr + ' translateZ(' + h2 + 'px)">' + PIPS[n].map(function (q) { return '<i style="left:' + q[0] + '%;top:' + q[1] + '%;font-size:' + (n === 1 ? ps * 1.8 : ps) + 'px">' + DFX[fx].pip + '</i>'; }).join('') + '</div>'; };
+      var inn = ['rotateY(0)', 'rotateY(180deg)', 'rotateY(90deg)', 'rotateY(-90deg)', 'rotateX(90deg)', 'rotateX(-90deg)'].map(function (tr) { return '<div class="in" style="transform:' + tr + ' translateZ(' + (h2 - 3) + 'px)"></div>'; }).join('');
+      return '<div class="dicewrap dfx dfx-' + fx + '"><div class="daura" style="width:' + size * 1.9 + 'px;height:' + size * 1.9 + 'px;top:' + (-size * 0.45) + 'px"></div><div class="cube ' + (still ? 'still' : 'spin') + '" style="width:' + size + 'px;height:' + size + 'px">' + inn + ff(1, 'rotateY(0)') + ff(6, 'rotateY(180deg)') + ff(2, 'rotateY(90deg)') + ff(5, 'rotateY(-90deg)') + ff(3, 'rotateX(90deg)') + ff(4, 'rotateX(-90deg)') + '</div>' + (still ? '' : '<div class="diceshadow"></div>') + '</div>';
+    }
+    if (tint && TINT[tint]) tint = TINT[tint];
     var h = size / 2, f = function (n, tr) { return '<div class="fc" style="background-position:' + (n - 1) * 20 + '% 0;transform:' + tr + ' translateZ(' + h + 'px)' + (tint ? ';--tint:' + tint : '') + '"></div>'; };
     var inner = ['rotateY(0)', 'rotateY(180deg)', 'rotateY(90deg)', 'rotateY(-90deg)', 'rotateX(90deg)', 'rotateX(-90deg)'].map(function (tr) { return '<div class="in" style="transform:' + tr + ' translateZ(' + (h - 3) + 'px)"></div>'; }).join('');
     return '<div class="dicewrap"><div class="cube spin" style="width:' + size + 'px;height:' + size + 'px">' + inner + f(1, 'rotateY(0)') + f(6, 'rotateY(180deg)') + f(2, 'rotateY(90deg)') + f(5, 'rotateY(-90deg)') + f(3, 'rotateX(90deg)') + f(4, 'rotateX(-90deg)') + '</div><div class="diceshadow"></div></div>';
   }
   function spinner(el, size, tint) {
     el.innerHTML = cubeHTML(size, tint); var cube = el.querySelector('.cube'), stopped = false, snd = setInterval(function () { sfx('dice'); }, 140);
+    var fx = skinFx(tint), wrap = el.querySelector('.dicewrap'), pt = null;
+    function part(burst) {
+      if (!wrap || !wrap.isConnected) { clearInterval(pt); return; }
+      var e = document.createElement('span'), a = Math.random() * Math.PI * 2, r0 = size * (burst ? 0.3 : 0.55), r1 = size * (burst ? 1.4 + Math.random() * 0.6 : 0.9);
+      e.className = 'dpart'; e.textContent = DFX[fx].parts[Math.floor(Math.random() * DFX[fx].parts.length)];
+      e.style.cssText = 'left:50%;top:' + size * 0.5 + 'px;font-size:' + (size * (0.14 + Math.random() * 0.12)) + 'px;--x0:' + Math.cos(a) * r0 + 'px;--y0:' + Math.sin(a) * r0 + 'px;--x1:' + Math.cos(a) * r1 + 'px;--y1:' + (Math.sin(a) * r1 - (fx === 'sakura' ? -size * 0.4 : size * 0.3)) + 'px;animation-duration:' + (burst ? 0.9 : 1.2 + Math.random() * 0.6) + 's';
+      wrap.appendChild(e); setTimeout(function () { e.remove(); }, 2000);
+    }
+    if (fx) pt = setInterval(function () { part(false); }, 90);
     return { stop: function (forced) {
-      if (stopped) return null; stopped = true; clearInterval(snd);
+      if (stopped) return null; stopped = true; clearInterval(snd); clearInterval(pt);
+      if (fx) { for (var bi = 0; bi < 18; bi++) setTimeout(function () { part(true); }, 700 + bi * 12); setTimeout(function () { if (wrap) wrap.classList.add('dflash'); }, 700); }
       var v = forced || (1 + Math.floor(Math.random() * 6)), r = FACE_ROT[v];
       var cs = getComputedStyle(cube).transform; cube.classList.remove('spin'); cube.style.transform = cs === 'none' ? '' : cs; void cube.offsetWidth;
       cube.style.transition = 'transform .75s cubic-bezier(.15,1.35,.4,1)';
@@ -392,7 +422,7 @@
       return v;
     } };
   }
-  function diceTint(p) { return !p.isAI && U.g && U.g.s.dice ? TINT[U.g.s.dice] : null; }
+  function diceTint(p) { return !p.isAI && U.g && U.g.s.dice ? U.g.s.dice : null; }
   async function orderIntro(g) {
     var s = g.s, res = {};
     var html = '<div class="row" style="gap:14px;justify-content:center">' + s.players.map(function (p) { return '<div id="oc' + p.id + '" style="text-align:center;border:5px solid ' + p.color + ';border-radius:22px;padding:8px;background:#fff;width:180px">' + spr(charSpec(p), 100, 100) + '<div style="font-weight:700">' + esc(p.name) + '</div><div class="ordice" id="od' + p.id + '"></div><div id="ol' + p.id + '" style="font-weight:700;font-size:15px;min-height:44px">' + (p.isAI ? 'กำลังทอย...' : '<button class="pink small" id="ob' + p.id + '">✋ หยุด!</button>') + '</div></div>'; }).join('') + '</div><div style="text-align:center;margin-top:8px;font-weight:700">แตะ “หยุด!” หรือแตะลูกเต๋าเพื่อหยุดลูกเต๋าของคุณ • แต้มมากสุดได้เริ่มก่อน</div>';

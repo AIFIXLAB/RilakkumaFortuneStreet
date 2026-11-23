@@ -473,6 +473,12 @@ var DICE_SKINS = [
   { id: 'dice_4', name: 'ลูกเต๋าฟ้า', spr: ['dice', 4], price: 1200, cur: 'gold' },
   { id: 'dice_5', name: 'ลูกเต๋าเขียว', spr: ['dice', 5], price: 1200, cur: 'gold' },
   { id: 'dice_6', name: 'ลูกเต๋าช็อกโกแลต', spr: ['dice', 6], price: 15, cur: 'diamond' },
+  { id: 'dice_7', name: 'ลูกเต๋าชมพูหัวใจ 💗', spr: ['cdice', 'heart'], price: 3000, cur: 'gold', fx: 'heart', desc: 'ลูกเต๋าสีชมพู จุดเป็นหัวใจ มีหัวใจลอยฟุ้งตอนทอย' },
+  { id: 'dice_8', name: 'ลูกเต๋าซากุระ 🌸', spr: ['cdice', 'sakura'], price: 3000, cur: 'gold', fx: 'sakura', desc: 'จุดเป็นดอกซากุระ กลีบซากุระโปรยตอนทอย' },
+  { id: 'dice_9', name: 'ลูกเต๋าคริสตัลน้ำแข็ง ❄️', spr: ['cdice', 'crystal'], price: 3500, cur: 'gold', fx: 'crystal', desc: 'ใสเหมือนคริสตัล เรืองแสงสีฟ้า มีเกล็ดหิมะระยิบระยับ' },
+  { id: 'dice_10', name: 'ลูกเต๋ากาแล็กซี่ 🌌', spr: ['cdice', 'galaxy'], price: 40, cur: 'diamond', fx: 'galaxy', desc: 'ลายอวกาศ จุดทองเรืองแสง ดาวระยิบรอบลูกเต๋า' },
+  { id: 'dice_11', name: 'ลูกเต๋าสีรุ้งเรืองแสง 🌈', spr: ['cdice', 'rainbow'], price: 50, cur: 'diamond', fx: 'rainbow', desc: 'สีรุ้งไหลเปลี่ยนสีตลอดเวลา เรืองแสงรอบตัว มีประกายรุ้งตอนทอย' },
+  { id: 'dice_12', name: 'ลูกเต๋าทองคำราชวงศ์ 👑', spr: ['cdice', 'royal'], price: 60, cur: 'diamond', fx: 'royal', desc: 'ทองคำมีแสงวิ่งผ่าน จุดเป็นดาว มีประกายทองระเบิดตอนหยุด' },
 ];
 var DAILY_REWARDS = [{ gold: 500 }, { diamond: 5 }, { item: 'eq_move' }, { gold: 1000 }, { diamond: 10 }, { item: 'eq_lucky', n: 2 }, { gold: 2000, diamond: 10, item: 'SC_cash' }];
 

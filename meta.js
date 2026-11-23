@@ -35,7 +35,7 @@ var Meta = (function () {
     JOB_CHARS.forEach(function (c, i) { out.push({ id: 'j' + i, cat: 'chars', type: 'Characters', name: c.name, desc: skillDesc('j' + i), price: c.price, cur: 'gold', spr: ['jobs', i], uniq: true }); });
     GOLD_CHARS.forEach(function (c, i) { out.push({ id: 'g' + i, cat: 'chars', type: 'Characters', name: c.name, desc: skillDesc('g' + i), price: c.d, cur: 'diamond', spr: ['gold', i], uniq: true, gold: true }); });
     EXTRA_CHARS.forEach(function (c, i) { out.push({ id: 'x' + i, cat: 'chars', type: 'Characters', name: c.name, desc: skillDesc('x' + i), price: c.d, cur: 'diamond', spr: ['extra', i], uniq: true }); });
-    DICE_SKINS.forEach(function (d) { if (d.price) out.push({ id: d.id, cat: 'chars', type: 'Dice Skins', name: d.name, desc: 'สกินลูกเต๋า (Cosmetic)', price: d.price, cur: d.cur, spr: d.spr, uniq: true }); });
+    DICE_SKINS.forEach(function (d) { if (d.price) out.push({ id: d.id, cat: 'chars', type: 'Dice Skins', name: d.name, desc: d.desc ? '✨ ' + d.desc : 'สกินลูกเต๋า (Cosmetic)', price: d.price, cur: d.cur, spr: d.spr, uniq: true }); });
     return out;
   }
   function skillDesc(k) { var s = CHAR_SKILLS[k]; return s ? '⭐ สกิลติดตัว “' + s.name + '”: ' + s.desc : ''; }
@@ -43,7 +43,7 @@ var Meta = (function () {
   function item(id) { if (!CAT) CAT = catalog(); return CAT.find(function (x) { return x.id === id; }); }
   function all() { if (!CAT) CAT = catalog(); return CAT; }
   // tags for "Recommended" sorting
-  var TAGS = { pk_begin: ['hot', 'new'], eq_golden: ['hot'], SC_upg: ['hot'], pk_lucky: ['sale', 'limited'], x3: ['new'], eq_rent: ['hot'], deco_40: ['new'], g2: ['new', 'limited'], j11: ['new'], pk_deco: ['limited'], SC_cash: ['hot'], eq_travel: ['new'], dice_2: ['sale'] };
+  var TAGS = { pk_begin: ['hot', 'new'], eq_golden: ['hot'], SC_upg: ['hot'], pk_lucky: ['sale', 'limited'], x3: ['new'], eq_rent: ['hot'], deco_40: ['new'], g2: ['new', 'limited'], j11: ['new'], dice_7: ['new'], dice_11: ['new', 'hot'], pk_deco: ['limited'], SC_cash: ['hot'], eq_travel: ['new'], dice_2: ['sale'] };
   function tags(id) { return TAGS[id] || []; }
   function priceOf(it) { return tags(it.id).indexOf('sale') >= 0 ? Math.round(it.price * 0.8) : it.price; }
 

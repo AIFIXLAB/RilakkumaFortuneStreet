@@ -419,7 +419,7 @@ var EQUIPMENT = [
   { id: 'eq_double',  name: 'Double Coin',    th: 'เงินรางวัลจากเหตุการณ์ x2 (1 ครั้ง)', when: 'gain', price: 1000, cur: 'gold', spr: ['spc', 2] },
   { id: 'eq_stock',   name: 'Stock Boost',    th: 'หุ้นเขตที่ถือมากที่สุด +10%',       when: 'preRoll',  price: 900,  cur: 'gold', spr: ['spc', 32] },
   { id: 'eq_upg',     name: 'Upgrade Coupon', th: 'ลดค่าอัปเกรด 30% 1 ครั้ง',          when: 'upgrade',  price: 900,  cur: 'gold', spr: ['spc', 4] },
-  { id: 'eq_travel',  name: 'Travel Ticket',  th: 'ย้ายไปธนาคารทันที 1 ครั้ง',        when: 'preRoll',  price: 1500, cur: 'gold', spr: ['items', 10, 6, 1] },
+  { id: 'eq_travel',  name: 'Travel Ticket',  th: 'ย้ายไปธนาคารทันที 1 ครั้ง',        when: 'preRoll',  price: 1500, cur: 'gold', spr: ['items', 'ticket'] },
   { id: 'eq_shopdc',  name: 'Shop Discount',  th: 'ลดราคาซื้อร้าน 30% 1 ครั้ง',        when: 'buy',      price: 800,  cur: 'gold', spr: ['spc', 6] },
   { id: 'eq_ins',     name: 'Insurance Card', th: 'ป้องกันผลเสียจากเหตุการณ์ 1 ครั้ง', when: 'negative', price: 700,  cur: 'gold', spr: ['spc', 18] },
   { id: 'eq_move',    name: 'Extra Move',     th: 'เดินเพิ่ม 1 ช่อง',                  when: 'postRoll', price: 500,  cur: 'gold', spr: ['spc', 16] },
@@ -438,21 +438,21 @@ var SPECIAL_CARDS = [
   { id: 'SC_ins',     name: 'Lucky Angel',   th: 'ยกเลิกผลเสียจากการ์ด 1 ครั้ง',        when: 'negative', price: 10, cur: 'diamond', spr: ['spc', 8] },
 ];
 var PACKAGES = [
-  { id: 'pk_begin', name: 'Beginner Pack', th: 'เหรียญ 3,000 + Lucky Dice + Extra Move', price: 20, cur: 'diamond', spr: ['rec', 0],
+  { id: 'pk_begin', name: 'Beginner Pack', th: 'เหรียญ 3,000 + Lucky Dice + Extra Move', price: 20, cur: 'diamond', spr: ['rec', 'pk0'],
     gives: { gold: 3000, items: { eq_lucky: 1, eq_move: 1 } } },
-  { id: 'pk_biz', name: 'Business Pack', th: 'Shop Discount x2 + Upgrade Coupon x2 + Stock Gift', price: 40, cur: 'diamond', spr: ['rec', 12],
+  { id: 'pk_biz', name: 'Business Pack', th: 'Shop Discount x2 + Upgrade Coupon x2 + Stock Gift', price: 40, cur: 'diamond', spr: ['rec', 'pk12'],
     gives: { items: { eq_shopdc: 2, eq_upg: 2, SC_stock: 1 } } },
-  { id: 'pk_hotel', name: 'Hotel Owner Pack', th: 'Free Upgrade x2 + Value Boost + ตึกโรงแรม (ตกแต่ง)', price: 50, cur: 'diamond', spr: ['rec', 17],
+  { id: 'pk_hotel', name: 'Hotel Owner Pack', th: 'Free Upgrade x2 + Value Boost + ตึกโรงแรม (ตกแต่ง)', price: 50, cur: 'diamond', spr: ['rec', 'pk17'],
     gives: { items: { SC_upg: 2, SC_value: 1, deco_31: 1 } } },
-  { id: 'pk_lucky', name: 'Lucky Player Pack', th: 'Golden Dice + Lucky Dice x2 + Insurance', price: 35, cur: 'diamond', spr: ['rec', 4],
+  { id: 'pk_lucky', name: 'Lucky Player Pack', th: 'Golden Dice + Lucky Dice x2 + Insurance', price: 35, cur: 'diamond', spr: ['rec', 'pk4'],
     gives: { items: { eq_golden: 1, eq_lucky: 2, eq_ins: 1 } } },
-  { id: 'pk_deco', name: 'Decoration Pack', th: 'ซากุระ + น้ำพุ + สะพาน + ม้านั่ง', price: 3000, cur: 'gold', spr: ['rec', 20],
+  { id: 'pk_deco', name: 'Decoration Pack', th: 'ซากุระ + น้ำพุ + สะพาน + ม้านั่ง', price: 3000, cur: 'gold', spr: ['rec', 'pk20'],
     gives: { items: { deco_43: 1, deco_44: 1, deco_40: 1, deco_42: 1 } } },
 ];
 var EXCHANGE = [
-  { id: 'ex_g1', th: 'แลก 10 💎 → 2,000 G', pay: { diamond: 10 }, get: { gold: 2000 }, spr: ['rec', 27, 3, 0] },
-  { id: 'ex_g2', th: 'แลก 50 💎 → 11,000 G', pay: { diamond: 50 }, get: { gold: 11000 }, spr: ['items', 14, 3, 0] },
-  { id: 'ex_d1', th: 'แลก 5,000 G → 15 💎', pay: { gold: 5000 }, get: { diamond: 15 }, spr: ['rec', 27, 3, 1] },
+  { id: 'ex_g1', th: 'แลก 10 💎 → 2,000 G', pay: { diamond: 10 }, get: { gold: 2000 }, spr: ['rec', 'exg'] },
+  { id: 'ex_g2', th: 'แลก 50 💎 → 11,000 G', pay: { diamond: 50 }, get: { gold: 11000 }, spr: ['items', 'coins'] },
+  { id: 'ex_d1', th: 'แลก 5,000 G → 15 💎', pay: { gold: 5000 }, get: { diamond: 15 }, spr: ['rec', 'exd'] },
 ];
 // Decoration items: 'deco' sheet idx 0..49 (rows of buildings/props), cost scales
 function decoCatalog() {

@@ -35,7 +35,7 @@ var Meta = (function () {
     JOB_CHARS.forEach(function (c, i) { out.push({ id: 'j' + i, cat: 'chars', type: 'Characters', name: c.name, desc: skillDesc('j' + i), price: c.price, cur: 'gold', spr: ['jobs', i], uniq: true }); });
     GOLD_CHARS.forEach(function (c, i) { out.push({ id: 'g' + i, cat: 'chars', type: 'Characters', name: c.name, desc: skillDesc('g' + i), price: c.d, cur: 'diamond', spr: ['gold', i], uniq: true, gold: true }); });
     EXTRA_CHARS.forEach(function (c, i) { out.push({ id: 'x' + i, cat: 'chars', type: 'Characters', name: c.name, desc: skillDesc('x' + i), price: c.d, cur: 'diamond', spr: ['extra', i], uniq: true }); });
-    DICE_SKINS.forEach(function (d) { if (d.price) out.push({ id: d.id, cat: 'chars', type: 'Dice Skins', name: d.name, desc: d.desc ? '✨ ' + d.desc : 'สกินลูกเต๋า (Cosmetic)', price: d.price, cur: d.cur, spr: d.spr, uniq: true }); });
+    DICE_SKINS.forEach(function (d) { if (d.price) out.push({ id: d.id, cat: 'equip', type: 'Dice Skins', name: d.name, desc: d.desc ? '✨ ' + d.desc : 'สกินลูกเต๋า (Cosmetic)', price: d.price, cur: d.cur, spr: d.spr, uniq: true }); });
     return out;
   }
   function skillDesc(k) { var s = CHAR_SKILLS[k]; return s ? '⭐ สกิลติดตัว “' + s.name + '”: ' + s.desc : ''; }
@@ -127,7 +127,7 @@ var Meta = (function () {
     if (kind === 'gold') { var g = rnd([1000, 1500, 2000, 2500, 3000, 5000]); P.gold += g; out.push({ ic: '🪙', name: fmtN(g) + ' Gold', big: g >= 3000 }); }
     if (kind === 'diamond') { var d = rnd([8, 10, 15, 20, 30]); P.diamond += d; out.push({ ic: '💎', name: d + ' Diamond', big: d >= 20 }); }
     if (kind === 'equip' || kind === 'card' || kind === 'deco') {
-      var pool = all().filter(function (x) { return x.cat === (kind === 'equip' ? 'equip' : kind === 'card' ? 'cards' : 'deco'); }), it = rnd(pool), n = kind === 'deco' ? 1 + Math.floor(Math.random() * 2) : 2 + Math.floor(Math.random() * 2);
+      var pool = all().filter(function (x) { return x.cat === (kind === 'equip' ? 'equip' : kind === 'card' ? 'cards' : 'deco') && !x.uniq; }), it = rnd(pool), n = kind === 'deco' ? 1 + Math.floor(Math.random() * 2) : 2 + Math.floor(Math.random() * 2);
       addItem(it.id, n); out.push({ spr: it.spr, name: it.name + ' ×' + n });
     }
     if (kind === 'rare') { var it2 = rnd(rare); addItem(it2.id, 1); out.push({ spr: it2.spr, name: it2.name, big: true, tag: it2.type }); }

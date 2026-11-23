@@ -770,10 +770,17 @@
       this.log('🌪️ ' + p.name + ' ปล่อยลมกังหัน ขโมยเงิน 5% จากทุกคน รวม ' + fmt(stolen.reduce(function (a, x) { return a + x.amt; }, 0)) + ' G', 'gain');
       if (io.windSteal) await io.windSteal(p, t, stolen);
     } else if (t.special === 'sp_windmill') {
-      var list = this.activeBuffs(p), lost = [];
-      for (var k = 0; k < 2 && list.length; k++) { var idx = Math.floor(this.r() * list.length), b = list.splice(idx, 1)[0]; p.flags[b[0]] = 0; if (b[0] === 'upgDisc') p.flags.upgDiscUntil = 0; lost.push(b); }
-      this.log('🌬️ ' + p.name + ' ตกบ้านกังหันลมของ ' + owner.name + (lost.length ? ' — สกิลปลิวหาย: ' + lost.map(function (b) { return b[1] + b[2]; }).join(', ') : ' — ไม่มีสกิลการ์ดให้ปลิว'), 'bad');
-      if (io.windmill) await io.windmill(p, owner, t, lost);
+      // the wind blows away EVERY card the player carries: all card skills + all unused loadout items/special card (this match)
+      // the wind blows away: 2 random card skills + 1 collected suit + 1 carried item/special card
+      var list = this.activeBuffs(p), lost = [], lostItems = [];
+      for (var k = 0; k < 2 && list.length; k++) { var b = list.splice(Math.floor(this.r() * list.length), 1)[0]; p.flags[b[0]] = 0; if (b[0] === 'upgDisc') p.flags.upgDiscUntil = 0; lost.push(b); }
+      var have = D.SUITS.filter(function (k2) { return p.suits[k2]; });
+      if (have.length) { var su = have[Math.floor(this.r() * have.length)]; p.suits[su] = false; lostItems.push(D.SUIT_GLYPH[su] + ' สัญลักษณ์' + ({ heart: 'หัวใจ', diamond: 'ข้าวหลามตัด', clover: 'ดอกจิก', spade: 'โพดำ' }[su] || '')); }
+      var free = this.loadoutSlots(p).filter(function (x) { return !x.used; });
+      if (free.length) { var sl = free[Math.floor(this.r() * free.length)]; sl.used = true; sl.blown = true; sl.consumed = true; var d0 = this.itemDef(sl.id); lostItems.push('🎒 ' + (d0 ? d0.name : sl.id)); }
+      var tot = lost.length + lostItems.length;
+      this.log('🌬️ ' + p.name + ' ตกบ้านกังหันลมของ ' + owner.name + (tot ? ' — การ์ดปลิวหาย ' + tot + ' ใบ: ' + lost.map(function (b) { return b[1] + b[2]; }).concat(lostItems).join(', ') : ' — ไม่มีการ์ดให้ปลิว'), 'bad');
+      if (io.windmill) await io.windmill(p, owner, t, lost, lostItems);
     }
   };
   P.landVacant = async function (p, t) {

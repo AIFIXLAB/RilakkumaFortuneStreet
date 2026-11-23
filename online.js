@@ -204,7 +204,7 @@ var Online = (function () {
       while (room.players.some(function (x) { return x.name === nm; })) nm = String(d.name || 'ผู้เล่น').slice(0, 12) + ' ' + (k++);
       d.name = nm;
       if (used.indexOf(ch) >= 0) ch = ['b0', 'b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7'].find(function (k) { return used.indexOf(k) < 0; });
-      room.players.push({ peer: peer, token: d.token, name: d.name, char: ch, costume: ch === d.char ? d.costume : 'chars', loadout: d.loadout || { eq: [], sc: null } });
+      room.players.push({ peer: peer, token: d.token, name: d.name, char: ch, costume: ch === d.char ? d.costume : 'chars', loadout: d.loadout || { eq: [], sc: null }, dice: typeof d.dice === 'string' ? d.dice : null });
       lobbyBroadcast(); A.renderLobby();
     } else if (d.t === 'rejoin') {
       var g = A.game(), pl = g && room.started ? g.s.players.find(function (q) { return q.seat && q.seat === d.token; }) : null;
@@ -226,20 +226,20 @@ var Online = (function () {
   function lobbyBroadcast() { net.all({ t: 'lobby', players: room.players.map(function (x) { return { name: x.name, char: x.char, costume: x.costume }; }), settings: room.settings }); }
   function host(done) {
     var c = code(), P = Meta.p;
-    room = { code: c, role: 'host', started: false, players: [{ peer: null, name: P.name, char: P.equip.char, costume: P.equip.costume, loadout: Meta.validLoadout() }], settings: { map: 0, target: 40000, fillAI: true, tax: false, teams: false, startCash: 10000, rounds: 100, aiLv: ['normal', 'normal', 'normal', 'normal'], teamOf: [0, 1, 0, 1] } };
+    room = { code: c, role: 'host', started: false, players: [{ peer: null, name: P.name, char: P.equip.char, costume: P.equip.costume, dice: P.equip.dice, loadout: Meta.validLoadout() }], settings: { map: 0, target: 40000, fillAI: true, tax: false, teams: false, teamCol: [0, 1], startCash: 10000, rounds: 100, aiLv: ['normal', 'normal', 'normal', 'normal'], teamOf: [0, 1, 0, 1] } };
     loadPeer().then(function (ok) {
       if (!ok && !localMode()) { done('โหลดระบบออนไลน์ไม่ได้ — ตรวจอินเทอร์เน็ตแล้วลองใหม่'); return; }
       net = makeNet(c, true, onHostMsg, function (pid) { lastSeen[pid] = Date.now(); }, onHostLeave, function () { startHeartbeat(true); done(null, room); }, function (err) { done(err); });
     });
   }
   function startHost() {
-    var R = room.settings, players = room.players.map(function (x, i) { return { name: x.name, char: x.char, costume: x.costume, isAI: false, remote: x.peer || undefined, seat: x.peer ? x.token : null, loadout: x.loadout, team: R.teamOf[i] }; });
+    var R = room.settings, players = room.players.map(function (x, i) { return { name: x.name, char: x.char, costume: x.costume, isAI: false, remote: x.peer || undefined, seat: x.peer ? x.token : null, loadout: x.loadout, team: R.teamOf[i], dice: x.dice || null }; });
     var used = players.map(function (p) { return p.char; }), pool = ['b0', 'b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7'].filter(function (k) { return used.indexOf(k) < 0; });
     var names = ['คุมะ AI', 'โคริ AI', 'คิอิโระ AI', 'ชาอิ AI', 'เนโกะ AI', 'ริสุ AI', 'เพนกิ AI', 'ชิกะ AI'];
     if (R.fillAI || R.teams) while (players.length < 4) { var ch = pool.shift(), sl = players.length; players.push({ name: names[+ch.slice(1)], char: ch, isAI: true, aiLevel: R.aiLv[sl] || 'normal', persona: AI_PERSONAS[sl % 5], team: R.teamOf[sl] }); }
     if (players.length < 2) { A.toast('ต้องมีผู้เล่นอย่างน้อย 2 คน (เปิด “เติม AI” ได้)'); return; }
     if (R.teams) { var c0 = players.filter(function (q) { return q.team === 0; }).length; if (c0 !== 2) { A.toast('⚠️ โหมดทีมต้องแบ่ง ทีมชมพู 2 คน / ทีมฟ้า 2 คน — แตะป้ายทีมเพื่อสลับ', 3500); return; } }
-    var s = Game.create({ mapIdx: R.map, players: players, teams: !!R.teams, target: R.target, startCash: R.startCash || 10000, maxRounds: R.rounds > 0 ? R.rounds : 9999, rules: { tax: R.tax, endOnBankrupt: true }, seed: Math.floor(Math.random() * 1e9) });
+    var tc = R.teamCol || [0, 1], s = Game.create({ mapIdx: R.map, players: players, teams: !!R.teams, teamInfo: [TEAM_PAL[tc[0]], TEAM_PAL[tc[1]]], target: R.target, startCash: R.startCash || 10000, maxRounds: R.rounds > 0 ? R.rounds : 9999, rules: { tax: R.tax, endOnBankrupt: true }, seed: Math.floor(Math.random() * 1e9) });
     s.players.forEach(function (p, i) { p.remote = players[i].remote || null; p.seat = players[i].seat || null; });
     s.ownerIdx = 0; s.dice = Meta.p.equip.dice; s.online = true;
     room.started = true; A.setOnline({ role: 'host', code: room.code, kind: net.kind });
@@ -278,7 +278,7 @@ var Online = (function () {
     var P = Meta.p;
     net = makeNet(roomCode, false, onGuestMsg, function () { }, function () { if (room && room.started) reconnect(); else if (room) { A.toast('📴 โฮสต์ออกจากห้องแล้ว'); leave(); A.closeModal(); } }, function () {
       lastSeen.host = Date.now();
-      net.host(isRejoin ? { t: 'rejoin', token: token() } : { t: 'hello', token: token(), name: P.name, char: P.equip.char, costume: P.equip.costume, loadout: Meta.validLoadout() });
+      net.host(isRejoin ? { t: 'rejoin', token: token() } : { t: 'hello', token: token(), name: P.name, char: P.equip.char, costume: P.equip.costume, dice: P.equip.dice, loadout: Meta.validLoadout() });
       startHeartbeat(false); done(null, room);
     }, function (err) { done(err); });
   }

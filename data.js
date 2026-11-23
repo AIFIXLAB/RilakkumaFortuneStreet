@@ -351,6 +351,8 @@ var BUFFS = [
   ['maintHalf', '🧰', 'ค่าซ่อมลดครึ่ง', 'ค่าบำรุงรักษาลด 50% จนหมดเวลา'],
 ];
 var SUITS = ['heart', 'diamond', 'clover', 'spade'];
+// team colours for 2 vs 2 (both teammates use the team colour)
+var TEAM_PAL = [{ n: 'ชมพู', c: '#ff5d8f', e: '💗' }, { n: 'ฟ้า', c: '#3d8bfd', e: '🔷' }, { n: 'ม่วงพาสเทล', c: '#a98ee6', e: '💜' }, { n: 'เขียวมิ้นต์', c: '#34bf94', e: '🍀' }, { n: 'ส้มพีช', c: '#ff9a62', e: '🍑' }, { n: 'เหลือง', c: '#e8b400', e: '⭐' }, { n: 'แดงเชอร์รี่', c: '#e0364f', e: '🍒' }];
 var SUIT_GLYPH = { heart: '♥', diamond: '♦', clover: '♣', spade: '♠' };
 var SUIT_COLOR = { heart: '#ff6f91', diamond: '#4fa3ff', clover: '#45b34f', spade: '#3d79d9' };
 
@@ -482,4 +484,4 @@ var DICE_SKINS = [
 ];
 var DAILY_REWARDS = [{ gold: 500 }, { diamond: 5 }, { item: 'eq_move' }, { gold: 1000 }, { diamond: 10 }, { item: 'eq_lucky', n: 2 }, { gold: 2000, diamond: 10, item: 'SC_cash' }];
 
-if (typeof module !== 'undefined') module.exports = { BUFFS, CONFIG, PLAYER_COLORS, AI_LEVELS, AI_PERSONAS, CHARACTERS, EXTRA_CHARS, JOB_CHARS, GOLD_CHARS, CHAR_SKILLS, BUSINESS, SPECIAL_BUILDINGS, MAPS, TILE_INFO, SUITS, SUIT_GLYPH, SUIT_COLOR, CARD_DEFS, CARD_CATS, EQUIPMENT, SPECIAL_CARDS, PACKAGES, EXCHANGE, DECOS, DICE_SKINS, DAILY_REWARDS };
+if (typeof module !== 'undefined') module.exports = { BUFFS, CONFIG, PLAYER_COLORS, AI_LEVELS, AI_PERSONAS, TEAM_PAL, CHARACTERS, EXTRA_CHARS, JOB_CHARS, GOLD_CHARS, CHAR_SKILLS, BUSINESS, SPECIAL_BUILDINGS, MAPS, TILE_INFO, SUITS, SUIT_GLYPH, SUIT_COLOR, CARD_DEFS, CARD_CATS, EQUIPMENT, SPECIAL_CARDS, PACKAGES, EXCHANGE, DECOS, DICE_SKINS, DAILY_REWARDS };

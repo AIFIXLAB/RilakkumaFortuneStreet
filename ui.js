@@ -422,14 +422,14 @@
       return v;
     } };
   }
-  function diceTint(p) { return !p.isAI && U.g && U.g.s.dice ? U.g.s.dice : null; }
+  function diceTint(p) { if (p && p.dice) return p.dice; return p && !p.isAI && U.g && U.g.s.dice && p.id === (U.g.s.ownerIdx || 0) ? U.g.s.dice : null; }
   async function orderIntro(g) {
     var s = g.s, res = {};
     var html = '<div class="row" style="gap:14px;justify-content:center">' + s.players.map(function (p) { return '<div id="oc' + p.id + '" style="text-align:center;border:5px solid ' + p.color + ';border-radius:22px;padding:8px;background:#fff;width:180px">' + spr(charSpec(p), 100, 100) + '<div style="font-weight:700">' + esc(p.name) + '</div><div class="ordice" id="od' + p.id + '"></div><div id="ol' + p.id + '" style="font-weight:700;font-size:15px;min-height:44px">' + (p.isAI ? 'กำลังทอย...' : '<button class="pink small" id="ob' + p.id + '">✋ หยุด!</button>') + '</div></div>'; }).join('') + '</div><div style="text-align:center;margin-top:8px;font-weight:700">แตะ “หยุด!” หรือแตะลูกเต๋าเพื่อหยุดลูกเต๋าของคุณ • แต้มมากสุดได้เริ่มก่อน</div>';
     await modal({ title: '🎲 ทอยลูกเต๋าจัดลำดับผู้เล่น', width: 840, body: html, close: false, buttons: [{ t: 'เริ่มเกม!', v: 1, cls: 'pink', dis: true }], mount: function (box) {
       var btn = box.querySelector('.mbtns button'), left = s.players.length;
       s.players.forEach(function (p) {
-        var sp = spinner(box.querySelector('#od' + p.id), 70);
+        var sp = spinner(box.querySelector('#od' + p.id), 70, diceTint(p));
         var stop = function () { if (res[p.id]) return; res[p.id] = sp.stop(); sfx('card'); box.querySelector('#ol' + p.id).innerHTML = '<b style="font-size:22px">' + res[p.id] + ' แต้ม</b>'; if (--left === 0) { btn.disabled = false; finalize(); } };
         if (p.isAI || U.online) setTimeout(stop, 700 + Math.random() * 1600);
         else { box.querySelector('#ob' + p.id).onclick = stop; box.querySelector('#od' + p.id).onclick = stop; }
@@ -596,7 +596,7 @@
     $('#roundPill').innerHTML = spr(['items', 19], 36, 36) + 'รอบ ' + Math.min(s.round, s.settings.maxRounds) + ' / ' + (s.settings.maxRounds >= 9999 ? '♾️' : s.settings.maxRounds);
     if (!$('#btnGameMenu').innerHTML) $('#btnGameMenu').innerHTML = spr(['ui', 'settings'], 70, 54);
     $('#spdBtn').textContent = 'ความเร็ว: ' + speedLabel();
-    $('#targetPill').innerHTML = s.teams ? '<span style="font-size:26px">🤝</span><div><small>เป้าหมายทีม ' + fmt(s.settings.target) + ' G</small><div class="v" style="font-size:15px">' + [0, 1].map(function (k) { var q = s.players.find(function (x) { return x.team === k; }); return '<span style="color:' + TEAM_CL[k] + '">' + (k ? 'ฟ้า ' : 'ชมพู ') + fmt(q ? g.teamWorth(q) : 0) + '</span>'; }).join(' • ') + '</div></div>' : '<span style="font-size:30px">🎯</span><div><small>เป้าหมายทรัพย์สิน</small><div class="v">' + fmt(s.settings.target) + ' G</div></div>';
+    $('#targetPill').innerHTML = s.teams ? '<span style="font-size:26px">🤝</span><div><small>เป้าหมายทีม ' + fmt(s.settings.target) + ' G</small><div class="v" style="font-size:15px">' + [0, 1].map(function (k) { var q = s.players.find(function (x) { return x.team === k; }); return '<span style="color:' + TI(s, k).c + '">' + TI(s, k).n + ' ' + fmt(q ? g.teamWorth(q) : 0) + '</span>'; }).join(' • ') + '</div></div>' : '<span style="font-size:30px">🎯</span><div><small>เป้าหมายทรัพย์สิน</small><div class="v">' + fmt(s.settings.target) + ' G</div></div>';
   }
   U.refresh = refresh;
   function renderPlayers() {
@@ -606,9 +606,9 @@
       var rk = rank.indexOf(p.id) + 1;
       return '<div class="pcard ' + (p.id === cur.id && !s.over ? 'turn ' : '') + (p.bankrupt ? 'bk' : '') + '" data-p="' + p.id + '" style="--pc:' + p.color + ';--pcl:' + hexA(p.color, .35) + '">' + (rk === 1 && !p.bankrupt ? '<div class="crown">👑</div>' : '') +
         '<div class="pchar">' + spr(charSpec(p), 84, 92) + (Meta.charSkill(p.char) ? '<span class="pskill' + (p.char[0] === 'g' ? ' gold' : '') + '" title="' + esc(Meta.charSkill(p.char).name + ': ' + Meta.charSkill(p.char).desc) + '">⭐</span>' : '') + '</div>' +
-        '<div class="ptop"><span class="pno"' + (s.teams && p.team >= 0 ? ' style="background:' + TEAM_CL[p.team] + ';color:#fff" title="' + TEAM_NM[p.team] + '"' : '') + '>' + (s.teams && p.team >= 0 ? (p.team ? '🔷' : '💗') : '') + 'P' + (p.id + 1) + '</span><span class="nm">' + esc(p.name) + '</span></div>' +
+        '<div class="ptop"><span class="pno"' + (s.teams && p.team >= 0 ? ' style="background:' + TI(s, p.team).c + ';color:#fff" title="ทีม' + TI(s, p.team).n + '"' : '') + '>' + (s.teams && p.team >= 0 ? TI(s, p.team).e : '') + 'P' + (p.id + 1) + '</span><span class="nm">' + esc(p.name) + '</span></div>' +
         '<div class="cash coin">' + fmt(p.cash) + '</div>' +
-        '<span class="nwpill">ทรัพย์สิน ' + fmt(g.netWorth(p)) + '</span>' +
+        '<span class="nwpill">ทรัพย์สิน ' + fmt(g.netWorth(p)) + '</span>' + (s.teams && p.team >= 0 ? '<span class="teamsum" style="background:' + TI(s, p.team).c + '">' + TI(s, p.team).e + ' ทีมรวม ' + fmt(g.teamWorth(p)) + '</span>' : '') +
         '<div class="lvl">' + (p.seat && !p.remote ? '<span style="color:#d0342c">📴 หลุด</span> • ' : '') + 'Lv' + p.level + (p.isAI ? ' • AI ' + { beginner: 'Easy', normal: 'Normal', advanced: 'Adv' }[p.ai.level] : '') + '</div>' +
         '<div class="suits">' + SUITS.map(function (k) { return '<span class="' + (p.suits[k] ? 'on' : '') + '" style="' + (p.suits[k] ? 'color:' + SUIT_COLOR[k] : '') + '">' + SUIT_GLYPH[k] + '</span>'; }).join('') + '</div>' +
         (function () { var b = g.activeBuffs(p); return b.length ? '<div class="buffrow" data-bf="' + p.id + '" title="สกิลที่มีอยู่">' + b.map(function (x) { return '<span>' + x[1] + '</span>'; }).join('') + '</div>' : ''; })() +
@@ -978,7 +978,7 @@
       showDice: async function (p, roll) {
         setAct('<div>' + esc(p.name) + ' ทอยลูกเต๋า...</div>');
         var L = $('#diceLayer'); L.classList.add('on'); L.innerHTML = '<div id="spinD"></div>';
-        var sp = spinner(L.querySelector('#spinD'), 150, null);
+        var sp = spinner(L.querySelector('#spinD'), 150, diceTint(p));
         await wait(700); sp.stop(roll); await wait(900);
         L.insertAdjacentHTML('beforeend', '<div class="dresult">' + roll + '!</div>'); await wait(600);
         L.classList.remove('on'); L.innerHTML = '';
@@ -1236,7 +1236,7 @@
           '<div class="vplate" style="--pc:' + p.color + '"><b>' + (i + 1) + '</b>' + esc(p.name) + '<span>' + fmt(r.nw) + ' G</span></div>' + spr(charSpec(p), h, h) + '</div>';
       }).join('');
       V.innerHTML = '<canvas id="vfx" width="1280" height="860"></canvas><div class="vbg"></div>' + chars + '<canvas id="vconf" width="1280" height="860"></canvas>' +
-        '<div class="vtitle"><span class="ttl">🏆 ' + (s.teams && s.winTeam >= 0 ? TEAM_NM[s.winTeam] + ' (' + s.players.filter(function (q) { return q.team === s.winTeam; }).map(function (q) { return esc(q.name); }).join(' + ') + ') ชนะ!' : esc(win.name) + ' ชนะ!') + '</span></div><div class="vreason">' + esc(s.endReason || '') + '</div>' +
+        '<div class="vtitle"><span class="ttl">🏆 ' + (s.teams && s.winTeam >= 0 ? 'ทีม' + TI(s, s.winTeam).n + ' (' + s.players.filter(function (q) { return q.team === s.winTeam; }).map(function (q) { return esc(q.name); }).join(' + ') + ') ชนะ!' : esc(win.name) + ' ชนะ!') + '</span></div><div class="vreason">' + esc(s.endReason || '') + '</div>' +
         '<button class="pink vnext" id="vNext">ดูผลการแข่งขันและกราฟ ▶</button>';
       V.classList.add('on'); sfx('win');
       // fireworks (behind) + confetti (front)
@@ -1526,23 +1526,25 @@
     modal({ title: R.role === 'host' ? '🏠 ห้องของคุณ' : '🚪 ห้อง ' + R.code, width: 1000, bgClose: false, xValue: 'leave', body: '<div id="lobbyB"></div>', mount: function () { renderLobby(); } })
       .then(function (v) { if (v === 'leave' && Online.room && !Online.room.started) { Online.leave(); toast('ออกจากห้องแล้ว'); } });
   }
-  var TEAM_NM = ['ทีมชมพู', 'ทีมฟ้า'], TEAM_CL = ['#ff5d8f', '#3d8bfd'], AILV = { beginner: 'ง่าย', normal: 'ปกติ', advanced: 'เก่ง' };
+  function TI(s, k) { return (s && s.teamInfo && s.teamInfo[k]) || TEAM_PAL[k] || TEAM_PAL[0]; }
+  var AILV = { beginner: 'ง่าย', normal: 'ปกติ', advanced: 'เก่ง' };
   function renderLobby() {
     var B = document.getElementById('lobbyB'), R = Online.room; if (!B || !R) return;
     var host = R.role === 'host', S = R.settings || {}, ps = R.players || [], fill = S.fillAI || S.teams;
     var teamOf = S.teamOf || [0, 1, 0, 1], aiLv = S.aiLv || ['normal', 'normal', 'normal', 'normal'];
+    var tcol = S.teamCol || [0, 1], TC = [TEAM_PAL[tcol[0]].c, TEAM_PAL[tcol[1]].c], TN = ['ทีม' + TEAM_PAL[tcol[0]].n, 'ทีม' + TEAM_PAL[tcol[1]].n];
     var slots = [0, 1, 2, 3].map(function (i) {
-      var x = ps[i], tm = S.teams ? '<div class="teamchip" ' + (host ? 'data-tm="' + i + '"' : '') + ' style="background:' + TEAM_CL[teamOf[i]] + '">' + TEAM_NM[teamOf[i]] + (host ? ' ⇄' : '') + '</div>' : '';
-      if (x) return '<div style="border-color:' + (S.teams ? TEAM_CL[teamOf[i]] : PLAYER_COLORS[i]) + '">' + tm + spr(Meta.charSprite(x.char), 80, 90) + '<div>P' + (i + 1) + ' ' + esc(x.name) + '</div><div style="font-size:12px;color:#2c9a2c">' + (i === 0 ? '👑 โฮสต์' : '✅ พร้อม') + '</div></div>';
+      var x = ps[i], tm = S.teams ? '<div class="teamchip" ' + (host ? 'data-tm="' + i + '"' : '') + ' style="background:' + TC[teamOf[i]] + '">' + TN[teamOf[i]] + (host ? ' ⇄' : '') + '</div>' : '';
+      if (x) return '<div style="border-color:' + (S.teams ? TC[teamOf[i]] : PLAYER_COLORS[i]) + '">' + tm + spr(Meta.charSprite(x.char), 80, 90) + '<div>P' + (i + 1) + ' ' + esc(x.name) + '</div><div style="font-size:12px;color:#2c9a2c">' + (i === 0 ? '👑 โฮสต์' : '✅ พร้อม') + '</div></div>';
       if (!fill) return '<div style="border-color:#ccc"><div style="padding-top:40px;opacity:.5">รอผู้เล่น...</div></div>';
-      return '<div style="border-color:' + (S.teams ? TEAM_CL[teamOf[i]] : PLAYER_COLORS[i]) + '">' + tm + '<div style="font-size:40px;margin-top:6px">🤖</div><div>AI เติม</div>' +
+      return '<div style="border-color:' + (S.teams ? TC[teamOf[i]] : PLAYER_COLORS[i]) + '">' + tm + '<div style="font-size:40px;margin-top:6px">🤖</div><div>AI เติม</div>' +
         (host ? '<div class="row" style="gap:3px;justify-content:center;margin-top:4px">' + ['beginner', 'normal', 'advanced'].map(function (l) { return '<button class="small rbtn ' + (aiLv[i] === l ? 'on' : '') + '" data-al="' + i + ':' + l + '" style="padding:2px 7px;font-size:12px">' + AILV[l] + '</button>'; }).join('') + '</div>' : '<div style="font-size:12px">ระดับ: ' + AILV[aiLv[i]] + '</div>') + '</div>';
     }).join('');
     var tgPre = S.teams ? [50000, 80000, 120000, 200000] : [25000, 40000, 60000, 100000];
     var num = function (id, v, w) { return '<input type="number" id="' + id + '" value="' + v + '" style="width:' + (w || 110) + 'px;font-size:16px;padding:5px 8px;border:2px solid #6b4226;border-radius:10px;font-family:inherit">'; };
     var settings = host ?
       '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:10px"><b>แผนที่:</b>' + MAPS.map(function (m, i) { return '<button class="small rbtn ' + (S.map === i ? 'on' : '') + '" data-lm="' + i + '">' + m.th + '</button>'; }).join('') + '</div>' +
-      '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px"><b>โหมด:</b><div class="seg"><div data-mode="0" class="' + (!S.teams ? 'on' : '') + '">👤 เดี่ยว</div><div data-mode="1" class="' + (S.teams ? 'on' : '') + '">🤝 ทีม 2 vs 2</div></div>' + (S.teams ? '<span class="muted" style="font-size:12px;font-weight:700">เพื่อนร่วมทีมไม่เก็บค่าเช่ากัน • ช่วยลงทุนร้านกันได้ • ร้านในเขตเดียวกันนับรวมเป็นของทีม • ทรัพย์สินรวมของทีมถึงเป้า = ชนะ</span>' : '') + '</div>' +
+      '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px"><b>โหมด:</b><div class="seg"><div data-mode="0" class="' + (!S.teams ? 'on' : '') + '">👤 เดี่ยว</div><div data-mode="1" class="' + (S.teams ? 'on' : '') + '">🤝 ทีม 2 vs 2</div></div>' + (S.teams ? [0, 1].map(function (k) { return '<div class="row" style="gap:4px;align-items:center"><b style="color:' + TC[k] + '">สี' + TN[k] + ':</b>' + TEAM_PAL.map(function (c, ci) { var taken = ci === tcol[1 - k]; return '<span class="tcdot' + (ci === tcol[k] ? ' on' : '') + (taken ? ' off' : '') + '" data-tc="' + k + ':' + ci + '" title="' + c.n + '" style="background:' + c.c + '"></span>'; }).join('') + '</div>'; }).join('') : '') + (S.teams ? '<span class="muted" style="font-size:12px;font-weight:700">เพื่อนร่วมทีมไม่เก็บค่าเช่ากัน • ช่วยลงทุนร้านกันได้ • ร้านในเขตเดียวกันนับรวมเป็นของทีม • ทรัพย์สินรวมของทีมถึงเป้า = ชนะ</span>' : '') + '</div>' +
       '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px"><b>' + (S.teams ? 'เป้าหมายรวมของทีม:' : 'เป้าหมาย:') + '</b>' + tgPre.map(function (t) { return '<button class="small rbtn ' + (S.target === t ? 'on' : '') + '" data-lt="' + t + '">' + fmt(t) + '</button>'; }).join('') + num('lobTg', S.target) + ' G</div>' +
       '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px"><b>เงินเริ่มต้น:</b>' + [5000, 10000, 15000, 20000, 30000].map(function (t) { return '<button class="small rbtn ' + (S.startCash === t ? 'on' : '') + '" data-lc="' + t + '">' + fmt(t) + '</button>'; }).join('') + num('lobCash', S.startCash || 10000) + ' G</div>' +
       '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px"><b>จำนวนรอบ:</b>' + [30, 50, 100, 150, 200, 0].map(function (t) { return '<button class="small rbtn ' + (S.rounds === t ? 'on' : '') + '" data-lr="' + t + '">' + (t ? t : '♾️ ไม่จำกัด') + '</button>'; }).join('') + num('lobRd', S.rounds || 0, 80) + ' รอบ</div>' +
@@ -1561,6 +1563,7 @@
     B.querySelectorAll('[data-lf]').forEach(function (e) { e.onclick = function () { set(e.dataset.lf, !S[e.dataset.lf]); }; });
     B.querySelectorAll('[data-mode]').forEach(function (e) { e.onclick = function () { var on = e.dataset.mode === '1'; if (on === !!S.teams) return; Online.setSetting('target', on ? Math.max(50000, (S.target || 40000) * 2) : Math.max(10000, Math.round((S.target || 80000) / 2))); set('teams', on); }; });
     B.querySelectorAll('[data-tm]').forEach(function (e) { e.onclick = function () { var t = teamOf.slice(), i = +e.dataset.tm; t[i] = 1 - t[i]; set('teamOf', t); }; });
+    B.querySelectorAll('[data-tc]').forEach(function (e) { e.onclick = function () { var a = e.dataset.tc.split(':'), k = +a[0], ci = +a[1]; if (ci === tcol[1 - k]) return; var t = tcol.slice(); t[k] = ci; set('teamCol', t); }; });
     B.querySelectorAll('[data-al]').forEach(function (e) { e.onclick = function () { var a = e.dataset.al.split(':'), l = aiLv.slice(); l[+a[0]] = a[1]; set('aiLv', l); }; });
     var clampIn = function (id, k, lo, hi) { var el = B.querySelector('#' + id); el.onchange = function () { var v = Math.round(+el.value || 0); if (k === 'rounds' && v <= 0) v = 0; else v = Math.max(lo, Math.min(hi, v)); set(k, v); }; };
     clampIn('lobTg', 'target', 10000, 9999999); clampIn('lobCash', 'startCash', 1000, 999999); clampIn('lobRd', 'rounds', 5, 9999);

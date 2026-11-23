@@ -87,11 +87,11 @@
     var s = {
       dragonPot: hasDragon ? C.dragon.seed : undefined,
       v: 1, mapIdx: opts.mapIdx, tiles: b.tiles, districts: b.districts, w: b.w, h: b.h, painted: b.painted,
-      teams: !!opts.teams,
+      teams: !!opts.teams, teamInfo: opts.teams ? (opts.teamInfo || [{ n: 'ชมพู', c: '#ff5d8f', e: '💗' }, { n: 'ฟ้า', c: '#3d8bfd', e: '🔷' }]) : null,
       settings: { target: opts.target || C.targetNetWorth, maxRounds: opts.maxRounds || C.maxRounds, startCash: opts.startCash || C.startCash, rules: Object.assign({}, C.rules, opts.rules || {}) },
       players: opts.players.map(function (o, i) {
         return {
-          id: i, name: o.name, char: o.char, costume: o.costume || 'chars', color: D.PLAYER_COLORS[i], isAI: !!o.isAI,
+          id: i, name: o.name, char: o.char, costume: o.costume || 'chars', color: (opts.teams && opts.teamInfo && o.team >= 0 && opts.teamInfo[o.team]) ? opts.teamInfo[o.team].c : D.PLAYER_COLORS[i], dice: o.dice || null, isAI: !!o.isAI,
           ai: { level: o.aiLevel || 'normal', persona: o.persona || 'Balanced' },
           team: (opts.teams && o.team >= 0) ? o.team : -1,
           cash: (opts.startCash || C.startCash) + ((D.CHAR_SKILLS && D.CHAR_SKILLS[o.char] && D.CHAR_SKILLS[o.char].fx.startCash) || 0), pos: bank.id, prev: null, level: 1, suits: {}, shares: b.districts.map(function () { return 0; }),

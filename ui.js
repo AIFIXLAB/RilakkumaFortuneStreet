@@ -200,7 +200,7 @@
       '<b>💹 ปันผล:</b> ทุกครั้งที่มีคนจ่ายค่าเช่าในเขต ธนาคารจ่ายปันผล 20% ของค่าเช่าให้ผู้ถือหุ้นเขตนั้นตามสัดส่วน (รวมเจ้าของร้านเองด้วย ถ้าถือหุ้น)<br>' +
       '<b>🃏 เงินเดือน:</b> เก็บ ♥ ♦ ♣ ♠ ครบ แล้วผ่าน/หยุดธนาคาร → เลื่อนระดับ + เงินเดือน = ' + fmt(C.baseSalary) + ' + ' + fmt(C.salaryPerLevel) + '×Lv + 10% ของมูลค่าร้าน<br>' +
       '<b>⚖️ กติกาเลือกได้:</b> ภาษี เปิด/ปิด (ปิด = แบบเกมจริง) • มีคนล้มละลาย = จบเกม<br>' +
-      '<b>🏰 บ้านพิเศษ (ช่อง ? สีม่วง):</b> ตกแล้วสร้างได้ 1 ใน 4 — 🌀 ประตูทะลุมิติ (คนตกเลือกวาร์ป จ่าย 10% ทรัพย์สิน / ไม่วาร์ป 5% • เจ้าของวาร์ปฟรี) • 🎉 บ้านปาร์ตี้ (เรียกทุกคนมารวม จ่ายคนละ 100) • 🚧 ประตูเก็บค่าผ่านทาง (ผ่านต้องจ่าย เพิ่ม +10 G ทุกครั้ง) • 🌬️ บ้านกังหันลม (สกิลการ์ดปลิวหาย 2 ใบ)<br>' +
+      '<b>🏰 บ้านพิเศษ (ช่อง ? สีม่วง):</b> ตกแล้วสร้างได้ 1 ใน 4 — 🌀 ประตูทะลุมิติ (คนตกเลือกวาร์ป จ่าย 10% ทรัพย์สิน / ไม่วาร์ป 5% • เจ้าของวาร์ปฟรี) • 🎉 บ้านปาร์ตี้ (เรียกทุกคนมารวม จ่ายคนละ 100 • เจ้าของตกเองก็เรียกปาร์ตี้ได้) • 🚧 ประตูเก็บค่าผ่านทาง (ผ่านต้องจ่าย เพิ่ม +10 G ทุกครั้ง) • 🌬️ บ้านกังหันลม (สกิลการ์ดปลิวหาย 2 ใบ • เจ้าของตกเอง ขโมยเงิน 5% จากทุกคน)<br>' +
       '<b>🃏 การ์ด:</b> หยุดตรงช่องสัญลักษณ์พอดีเพื่อเปิดการ์ด<br>' +
       '<b>🌈 พิเศษ:</b> เปิดการ์ดให้สีตัวเองเรียงแถว 3+ ช่องรับโบนัส • ไอเทม/การ์ดพิเศษติดตัวใช้ได้อย่างละครั้ง</div>';
     return modal({ title: '📖 คู่มือการเล่น', width: 980, body: html, buttons: [{ t: 'เข้าใจแล้ว!', v: 1, cls: 'green' }] });
@@ -749,7 +749,7 @@
       return '📍 <b>' + esc(t.name) + '</b> ของ ' + esc(s.players[t.owner].name) + '<br><span style="color:#d0342c;font-size:16px">ต้องจ่าย ' + fmt(g.shopRent(t)) + ' G</span>';
     }
     if (t.type === 'bank') return '📍 <b>ธนาคาร</b><br>' + (Game.suitsDone(p) ? 'เลื่อนระดับ + เงินเดือน ' + fmt(g.salary(p)) + ' G!' : 'ซื้อหุ้น • เลือกทิศได้อิสระ');
-    if (t.type === 'splot') { if (!t.special) return '📍 <b>ที่ดินบ้านพิเศษ</b><br>สร้างบ้านพิเศษได้!'; var sb2 = SPECIAL_BUILDINGS.find(function (x) { return x.id === t.special; }); if (t.spOwner === p.id) return '📍 ' + sb2.th + ' (ของคุณ)' + (t.special === 'sp_portal' ? '<br><span style="color:#2c8a2c">🌀 วาร์ปฟรีไปช่องไหนก็ได้!</span>' : ''); return '📍 <b>' + sb2.th + '</b> ของ ' + esc(s.players[t.spOwner].name) + '<br><span style="color:#d0342c">' + (t.special === 'sp_portal' ? 'จ่าย 5–10% ของทรัพย์สิน' : t.special === 'sp_party' ? 'ทุกคนจ่ายคนละ 100 G' : t.special === 'sp_toll' ? 'จ่าย ' + fmt(t.toll || 100) + ' G' : 'สกิลการ์ดปลิวหาย 2 ใบ') + '</span>'; }
+    if (t.type === 'splot') { if (!t.special) return '📍 <b>ที่ดินบ้านพิเศษ</b><br>สร้างบ้านพิเศษได้!'; var sb2 = SPECIAL_BUILDINGS.find(function (x) { return x.id === t.special; }); if (t.spOwner === p.id) return '📍 ' + sb2.th + ' (ของคุณ)' + (t.special === 'sp_portal' ? '<br><span style="color:#2c8a2c">🌀 วาร์ปฟรีไปช่องไหนก็ได้!</span>' : t.special === 'sp_party' ? '<br><span style="color:#2c8a2c">🎉 จัดปาร์ตี้ ทุกคนจ่ายคุณคนละ 100 G</span>' : t.special === 'sp_windmill' ? '<br><span style="color:#2c8a2c">🌪️ ขโมยเงิน 5% จากทุกคน</span>' : ''); return '📍 <b>' + sb2.th + '</b> ของ ' + esc(s.players[t.spOwner].name) + '<br><span style="color:#d0342c">' + (t.special === 'sp_portal' ? 'จ่าย 5–10% ของทรัพย์สิน' : t.special === 'sp_party' ? 'ทุกคนจ่ายคนละ 100 G' : t.special === 'sp_toll' ? 'จ่าย ' + fmt(t.toll || 100) + ' G' : 'สกิลการ์ดปลิวหาย 2 ใบ') + '</span>'; }
     if (t.type === 'switch') return '📍 <b>ช่องสลับ 🔄</b><br>เทิร์นหน้าจะเดินกลับทิศ';
     if (t.type === 'dragon') return '📍 <b>ป้อมสู้มังกร 🐉</b><br>เงินสะสม <span style="color:#d0342c">' + fmt(s.dragonPot || 0) + ' G</span>';
     if (t.type === 'chance') return '📍 <b>' + esc(t.name) + '</b><br>🃏 ได้เปิดการ์ด!';
@@ -1105,7 +1105,7 @@
       },
       party: async function (p, owner, t) {
         sfx('win');
-        await modal({ title: '🎉 ปาร์ตี้ที่บ้านของ ' + esc(owner.name) + '!', width: 700, close: false, body: '<div style="text-align:center">' + spr(['sph', 1], 180, 180) + '<div style="font-weight:700;font-size:18px">' + esc(p.name) + ' ตกบ้านปาร์ตี้ — ทุกคนถูกเรียกมารวมกันที่นี่!<br>ทุกคน (ยกเว้นเจ้าของ) จ่ายคนละ 100 G</div><div class="row" style="justify-content:center;gap:6px;margin-top:6px">' + g.alive().map(function (q) { return spr(charSpec(q), 70, 70); }).join('') + '</div></div>', buttons: [{ t: 'ไปปาร์ตี้!', v: 1, cls: 'pink' }], auto: p.isAI ? 2200 : 0 });
+        await modal({ title: '🎉 ปาร์ตี้ที่บ้านของ ' + esc(owner.name) + '!', width: 700, close: false, body: '<div style="text-align:center">' + spr(['sph', 1], 180, 180) + '<div style="font-weight:700;font-size:18px">' + (p.id === owner.id ? esc(owner.name) + ' จัดปาร์ตี้ที่บ้านตัวเอง' : esc(p.name) + ' ตกบ้านปาร์ตี้') + ' — ทุกคนถูกเรียกมารวมกันที่นี่!<br>ทุกคน (ยกเว้นเจ้าของ) จ่ายคนละ 100 G</div><div class="row" style="justify-content:center;gap:6px;margin-top:6px">' + g.alive().map(function (q) { return spr(charSpec(q), 70, 70); }).join('') + '</div></div>', buttons: [{ t: 'ไปปาร์ตี้!', v: 1, cls: 'pink' }], auto: p.isAI ? 2200 : 0 });
       },
       dragonBet: function (p, pot, opts) {
         if (p.isAI) return aiWait(400).then(function () { var r = A.dragonBet(g, p, pot, opts); toast(r ? '⚔️ ' + esc(p.name) + ' พนัน ' + fmt(r) + ' G โจมตีมังกร!' : '🏰 ' + esc(p.name) + ' ไม่สู้มังกร'); return r; });
@@ -1124,6 +1124,13 @@
         sfx('bad');
         await modal({ title: '🌬️ บ้านกังหันลมของ ' + esc(owner.name), width: 640, close: false, body: '<div style="text-align:center">' + spr(['sph', 3], 170, 170) + '<div style="font-weight:700;font-size:18px">' + (lost.length ? 'ลมพัดสกิลการ์ดของ ' + esc(p.name) + ' ปลิวหายไป ' + lost.length + ' ใบ!<div style="font-size:26px;margin-top:4px">' + lost.map(function (b) { return b[1] + ' ' + b[2]; }).join('<br>') + '</div>' : esc(p.name) + ' ไม่มีสกิลการ์ดสะสมไว้ — รอดตัว!') + '</div></div>', buttons: [{ t: 'ตกลง', v: 1 }], auto: p.isAI ? 2000 : 0 });
         refresh();
+      },
+      windSteal: async function (p, t, stolen) {
+        sfx('coin'); refresh();
+        stolen.forEach(function (x) { floatText(g.s.players[x.id], -x.amt); }); var tot = stolen.reduce(function (a, x) { return a + x.amt; }, 0); floatText(p, tot);
+        var rows = stolen.map(function (x) { var q = g.s.players[x.id]; return '<div class="row" style="justify-content:center;gap:8px;font-weight:800"><span style="color:' + q.color + '">' + esc(q.name) + '</span><span style="color:#d0342c">-' + fmt(x.amt) + ' G</span></div>'; }).join('') || '<div class="muted">ไม่มีใครมีเงินให้ขโมย</div>';
+        if (p.isAI) { toast('🌪️ ' + esc(p.name) + ' ใช้กังหันลมขโมยเงิน 5% จากทุกคน +' + fmt(tot) + ' G!', 2400); await aiWait(700); return; }
+        await modal({ title: '🌪️ ลมกังหันของคุณพัดเงินมา!', width: 640, close: false, body: '<div style="text-align:center">' + spr(['sph', 3], 160, 160) + '<div style="font-weight:700;font-size:17px">เจ้าของตกบ้านกังหันลมของตัวเอง — ขโมยเงิน 5% จากผู้เล่นทุกคน</div>' + rows + '<div class="dragonpot" style="font-size:32px">+' + fmt(tot) + ' G</div></div>', buttons: [{ t: 'เยี่ยม!', v: 1, cls: 'green' }] });
       },
       toll: async function (p, owner, t, fee) { sfx('coin'); floatText(p, -fee); floatText(owner, fee); toast('🚧 ' + esc(p.name) + ' จ่ายค่าผ่านทาง ' + fmt(fee) + ' G ให้ ' + esc(owner.name) + ' (ครั้งหน้า ' + fmt((t.toll || 100) + 10) + ' G)', 2200); refreshTiles(); },
       chooseBuilding: function (p, t, opts) {

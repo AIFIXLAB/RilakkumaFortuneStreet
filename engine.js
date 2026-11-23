@@ -549,6 +549,7 @@
   P.land = async function (p) {
     var t = this.tile(p.pos), io = this.io, s = this.s, self = this;
     s.phase = 'land';
+    if (t.type === 'suit' && !p.suits[t.suit]) { p.suits[t.suit] = true; this.log('🃏 ' + p.name + ' เก็บสัญลักษณ์ ' + D.SUIT_GLYPH[t.suit]); if (io.suit) await io.suit(p, t.suit); }
     if (io.landed) await io.landed(p, t);
     switch (t.type) {
       case 'bank': break; // handled in arriveBank
@@ -740,7 +741,7 @@
       return;
     }
     if (t.spOwner < 0) return;
-    if (t.spOwner === p.id && t.special !== 'sp_portal') return;
+    if (t.spOwner === p.id && t.special !== 'sp_portal' && t.special !== 'sp_party' && t.special !== 'sp_windmill') return;
     var owner = s.players[t.spOwner]; if (owner.bankrupt) return;
     if (t.special === 'sp_portal') {
       var mine = owner.id === p.id, nw = Math.max(0, this.netWorth(p)), big = mine ? 0 : Math.round(nw * 0.10 * (1 - this.cs(p, 'tollDisc'))), small = mine ? 0 : Math.round(nw * 0.05 * (1 - this.cs(p, 'tollDisc')));
@@ -757,11 +758,17 @@
         var d2 = this.tile(dest); if (d2.type === 'bank') await this.arriveBank(p, true); else await this.land(p);
       }
     } else if (t.special === 'sp_party') {
-      this.log('🎉 ' + p.name + ' ตกบ้านปาร์ตี้ของ ' + owner.name + ' — ทุกคนมารวมกัน!', 'rent');
+      this.log(owner.id === p.id ? '🎉 ' + p.name + ' จัดปาร์ตี้ที่บ้านตัวเอง — ทุกคนต้องมาร่วม!' : '🎉 ' + p.name + ' ตกบ้านปาร์ตี้ของ ' + owner.name + ' — ทุกคนมารวมกัน!', 'rent');
       if (io.party) await io.party(p, owner, t);
       var all = this.alive();
       for (var i = 0; i < all.length; i++) { var q = all[i]; if (q.pos !== t.id) { var f0 = q.pos; q.pos = t.id; q.prev = null; if (io.teleport) await io.teleport(q, f0, t.id); } }
       for (var j = 0; j < all.length; j++) { var q2 = all[j]; if (q2.id === owner.id || q2.bankrupt) continue; var g2 = await this.lose(q2, 100, 'ค่าเข้าร่วมปาร์ตี้ของ ' + owner.name); owner.cash += g2; if (s.over) return; }
+    } else if (t.special === 'sp_windmill' && owner.id === p.id) {
+      // owner on own windmill: the wind blows 5% of every other player's cash to the owner
+      var stolen = [];
+      for (var w = 0; w < s.players.length; w++) { var v = s.players[w]; if (v.id === p.id || v.bankrupt || v.cash <= 0) continue; var amt = Math.floor(v.cash * 0.05); if (amt <= 0) continue; v.cash -= amt; p.cash += amt; stolen.push({ id: v.id, amt: amt }); }
+      this.log('🌪️ ' + p.name + ' ปล่อยลมกังหัน ขโมยเงิน 5% จากทุกคน รวม ' + fmt(stolen.reduce(function (a, x) { return a + x.amt; }, 0)) + ' G', 'gain');
+      if (io.windSteal) await io.windSteal(p, t, stolen);
     } else if (t.special === 'sp_windmill') {
       var list = this.activeBuffs(p), lost = [];
       for (var k = 0; k < 2 && list.length; k++) { var idx = Math.floor(this.r() * list.length), b = list.splice(idx, 1)[0]; p.flags[b[0]] = 0; if (b[0] === 'upgDisc') p.flags.upgDiscUntil = 0; lost.push(b); }

@@ -12,9 +12,9 @@
       case 'bank': return Game.suitsDone(p) ? 900 : 60;
       case 'shop':
         if (t.owner < 0) return p.cash >= g.buyPrice(t) ? 250 + g.ownedIn(p.id, t.district) * 120 : 0;
-        if (t.owner === p.id) return 120 + (g.maxCapital(t) > 0 && p.cash > 1500 ? 260 : 0);
+        if (t.owner === p.id || g.mate(t.owner, p)) return 120 + (g.maxCapital(t) > 0 && p.cash > 1500 ? 260 : 0);
         return -g.shopRent(t) * (1 + (g.shopRent(t) > p.cash ? 3 : 0)) / 2;
-      case 'chance': return 90; case 'splot': return !t.special ? (p.cash > 2500 ? 140 : 20) : t.spOwner === p.id ? (t.special === 'sp_party' ? 100 * (g.alive().length - 1) : t.special === 'sp_windmill' ? g.alive().reduce(function (a, q) { return a + (q.id !== p.id ? Math.max(0, q.cash) * 0.05 : 0); }, 0) : t.special === 'sp_portal' ? 200 : 10) : t.special === 'sp_portal' ? -g.netWorth(p) * 0.05 : t.special === 'sp_party' ? -100 * (g.alive().length - 1) : t.special === 'sp_windmill' ? -120 * g.activeBuffs(p).length - (g.loadoutSlots(p).some(function (x) { return !x.used; }) ? 150 : 0) - 120 * D.SUITS.filter(function (k) { return p.suits[k]; }).length : -50; case 'rollon': return 150; case 'switch': return 20; case 'road': return 0; case 'lucky': return 140; case 'superlucky': return 220; case 'tax': return -150;
+      case 'chance': return 90; case 'splot': return !t.special ? (p.cash > 2500 ? 140 : 20) : g.mate(t.spOwner, p) ? (t.special === 'sp_party' ? 100 * (g.alive().length - 1) : t.special === 'sp_windmill' ? g.alive().reduce(function (a, q) { return a + (q.id !== p.id ? Math.max(0, q.cash) * 0.05 : 0); }, 0) : t.special === 'sp_portal' ? 200 : 10) : t.special === 'sp_portal' ? -g.netWorth(p) * 0.05 : t.special === 'sp_party' ? -100 * (g.alive().length - 1) : t.special === 'sp_windmill' ? -120 * g.activeBuffs(p).length - (g.loadoutSlots(p).some(function (x) { return !x.used; }) ? 150 : 0) - 120 * D.SUITS.filter(function (k) { return p.suits[k]; }).length : -50; case 'rollon': return 150; case 'switch': return 20; case 'road': return 0; case 'lucky': return 140; case 'superlucky': return 220; case 'tax': return -150;
       case 'casino': return 30; case 'broker': return 60; case 'vacant': return t.special ? (t.spOwner === p.id || t.spOwner < 0 ? 10 : -300) : 50;
       case 'suit': return (p.suits[t.suit] ? 10 : 160) + 90; case 'rest': return 50; case 'festival': return 60; case 'event': return 60; case 'warp': return 40;
     }
@@ -26,7 +26,7 @@
     if (lvl === 'beginner') return 400;
     // biggest rival rent on the board
     var maxRent = 0;
-    g.s.tiles.forEach(function (t) { if (t.type === 'shop' && t.owner >= 0 && t.owner !== p.id) maxRent = Math.max(maxRent, g.shopRent(t)); });
+    g.s.tiles.forEach(function (t) { if (t.type === 'shop' && t.owner >= 0 && !g.mate(t.owner, p)) maxRent = Math.max(maxRent, g.shopRent(t)); });
     var base = lvl === 'advanced' ? 900 + maxRent * 0.8 : 700 + maxRent * 0.5;
     if (p.ai.persona === 'Defensive') base *= 1.5;
     if (p.ai.persona === 'Aggressive') base *= 0.7;

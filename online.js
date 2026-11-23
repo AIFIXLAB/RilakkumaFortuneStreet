@@ -40,7 +40,8 @@ var Online = (function () {
   function localMode() { return /[?&]local=1/.test(location.search) || window.__forceBC; }
   function makeNet(roomCode, isHost, onMsg, onJoin, onLeave, onReady, onFail) {
     if (!localMode()) {
-      var peer = isHost ? new Peer('rfs-room-' + roomCode, { debug: 0 }) : new Peer({ debug: 0 }), conns = {}, readyDone = false, timer = null;
+      var peer = isHost ? new Peer('rfs-room-' + roomCode, { debug: 0 }) : new Peer({ debug: 0 }), conns = {}, readyDone = false, timer = null, failed = false;
+      if (isHost) peer.on('open', function () { readyDone = true; });
       var wire = function (c) {
         c.on('open', function () { conns[c.peer] = c; if (isHost) onJoin(c.peer); else if (!readyDone) { readyDone = true; clearTimeout(timer); onReady(); } });
         c.on('data', function (d) { var m = unpack(c.peer, d); if (m) onMsg(c.peer, m); });
@@ -49,9 +50,12 @@ var Online = (function () {
       };
       peer.on('open', function () { if (isHost) onReady(); else wire(peer.connect('rfs-room-' + roomCode, { reliable: true, serialization: 'raw' })); });
       if (isHost) peer.on('connection', wire);
-      peer.on('disconnected', function () { try { peer.reconnect(); } catch (e) { } }); // signalling only; game data keeps flowing P2P
-      peer.on('error', function (e) { var t = e && e.type; if (readyDone && t !== 'peer-unavailable') return; clearTimeout(timer); onFail(t === 'unavailable-id' ? 'รหัสห้องนี้ถูกใช้แล้ว ลองสร้างใหม่' : t === 'peer-unavailable' ? 'ไม่พบห้องนี้ — ตรวจรหัสห้องอีกครั้ง' : t === 'browser-incompatible' ? 'เบราว์เซอร์นี้ไม่รองรับการเล่นออนไลน์' : 'เชื่อมต่อไม่ได้ (' + (t || 'network') + ')'); });
-      if (!isHost) timer = setTimeout(function () { if (!readyDone) onFail('เชื่อมต่อนานเกินไป — ลองใหม่ หรือเปลี่ยนเครือข่าย Wi-Fi'); }, 15000);
+      // signalling server lost (Wi-Fi blip, phone sleep): keep retrying so players who drop can still find this room again
+      var sigTry = null;
+      var keepSignal = function () { if (sigTry) return; sigTry = setInterval(function () { if (!peer || peer.destroyed) { clearInterval(sigTry); sigTry = null; return; } if (!peer.disconnected) { clearInterval(sigTry); sigTry = null; return; } try { peer.reconnect(); } catch (e) { } }, 3000); try { peer.reconnect(); } catch (e) { } };
+      peer.on('disconnected', keepSignal);
+      peer.on('error', function (e) { var t = e && e.type; if (isHost && readyDone && (t === 'network' || t === 'server-error' || t === 'socket-error' || t === 'socket-closed')) { keepSignal(); return; } if (readyDone && t !== 'peer-unavailable') return; if (failed) return; failed = true; clearTimeout(timer); onFail(t === 'unavailable-id' ? 'รหัสห้องนี้ถูกใช้แล้ว ลองสร้างใหม่' : t === 'peer-unavailable' ? 'ไม่พบห้องนี้ — ตรวจรหัสห้องอีกครั้ง' : t === 'browser-incompatible' ? 'เบราว์เซอร์นี้ไม่รองรับการเล่นออนไลน์' : 'เชื่อมต่อไม่ได้ (' + (t || 'network') + ')'); });
+      if (!isHost) timer = setTimeout(function () { if (!readyDone && !failed) { failed = true; try { peer.destroy(); } catch (e) { } onFail('เชื่อมต่อนานเกินไป — ลองใหม่ หรือเปลี่ยนเครือข่าย Wi-Fi'); } }, 15000);
       var send = function (c, m) { if (c && c.open) pack(m, function (x) { try { c.send(x); } catch (e) { } }); };
       return { kind: 'p2p', send: function (to, m) { send(conns[to], m); }, all: function (m, except) { Object.keys(conns).forEach(function (k) { if (k !== except) send(conns[k], m); }); }, host: function (m) { send(conns[Object.keys(conns)[0]], m); }, drop: function (k) { var c = conns[k]; delete conns[k]; try { c && c.close(); } catch (e) { } }, close: function () { try { peer.destroy(); } catch (e) { } } };
     }
@@ -63,12 +67,13 @@ var Online = (function () {
       if (window.__mute) return; // test hook: simulate a dead connection
       var d = ev.data; if (d.to && d.to !== me && d.to !== '*') return; if (d.from === me) return;
       if (d.sys === 'join' && isHost) { peers[d.from] = 1; bc.postMessage({ sys: 'ok', to: d.from, from: me }); onJoin(d.from); return; }
-      if (d.sys === 'ok' && !isHost) { onReady(); return; }
+      if (d.sys === 'ok' && !isHost) { if (!gotOk) { gotOk = true; onReady(); } return; }
       if (d.sys === 'bye') { if (peers[d.from] || !isHost) { delete peers[d.from]; onLeave(d.from); } return; }
       if (d.m) { var m = unpack(d.from, d.m); if (m) onMsg(d.from, m); }
     };
     addEventListener('beforeunload', function () { bc.postMessage({ sys: 'bye', from: me, to: '*' }); });
-    if (isHost) setTimeout(onReady, 50); else setTimeout(function () { bc.postMessage({ sys: 'join', from: me, to: 'host' }); }, 50);
+    var gotOk = false;
+    if (isHost) setTimeout(onReady, 50); else { setTimeout(function () { bc.postMessage({ sys: 'join', from: me, to: 'host' }); }, 50); setTimeout(function () { if (!gotOk && !closed) { bc.close(); onFail('ไม่พบห้อง'); } }, 6000); }
     var post = function (to, m) { if (window.__mute) return; pack(m, function (x) { bc.postMessage({ to: to, from: me, m: x }); }); };
     return { kind: 'local', send: post, all: function (m, except) { Object.keys(peers).forEach(function (k) { if (k !== except) post(k, m); }); }, host: function (m) { post('host', m); }, drop: function (k) { delete peers[k]; }, close: function () { bc.postMessage({ sys: 'bye', from: me, to: '*' }); bc.close(); } };
   }
@@ -82,7 +87,7 @@ var Online = (function () {
       if (isHost) {
         net.all({ t: 'ping' });
         var g = A.game(), live = room.started && g ? g.s.players.filter(function (p) { return p.remote; }).map(function (p) { return p.remote; }) : (room.players || []).map(function (x) { return x.peer; }).filter(Boolean);
-        live.forEach(function (pid) { if (!lastSeen[pid]) lastSeen[pid] = now; if (now - lastSeen[pid] > 20000) { lastSeen[pid] = now + 1e12; net.drop(pid); onHostLeave(pid); } });
+        live.forEach(function (pid) { if (!lastSeen[pid]) lastSeen[pid] = now; if (now - lastSeen[pid] > 35000) { lastSeen[pid] = now + 1e12; net.drop(pid); onHostLeave(pid); } });
       } else {
         net.host({ t: 'pong' });
         if (!lastSeen.host) lastSeen.host = now;
@@ -183,7 +188,8 @@ var Online = (function () {
     });
     w.log = function (msg, k) { io.log(msg, k); net.all({ t: 'ev', m: 'log', args: [msg, k] }); };
     w.toast = function (msg) { io.toast(msg); net.all({ t: 'ev', m: 'toast', args: [msg] }); };
-    w.autosave = function () { };
+    // host keeps a copy of the match so a crashed / reloaded host can reopen the same room and everyone rejoins
+    w.autosave = function (s) { try { if (room) localStorage.setItem('rfs_online_host', JSON.stringify({ code: room.code, settings: room.settings, t: Date.now(), s: snap(s, true) })); } catch (e) { } };
     return w;
   }
   function onHostMsg(peer, d) {
@@ -220,26 +226,49 @@ var Online = (function () {
   function lobbyBroadcast() { net.all({ t: 'lobby', players: room.players.map(function (x) { return { name: x.name, char: x.char, costume: x.costume }; }), settings: room.settings }); }
   function host(done) {
     var c = code(), P = Meta.p;
-    room = { code: c, role: 'host', started: false, players: [{ peer: null, name: P.name, char: P.equip.char, costume: P.equip.costume, loadout: Meta.validLoadout() }], settings: { map: 0, target: 40000, fillAI: true, tax: false } };
+    room = { code: c, role: 'host', started: false, players: [{ peer: null, name: P.name, char: P.equip.char, costume: P.equip.costume, loadout: Meta.validLoadout() }], settings: { map: 0, target: 40000, fillAI: true, tax: false, teams: false, startCash: 10000, rounds: 100, aiLv: ['normal', 'normal', 'normal', 'normal'], teamOf: [0, 1, 0, 1] } };
     loadPeer().then(function (ok) {
       if (!ok && !localMode()) { done('โหลดระบบออนไลน์ไม่ได้ — ตรวจอินเทอร์เน็ตแล้วลองใหม่'); return; }
       net = makeNet(c, true, onHostMsg, function (pid) { lastSeen[pid] = Date.now(); }, onHostLeave, function () { startHeartbeat(true); done(null, room); }, function (err) { done(err); });
     });
   }
   function startHost() {
-    var R = room.settings, players = room.players.map(function (x, i) { return { name: x.name, char: x.char, costume: x.costume, isAI: false, remote: x.peer || undefined, seat: x.peer ? x.token : null, loadout: x.loadout }; });
+    var R = room.settings, players = room.players.map(function (x, i) { return { name: x.name, char: x.char, costume: x.costume, isAI: false, remote: x.peer || undefined, seat: x.peer ? x.token : null, loadout: x.loadout, team: R.teamOf[i] }; });
     var used = players.map(function (p) { return p.char; }), pool = ['b0', 'b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7'].filter(function (k) { return used.indexOf(k) < 0; });
     var names = ['คุมะ AI', 'โคริ AI', 'คิอิโระ AI', 'ชาอิ AI', 'เนโกะ AI', 'ริสุ AI', 'เพนกิ AI', 'ชิกะ AI'];
-    if (R.fillAI) while (players.length < 4) { var ch = pool.shift(); players.push({ name: names[+ch.slice(1)], char: ch, isAI: true, aiLevel: 'normal', persona: AI_PERSONAS[players.length % 5] }); }
+    if (R.fillAI || R.teams) while (players.length < 4) { var ch = pool.shift(), sl = players.length; players.push({ name: names[+ch.slice(1)], char: ch, isAI: true, aiLevel: R.aiLv[sl] || 'normal', persona: AI_PERSONAS[sl % 5], team: R.teamOf[sl] }); }
     if (players.length < 2) { A.toast('ต้องมีผู้เล่นอย่างน้อย 2 คน (เปิด “เติม AI” ได้)'); return; }
-    var s = Game.create({ mapIdx: R.map, players: players, target: R.target, maxRounds: 100, rules: { tax: R.tax, endOnBankrupt: true }, seed: Math.floor(Math.random() * 1e9) });
+    if (R.teams) { var c0 = players.filter(function (q) { return q.team === 0; }).length; if (c0 !== 2) { A.toast('⚠️ โหมดทีมต้องแบ่ง ทีมชมพู 2 คน / ทีมฟ้า 2 คน — แตะป้ายทีมเพื่อสลับ', 3500); return; } }
+    var s = Game.create({ mapIdx: R.map, players: players, teams: !!R.teams, target: R.target, startCash: R.startCash || 10000, maxRounds: R.rounds > 0 ? R.rounds : 9999, rules: { tax: R.tax, endOnBankrupt: true }, seed: Math.floor(Math.random() * 1e9) });
     s.players.forEach(function (p, i) { p.remote = players[i].remote || null; p.seat = players[i].seat || null; });
     s.ownerIdx = 0; s.dice = Meta.p.equip.dice; s.online = true;
     room.started = true; A.setOnline({ role: 'host', code: room.code, kind: net.kind });
     s.players.forEach(function (p) { if (p.remote) net.send(p.remote, { t: 'start', s: snap(s, true), idx: p.id }); });
     A.closeModal(); A.startGame(s, true);
   }
-  function end(g) { if (net) net.all({ t: 'end', s: snap(g.s, true) }); setTimeout(leave, 4000); }
+  function end(g) { try { localStorage.removeItem('rfs_online_host'); } catch (e) { } if (net) net.all({ t: 'end', s: snap(g.s, true) }); setTimeout(leave, 4000); }
+  function savedHost() { try { var x = JSON.parse(localStorage.getItem('rfs_online_host') || 'null'); return x && x.s && !x.s.over && Date.now() - x.t < 3 * 3600e3 ? x : null; } catch (e) { return null; } }
+  // reopen a room this device was hosting (page reloaded / app closed). Players rejoin with their seat token.
+  function resumeHost(done) {
+    var sv = savedHost(); if (!sv) return done('ไม่มีห้องที่ค้างไว้');
+    room = { code: sv.code, role: 'host', started: true, players: [], settings: sv.settings };
+    loadPeer().then(function (ok) {
+      if (!ok && !localMode()) { done('โหลดระบบออนไลน์ไม่ได้'); return; }
+      var t0 = Date.now();
+      (function tryOpen() {
+        net = makeNet(sv.code, true, onHostMsg, function (pid) { lastSeen[pid] = Date.now(); }, onHostLeave, function () {
+          startHeartbeat(true);
+          var s = sv.s; s.players.forEach(function (p) { p.remote = null; if (p.seat) p.offline = Date.now(); });
+          s.ownerIdx = s.ownerIdx || 0; s.dice = Meta.p.equip.dice; s.online = true;
+          A.setOnline({ role: 'host', code: room.code, kind: net.kind }); A.closeModal(); A.startGame(s, false);
+          A.toast('🏠 เปิดห้อง ' + room.code + ' อีกครั้งแล้ว — ผู้เล่นที่หลุดจะกลับเข้ามาเอง', 4000); done(null);
+        }, function (err) {
+          try { net && net.close(); } catch (e) { } net = null;
+          if (Date.now() - t0 < 90000) { A.toast('⏳ กำลังเปิดห้องเดิม ' + sv.code + '...', 2500); setTimeout(tryOpen, 4000); } else { room = null; done(err); }
+        });
+      })();
+    });
+  }
 
   // ===================== GUEST =====================
   var gstate = { idx: -1 }, rc = null;
@@ -257,18 +286,24 @@ var Online = (function () {
   function reconnect() {
     if (!room || rc) return;
     A.netStatus('🔄 กำลังเชื่อมต่อกลับ...'); clearInterval(hb);
-    var code0 = room.code, t0 = Date.now();
-    rc = setInterval(function tryOnce() {
-      if (!room) { clearInterval(rc); rc = null; return; }
-      if (Date.now() - t0 > 180000) { clearInterval(rc); rc = null; A.netStatus(null); A.toast('📴 เชื่อมต่อกลับไม่ได้ — กลับเข้าห้องได้จากเมนูโหมดออนไลน์', 5000); leave(); A.toMenu(); return; }
+    var code0 = room.code, t0 = Date.now(), n = 0, myRc = {};
+    rc = myRc;
+    (function attempt() {
+      if (!room || rc !== myRc) return;
+      if (Date.now() - t0 > 15 * 60000) { rc = null; A.netStatus(null); A.toast('📴 เชื่อมต่อกลับไม่ได้ — กด “กลับเข้าห้อง” ในเมนูโหมดออนไลน์ได้ภายใน 3 ชั่วโมง', 6000); leave(); A.toMenu(); return; }
+      n++; A.netStatus('🔄 กำลังเชื่อมต่อกลับ... (ครั้งที่ ' + n + ')<br><span style="font-size:14px">ห้อง ' + code0 + ' • ที่นั่งของคุณยังอยู่ ระหว่างนี้ระบบเล่นแทนชั่วคราว</span>');
       try { if (net) net.close(); } catch (e) { } net = null;
-      guestNet(code0, true, function (err) { if (err) return; });
-    }, 5000);
-    try { if (net) net.close(); } catch (e) { } net = null; guestNet(code0, true, function () { });
+      guestNet(code0, true, function (err) {
+        if (rc !== myRc) return;
+        if (err) { setTimeout(attempt, 2500); return; }
+        // connected: if the host doesn't put us back in within 12 s, try again
+        setTimeout(function () { if (rc === myRc && room) attempt(); }, 12000);
+      });
+    })();
   }
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState !== 'visible' || !room || room.role !== 'guest' || !room.started) return;
-    if (Date.now() - (lastSeen.host || 0) > 5000) { if (rc) { clearInterval(rc); rc = null; } reconnect(); }
+    if (Date.now() - (lastSeen.host || 0) > 5000) { rc = null; reconnect(); }
   });
   function rejoin(done) {
     var st = savedSeat(); if (!st) return done('ไม่มีห้องที่ค้างไว้');
@@ -289,8 +324,8 @@ var Online = (function () {
     if (d.t === 'ping') return;
     if (d.t === 'cancel') { if (curRpc === d.id) A.closeModal(); return; }
     if (d.t === 'lobby') { room.players = d.players; room.settings = d.settings; A.renderLobby(); return; }
-    if (d.t === 'full') { A.toast('⚠️ ' + d.why); try { localStorage.removeItem('rfs_online_seat'); } catch (e) { } if (rc) { clearInterval(rc); rc = null; } A.netStatus(null); var st0 = room && room.started; leave(); A.closeModal(); if (st0) A.toMenu(); return; }
-    if (d.t === 'start') { if (rc) { clearInterval(rc); rc = null; } A.netStatus(null); queued = 0; chain = Promise.resolve(); curRpc = null; room.started = true; gstate.idx = d.idx; try { localStorage.setItem('rfs_online_seat', JSON.stringify({ code: room.code, idx: d.idx, t: Date.now() })); } catch (e) { } if (d.rejoin) A.toast('🔌 กลับเข้าเกมแล้ว!'); A.setOnline({ role: 'guest', code: room.code, idx: d.idx, kind: net.kind }); A.closeModal(); A.startGuest(d.s, d.idx); return; }
+    if (d.t === 'full') { A.toast('⚠️ ' + d.why); try { localStorage.removeItem('rfs_online_seat'); } catch (e) { } rc = null; A.netStatus(null); var st0 = room && room.started; leave(); A.closeModal(); if (st0) A.toMenu(); return; }
+    if (d.t === 'start') { rc = null; A.netStatus(null); queued = 0; chain = Promise.resolve(); curRpc = null; room.started = true; gstate.idx = d.idx; try { localStorage.setItem('rfs_online_seat', JSON.stringify({ code: room.code, idx: d.idx, t: Date.now() })); } catch (e) { } if (d.rejoin) A.toast('🔌 กลับเข้าเกมแล้ว!'); A.setOnline({ role: 'guest', code: room.code, idx: d.idx, kind: net.kind }); A.closeModal(); A.startGuest(d.s, d.idx); return; }
     var g = A.game(); if (!g) return;
     if (d.t === 'state') { applyState(g, d.s); return; }
     queued++;
@@ -342,11 +377,11 @@ var Online = (function () {
     };
     ['chooseNumber', 'choose'].forEach(function (m) { var f = g.io[m]; g.io[m] = function () { return Promise.resolve(f.apply(g.io, arguments)).then(function (v) { if (g._ans) g._ans.push(v); return v; }); }; });
   }
-  function leave() { clearInterval(hb); if (rc) { clearInterval(rc); rc = null; } if (net) { try { net.close(); } catch (e) { } } net = null; room = null; pending = {}; queued = 0; chain = Promise.resolve(); A.setOnline(null); }
+  function leave() { clearInterval(hb); rc = null; if (net) { try { net.close(); } catch (e) { } } net = null; room = null; pending = {}; queued = 0; chain = Promise.resolve(); A.setOnline(null); }
 
   return {
     init: function (api) { A = api; },
-    host: host, join: join, rejoin: rejoin, savedSeat: savedSeat, startHost: startHost, hostIO: hostIO, end: end, leave: leave, instrumentGuest: instrumentGuest,
+    host: host, join: join, rejoin: rejoin, savedSeat: savedSeat, savedHost: savedHost, resumeHost: resumeHost, startHost: startHost, hostIO: hostIO, end: end, leave: leave, instrumentGuest: instrumentGuest,
     get room() { return room; }, get kind() { return net && net.kind; },
     setSetting: function (k, v) { if (room && room.role === 'host') { room.settings[k] = v; lobbyBroadcast(); } },
   };

@@ -87,11 +87,13 @@
     var s = {
       dragonPot: hasDragon ? C.dragon.seed : undefined,
       v: 1, mapIdx: opts.mapIdx, tiles: b.tiles, districts: b.districts, w: b.w, h: b.h, painted: b.painted,
+      teams: !!opts.teams,
       settings: { target: opts.target || C.targetNetWorth, maxRounds: opts.maxRounds || C.maxRounds, startCash: opts.startCash || C.startCash, rules: Object.assign({}, C.rules, opts.rules || {}) },
       players: opts.players.map(function (o, i) {
         return {
           id: i, name: o.name, char: o.char, costume: o.costume || 'chars', color: D.PLAYER_COLORS[i], isAI: !!o.isAI,
           ai: { level: o.aiLevel || 'normal', persona: o.persona || 'Balanced' },
+          team: (opts.teams && o.team >= 0) ? o.team : -1,
           cash: (opts.startCash || C.startCash) + ((D.CHAR_SKILLS && D.CHAR_SKILLS[o.char] && D.CHAR_SKILLS[o.char].fx.startCash) || 0), pos: bank.id, prev: null, level: 1, suits: {}, shares: b.districts.map(function () { return 0; }),
           safe: 0, flags: {}, bankrupt: false, turns: 0, promotions: 0,
           loadout: { eq: (o.loadout && o.loadout.eq || []).map(function (id) { return { id: id, used: false }; }), sc: (o.loadout && o.loadout.sc) ? { id: o.loadout.sc, used: false } : null },
@@ -132,7 +134,13 @@
   };
 
   // ---------- Economy: values ----------
-  P.ownedIn = function (owner, d) { var self = this; return this.s.districts[d].tiles.filter(function (id) { return self.s.tiles[id].owner === owner; }).length; };
+  // ---------- team mode (2 vs 2): teammates share district bonuses, pay no rent to each other and can invest in each other's shops ----------
+  P.mate = function (a, b) { if (a === null || a === undefined || b === null || b === undefined) return false; var pa = typeof a === 'number' ? this.s.players[a] : a, pb = typeof b === 'number' ? this.s.players[b] : b; if (!pa || !pb) return false; return pa.id === pb.id || (!!this.s.teams && pa.team >= 0 && pa.team === pb.team); };
+  P.teamOf = function (p) { return this.s.teams && p.team >= 0 ? this.s.players.filter(function (q) { return q.team === p.team; }) : [p]; };
+  P.teamWorth = function (p) { var self = this; return this.teamOf(p).reduce(function (a, q) { return a + (q.bankrupt ? 0 : self.netWorth(q)); }, 0); };
+  P.rankWorth = function (p) { return this.s.teams ? this.teamWorth(p) : this.netWorth(p); };
+  P.bestPlayer = function () { var self = this; var al = this.alive().sort(function (a, b) { return self.rankWorth(b) - self.rankWorth(a) || self.netWorth(b) - self.netWorth(a); }); return al[0]; };
+  P.ownedIn = function (owner, d) { var self = this; return this.s.districts[d].tiles.filter(function (id) { var o = self.s.tiles[id].owner; return o >= 0 && (o === owner || self.mate(o, owner)); }).length; };
   P.distMult = function (t) {
     if (t.owner < 0) return 1;
     var c = this.ownedIn(t.owner, t.district), n = this.s.districts[t.district].tiles.length;
@@ -141,7 +149,7 @@
   P.chainTiles = function (t) { // shops of the same owner connected along the road
     if (t.type !== 'shop' || t.owner < 0) return [];
     var self = this, seen = {}, q = [t.id], out = []; seen[t.id] = 1;
-    while (q.length) { var c = self.tile(q.shift()); out.push(c.id); c.n.forEach(function (n) { var u = self.tile(n); if (!seen[n] && u.type === 'shop' && u.owner === t.owner) { seen[n] = 1; q.push(n); } }); }
+    while (q.length) { var c = self.tile(q.shift()); out.push(c.id); c.n.forEach(function (n) { var u = self.tile(n); if (!seen[n] && u.type === 'shop' && u.owner >= 0 && (u.owner === t.owner || self.mate(u.owner, t.owner))) { seen[n] = 1; q.push(n); } }); }
     return out;
   };
   P.chainLen = function (t) { return this.chainTiles(t).length; };
@@ -310,14 +318,14 @@
     this.log('💥 ' + p.name + ' ล้มละลาย! ทรัพย์สินคืนสู่ตลาด', 'bad');
     if (this.io && this.io.notify) await this.io.notify(p, '💥 ' + p.name + ' ล้มละลาย', 'ร้านทั้งหมดถูกคืนเป็นของว่างเพื่อให้ผู้อื่นซื้อได้');
     var alive = this.alive(), self2 = this;
-    if (alive.length === 1) this.finish(alive[0], 'ผู้เล่นคนอื่นล้มละลายทั้งหมด');
-    else if (this.rules().endOnBankrupt) { var best = alive.sort(function (a, b) { return self2.netWorth(b) - self2.netWorth(a); })[0]; this.finish(best, p.name + ' ล้มละลาย — เกมจบ ผู้มีทรัพย์สินสูงสุดชนะ'); }
+    if (alive.length === 1 || (this.s.teams && alive.every(function (q) { return q.team === alive[0].team; }))) this.finish(this.bestPlayer(), 'ผู้เล่นฝ่ายตรงข้ามล้มละลายทั้งหมด');
+    else if (this.rules().endOnBankrupt) { var best = this.bestPlayer(); this.finish(best, p.name + ' ล้มละลาย — เกมจบ ผู้มีทรัพย์สินสูงสุดชนะ'); }
   };
   P.finish = function (winner, why) {
     if (this.s.over) return;
     var self = this;
-    this.s.over = true; this.s.winner = winner ? winner.id : null; this.s.endReason = why;
-    this.s.ranking = this.s.players.slice().sort(function (a, b) { if (a.bankrupt !== b.bankrupt) return a.bankrupt ? 1 : -1; if (winner && a.id === winner.id) return -1; if (winner && b.id === winner.id) return 1; return self.netWorth(b) - self.netWorth(a); }).map(function (p) { return { id: p.id, nw: self.netWorth(p) }; });
+    this.s.over = true; this.s.winner = winner ? winner.id : null; this.s.endReason = why; this.s.winTeam = winner && this.s.teams ? winner.team : null;
+    this.s.ranking = this.s.players.slice().sort(function (a, b) { if (self.s.teams && winner && (a.team === winner.team) !== (b.team === winner.team)) return a.team === winner.team ? -1 : 1; if (a.bankrupt !== b.bankrupt) return a.bankrupt ? 1 : -1; if (winner && a.id === winner.id) return -1; if (winner && b.id === winner.id) return 1; return self.netWorth(b) - self.netWorth(a); }).map(function (p) { return { id: p.id, nw: self.netWorth(p) }; });
     this.log('🏆 เกมจบ: ' + (winner ? winner.name + ' ชนะ!' : '') + ' (' + why + ')', 'win');
   };
 
@@ -332,8 +340,7 @@
     s.players.forEach(function (p) { p.hist.push(self.netWorth(p)); });
     s.round++;
     if (s.round > s.settings.maxRounds) {
-      var best = this.alive().sort(function (a, b) { return self.netWorth(b) - self.netWorth(a); })[0];
-      this.finish(best, 'ครบ ' + s.settings.maxRounds + ' รอบ — ทรัพย์สินสูงสุด');
+      this.finish(this.bestPlayer(), 'ครบ ' + s.settings.maxRounds + ' รอบ — ' + (s.teams ? 'ทีมที่มีทรัพย์สินรวมสูงสุด' : 'ทรัพย์สินสูงสุด'));
     }
   };
 
@@ -384,7 +391,7 @@
       .then(function (id) { return id === null || id === undefined ? null : self.tile(id); });
   };
   P.pickRivalShop = function (p, title) {
-    var self = this, list = this.s.tiles.filter(function (t) { return t.type === 'shop' && t.owner >= 0 && t.owner !== p.id; });
+    var self = this, list = this.s.tiles.filter(function (t) { return t.type === 'shop' && t.owner >= 0 && !self.mate(t.owner, p); });
     if (!list.length) return Promise.resolve(null);
     return this.choose(p, { title: title, kind: 'shop', options: list.map(function (t) { return { value: t.id, label: t.name, sub: self.s.players[t.owner].name + ' • ค่าเช่า ' + fmt(self.shopRent(t)), color: self.s.districts[t.district].color, score: self.shopRent(t) }; }) })
       .then(function (id) { return id === null || id === undefined ? null : self.tile(id); });
@@ -488,7 +495,7 @@
     if (t.type === 'bank') { await this.arriveBank(p, final); return; }
     if (t.type === 'suit' && !p.suits[t.suit]) { p.suits[t.suit] = true; this.log('🃏 ' + p.name + ' เก็บสัญลักษณ์ ' + D.SUIT_GLYPH[t.suit]); if (this.io.suit) await this.io.suit(p, t.suit); }
     if (t.special === 'sp_toll' && t.spOwner >= 0) {
-      if (t.spOwner !== p.id) {
+      if (!this.mate(t.spOwner, p)) {
         var tollOwner = this.s.players[t.spOwner], fee2 = Math.round((t.toll || 100) * (1 - this.cs(p, 'tollDisc')));
         if (p.flags.freeRide) { p.flags.freeRide = 0; this.log('🚕 ' + p.name + ' ใช้สกิลผ่านด่านฟรี'); }
         else if (!tollOwner.bankrupt) {
@@ -513,7 +520,7 @@
     }
     if (this.cs(p, 'bankBonus')) { p.cash += this.cs(p, 'bankBonus'); this.log('✨ สกิล ' + p.name + ': ผ่านธนาคาร +' + fmt(this.cs(p, 'bankBonus')) + ' G', 'gain'); }
     if (p.safe > 0) { var back = Math.round(p.safe * 1.05); this.log('🏦 คืนเงินบัญชีคุ้มครอง ' + fmt(back) + ' G'); p.cash += back; p.safe = 0; }
-    if (this.netWorth(p) >= s.settings.target) { this.finish(p, 'ทรัพย์สินถึงเป้าหมาย ' + fmt(s.settings.target) + ' G และกลับถึงธนาคาร'); return; }
+    if (this.rankWorth(p) >= s.settings.target) { this.finish(p, (s.teams ? 'ทรัพย์สินรวมของทีมถึงเป้าหมาย ' : 'ทรัพย์สินถึงเป้าหมาย ') + fmt(s.settings.target) + ' G และกลับถึงธนาคาร'); return; }
     s.phase = 'bank';
     await this.io.bank(p, stopped); // buy stocks (and upgrade any shop when stopped)
     s.phase = 'move';
@@ -619,7 +626,7 @@
       if (io.built) await io.built(p, t);
       return;
     }
-    if (t.owner === p.id) { await this.offerInvest(p, t); return; }
+    if (t.owner === p.id || this.mate(t.owner, p)) { if (t.owner !== p.id) this.log('🤝 ' + p.name + ' ตกร้านเพื่อนร่วมทีม — ไม่ต้องจ่ายค่าเช่า ช่วยลงทุนได้'); await this.offerInvest(p, t); return; }
     // rival shop: pay rent
     var owner = s.players[t.owner], rent = this.shopRent(t);
     if (this.noRent(t)) { this.log('🔧 ' + t.name + ' ปิดปรับปรุง — ไม่เก็บค่าเช่า'); rent = 0; }
@@ -678,7 +685,7 @@
   P.investDiscount = function (p) { var d = 1; if (p.flags.upgDisc) d *= (1 - p.flags.upgDisc); if (p.flags.builderDisc) d *= 0.8; return d; };
   P.investOptions = function (p, t) {
     var self = this, left = Math.max(0, C.investCap - (p.flags.investedTurn || 0));
-    var list = this.shopsOf(p).filter(function (x) { return x.district === t.district; }).map(function (x) {
+    var list = this.s.tiles.filter(function (x) { return x.type === 'shop' && x.district === t.district && x.owner >= 0 && self.mate(x.owner, p); }).map(function (x) {
       var blocked = self.s.effects.some(function (e) { return e.kind === 'noUpgrade' && e.tile === x.id; });
       return { tile: x, cap: blocked ? 0 : self.maxCapital(x), blocked: blocked };
     });
@@ -708,7 +715,7 @@
     }
   };
   P.doInvest = async function (p, t, amount) {
-    if (t.owner !== p.id) return false;
+    if (t.owner < 0 || !this.mate(t.owner, p)) return false;
     amount = Math.min(Math.round(amount), this.maxInvest(p, t)); if (amount <= 0) return false;
     var cost = this.investCost(p, amount);
     var u = await this.offerReactive(p, 'upgrade', { tile: t, cost: cost });
@@ -741,8 +748,9 @@
       return;
     }
     if (t.spOwner < 0) return;
-    if (t.spOwner === p.id && t.special !== 'sp_portal' && t.special !== 'sp_party' && t.special !== 'sp_windmill') return;
+    if (this.mate(t.spOwner, p) && t.special !== 'sp_portal' && t.special !== 'sp_party' && t.special !== 'sp_windmill') return;
     var owner = s.players[t.spOwner]; if (owner.bankrupt) return;
+    if (owner.id !== p.id && this.mate(owner, p)) owner = p; // a teammate's house works as if it were yours
     if (t.special === 'sp_portal') {
       var mine = owner.id === p.id, nw = Math.max(0, this.netWorth(p)), big = mine ? 0 : Math.round(nw * 0.10 * (1 - this.cs(p, 'tollDisc'))), small = mine ? 0 : Math.round(nw * 0.05 * (1 - this.cs(p, 'tollDisc')));
       var warp = await io.portalChoice(p, owner, t, big, small);
@@ -762,11 +770,11 @@
       if (io.party) await io.party(p, owner, t);
       var all = this.alive();
       for (var i = 0; i < all.length; i++) { var q = all[i]; if (q.pos !== t.id) { var f0 = q.pos; q.pos = t.id; q.prev = null; if (io.teleport) await io.teleport(q, f0, t.id); } }
-      for (var j = 0; j < all.length; j++) { var q2 = all[j]; if (q2.id === owner.id || q2.bankrupt) continue; var g2 = await this.lose(q2, 100, 'ค่าเข้าร่วมปาร์ตี้ของ ' + owner.name); owner.cash += g2; if (s.over) return; }
+      for (var j = 0; j < all.length; j++) { var q2 = all[j]; if (this.mate(q2, owner) || q2.bankrupt) continue; var g2 = await this.lose(q2, 100, 'ค่าเข้าร่วมปาร์ตี้ของ ' + owner.name); owner.cash += g2; if (s.over) return; }
     } else if (t.special === 'sp_windmill' && owner.id === p.id) {
       // owner on own windmill: the wind blows 5% of every other player's cash to the owner
       var stolen = [];
-      for (var w = 0; w < s.players.length; w++) { var v = s.players[w]; if (v.id === p.id || v.bankrupt || v.cash <= 0) continue; var amt = Math.floor(v.cash * 0.05); if (amt <= 0) continue; v.cash -= amt; p.cash += amt; stolen.push({ id: v.id, amt: amt }); }
+      for (var w = 0; w < s.players.length; w++) { var v = s.players[w]; if (this.mate(v, p) || v.bankrupt || v.cash <= 0) continue; var amt = Math.floor(v.cash * 0.05); if (amt <= 0) continue; v.cash -= amt; p.cash += amt; stolen.push({ id: v.id, amt: amt }); }
       this.log('🌪️ ' + p.name + ' ปล่อยลมกังหัน ขโมยเงิน 5% จากทุกคน รวม ' + fmt(stolen.reduce(function (a, x) { return a + x.amt; }, 0)) + ' G', 'gain');
       if (io.windSteal) await io.windSteal(p, t, stolen);
     } else if (t.special === 'sp_windmill') {

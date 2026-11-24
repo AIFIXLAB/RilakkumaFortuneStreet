@@ -1,6 +1,7 @@
 // ===================== RILAKKUMA FORTUNE STREET — DATA (data-driven config) =====================
 var CONFIG = {
-  startCash: 10000, targetNetWorth: 30000, maxRounds: 100,
+  startCash: 10000, targetNetWorth: 30000, maxRounds: 100, cardGoldMult: 0.8, boostSteps: 3, iceSteps: 2, gateFee: 150,
+  wheel: [[18, 'g', 300], [14, 'g', 600], [8, 'g', 1000], [3, 'g', 2000], [12, 'l', 300], [7, 'l', 600], [12, 'card'], [12, 'again'], [8, 'stock'], [6, 'warp']],
   // ---- Itadaki / Fortune Street style economy (scaled ×~6.7 to this game's money) ----
   baseSalary: 1700, salaryPerLevel: 1000, salaryPropPct: 0.10, maxLevel: 20,   // Salary = B + 1000×Lv + 10% shop value
   shopBase: [900, 1060, 1220, 1380, 1540],
@@ -30,7 +31,7 @@ var CONFIG = {
 // Player colours / AI
 var PLAYER_COLORS = ['#ff6f91', '#4fa3ff', '#ffc531', '#59c96b'];
 var AI_LEVELS = [
-  { id: 'beginner', name: 'Beginner' }, { id: 'normal', name: 'Normal' }, { id: 'advanced', name: 'Advanced' },
+  { id: 'beginner', name: 'ง่าย' }, { id: 'normal', name: 'ปานกลาง' }, { id: 'advanced', name: 'เก่ง' }, { id: 'master', name: 'เก่งโคตร' },
 ];
 var AI_PERSONAS = ['Investor', 'Tycoon', 'Aggressive', 'Defensive', 'Balanced'];
 
@@ -313,6 +314,126 @@ var MAPS = [
     ],
   },
 ];
+// six tournament worlds (painted boards 1672x941)
+var TOUR_MAPS = [
+  {
+    id: 'w1', tour: 1, name: 'Bear Kingdom', th: 'ราชอาณาจักรหมี', bg: 'bg_w1', img: [1672, 941], ts: 70, size: 'กลาง',
+    districts: [
+      { name: 'Castle Gate', th: 'ประตูปราสาท', color: '#ff8fb3', f: 0.9, label: [415, 455], shops: [['ร้านขนมปังหลวง', 'bakery'], ['คาเฟ่อัศวิน', 'cafe'], ['ร้านเสื้อคลุม', 'clothes']] },
+      { name: 'Royal Market', th: 'ตลาดหลวง', color: '#ffb347', f: 1.15, label: [1250, 455], shops: [['ร้านมงกุฎ', 'clothes'], ['ตลาดผลไม้', 'mart'], ['ร้านน้ำชา', 'cafe']] },
+      { name: 'East Garden', th: 'สวนตะวันออก', color: '#7cc576', f: 1.05, label: [1420, 560], shops: [['ร้านดอกไม้', 'mart'], ['คลินิกสวน', 'clinic']] },
+      { name: 'Circus Lane', th: 'ถนนละครสัตว์', color: '#4fa3ff', f: 1.25, label: [1260, 800], shops: [['เต็นท์ละคร', 'mall'], ['ร้านป๊อปคอร์น', 'food'], ['ร้านของเล่น', 'book']] },
+      { name: 'Fountain Square', th: 'ลานน้ำพุ', color: '#b48ce6', f: 1.35, label: [935, 800], shops: [['โรงแรมน้ำพุ', 'onsen'], ['ภัตตาคารลาน', 'food']] },
+      { name: 'Windmill Village', th: 'หมู่บ้านกังหัน', color: '#ffd54f', f: 1.0, label: [470, 800], shops: [['โรงสีแป้ง', 'bakery'], ['ร้านนม', 'cafe'], ['ห้างหมู่บ้าน', 'mall'], ['ร้านหนังสือ', 'book']] },
+      { name: 'West Woods', th: 'ป่าตะวันตก', color: '#26a69a', f: 0.85, label: [265, 560], shops: [['กระท่อมนายพราน', 'food'], ['ร้านสมุนไพร', 'clinic']] },
+    ],
+    paths: [
+      '130,390,W', '1545,750,W', '1545,390,W', '130,750,W',
+      '130,390,W 246,396,#1 331,396,H 417,396,#1 502,396,#1 587,396,Q 700,400,P 840,400,B 980,400,P 1084,396,#2 1169,396,#2 1255,396,Q 1340,396,D 1425,396,#2 1545,390,W 1498,479,#3 1500,560,#3 1500,640,J 1545,750,W 1434,738,#4 1354,738,#4 1268,738,S 1183,738,#4 1098,738,F 1017,738,#5 935,738,#5 851,738,L 768,738,E 684,738,#6 600,738,#6 517,738,#6 429,738,C 341,738,T 253,738,#6 130,750,W 178,643,J 178,563,#7 178,483,#7 >',
+      '840,400,B 840,500,P 840,610,P 851,738,L',
+    ],
+  },
+  {
+    id: 'w2', tour: 2, name: 'Tropical Island', th: 'เกาะทรอปิคอล', bg: 'bg_w2', img: [1672, 941], ts: 68, size: 'กลาง',
+    districts: [
+      { name: 'Palm Beach', th: 'หาดปาล์ม', color: '#ffd54f', f: 0.95, label: [330, 330], shops: [['ร้านมะพร้าว', 'food'], ['ร้านเซิร์ฟ', 'clothes'], ['ร้านน้ำผลไม้', 'cafe']] },
+      { name: 'Bank Lagoon', th: 'ลากูนธนาคาร', color: '#ff8fb3', f: 1.2, label: [700, 415], shops: [['ร้านไข่มุก', 'clothes'], ['ร้านซีฟู้ด', 'food'], ['รีสอร์ตลากูน', 'onsen'], ['ห้างชายหาด', 'mall']] },
+      { name: 'Sunset Cliff', th: 'หน้าผาตะวันตก', color: '#ff9a62', f: 1.1, label: [1330, 330], shops: [['คาเฟ่หน้าผา', 'cafe'], ['ร้านเปลือกหอย', 'mart'], ['ร้านหมวกฟาง', 'clothes']] },
+      { name: 'East Shore', th: 'ชายฝั่งตะวันออก', color: '#3d8bfd', f: 1.25, label: [1390, 560], shops: [['ร้านเรือ', 'mart'], ['ร้านดำน้ำ', 'book'], ['คลินิกเกาะ', 'clinic']] },
+      { name: 'Pirate Bay', th: 'อ่าวโจรสลัด', color: '#8d6e63', f: 1.35, label: [1000, 700], shops: [['ร้านสมบัติ', 'mall'], ['บาร์โจรสลัด', 'food'], ['ร้านแผนที่', 'book']] },
+      { name: 'Coral Path', th: 'ทางปะการัง', color: '#26c6da', f: 1.0, label: [560, 700], shops: [['ร้านปะการัง', 'clothes'], ['ร้านไอศกรีม', 'cafe'], ['ร้านปูทอด', 'food']] },
+      { name: 'Hula Grove', th: 'สวนฮูลา', color: '#7cc576', f: 0.9, label: [260, 540], shops: [['ร้านพวงมาลัย', 'mart'], ['ร้านกีตาร์', 'book']] },
+    ],
+    paths: [
+      '125,235,W', '1555,765,W', '1550,235,W', '125,765,W',
+      '125,235,W 240,262,#1 325,262,H 405,262,#1 515,260,A 595,280,#1 640,330,#2 690,345,#2 767,345,J 845,345,B 925,345,#2 1005,345,#2 1075,295,#3 1170,262,A 1265,262,#3 1350,262,D 1435,262,#3 1550,235,W 1480,340,#4 1465,425,Q 1465,505,N 1480,585,#4 1500,650,#4 1555,765,W 1440,640,#5 1360,640,S 1280,640,#5 1210,640,Y 1090,615,P 975,640,#5 905,640,E 835,640,L 765,640,#6 700,640,#6 590,615,P 470,640,#6 400,640,T 320,640,C 240,640,#7 125,765,W 190,585,#7 190,505,K 205,425,Q 175,335,#7 >',
+    ],
+  },
+  {
+    id: 'w3', tour: 3, name: 'Snow Town', th: 'เมืองหิมะ', bg: 'bg_w3', img: [1672, 941], ts: 66, size: 'กลาง',
+    districts: [
+      { name: 'Snowman Hill', th: 'เนินตุ๊กตาหิมะ', color: '#90caf9', f: 1.0, label: [330, 335], shops: [['ร้านผ้าพันคอ', 'clothes'], ['ร้านโกโก้ร้อน', 'cafe'], ['ร้านเลื่อน', 'mart']] },
+      { name: 'Ice Palace', th: 'วังน้ำแข็ง', color: '#b39ddb', f: 1.25, label: [680, 405], shops: [['ร้านคริสตัล', 'clothes'], ['ภัตตาคารหิมะ', 'food'], ['ห้างน้ำแข็ง', 'mall']] },
+      { name: 'Aurora Street', th: 'ถนนแสงเหนือ', color: '#4dd0e1', f: 1.2, label: [1000, 405], shops: [['ร้านโคมไฟ', 'mart'], ['คาเฟ่แสงเหนือ', 'cafe'], ['ร้านหนังสือ', 'book']] },
+      { name: 'North Peak', th: 'ยอดเขาเหนือ', color: '#5c6bc0', f: 1.1, label: [1330, 335], shops: [['ร้านสกี', 'clothes'], ['กระท่อมยอดเขา', 'onsen']] },
+      { name: 'Pine Slope', th: 'ลาดสน', color: '#43a047', f: 1.05, label: [1390, 540], shops: [['ร้านไม้สน', 'mart'], ['คลินิกหิมะ', 'clinic'], ['ร้านซุป', 'food']] },
+      { name: 'Hot Spring', th: 'ย่านออนเซ็น', color: '#ff8a65', f: 1.4, label: [1290, 700], shops: [['ออนเซ็นหมี', 'onsen'], ['ร้านไข่ออนเซ็น', 'food']] },
+      { name: 'Frozen Lake', th: 'ทะเลสาบน้ำแข็ง', color: '#29b6f6', f: 1.3, label: [835, 700], shops: [['ลานสเก็ต', 'mall'], ['ร้านตกปลา', 'food'], ['ร้านถุงมือ', 'clothes']] },
+      { name: 'Igloo Village', th: 'หมู่บ้านอิกลู', color: '#ffd54f', f: 0.9, label: [330, 700], shops: [['ร้านอิกลู', 'mart'], ['ร้านเพนกวิน', 'book'], ['ร้านซาลาเปา', 'bakery'], ['ร้านหมวกไหมพรม', 'clothes']] },
+    ],
+    paths: [
+      '125,245,W', '1530,628,W', '1545,245,W', '130,628,W',
+      '125,245,W 240,272,#1 320,272,H 400,272,#1 480,272,A 560,290,#1 610,345,#2 680,345,#2 750,345,#2 835,335,B 925,345,#3 1000,345,#3 1075,330,#3 1190,272,A 1270,272,#4 1350,272,D 1435,272,#4 1545,245,W 1460,335,#5 1455,425,Q 1480,505,#5 1515,565,#5 1530,628,W 1450,628,#6 1370,628,S 1290,628,R 1215,628,I 1075,605,P 970,628,#7 915,628,#7 835,628,L 755,628,#7 680,628,#8 560,605,P 445,628,#8 375,628,#8 295,628,C 210,628,T 130,628,W 145,575,#8 185,522,K 218,425,Q 140,330,#1 >',
+      '835,628,L 835,555,I 835,450,P 835,335,B',
+    ],
+  },
+  {
+    id: 'w4', tour: 4, name: 'Dragon Land', th: 'ดินแดนมังกร', bg: 'bg_w4', img: [1672, 941], ts: 64, size: 'กลาง',
+    districts: [
+      { name: 'Crystal Mine', th: 'เหมืองคริสตัล', color: '#ab47bc', f: 1.05, label: [400, 300], shops: [['ร้านแร่', 'mart'], ['ร้านตะเกียง', 'book'], ['ร้านคริสตัล', 'clothes'], ['โรงหลอม', 'mall']] },
+      { name: 'Temple Road', th: 'ถนนวัดมังกร', color: '#e53935', f: 1.35, label: [700, 380], shops: [['ร้านธูป', 'mart'], ['ร้านโคมแดง', 'clothes'], ['ร้านเกี๊ยว', 'food']] },
+      { name: 'Fire Gate', th: 'ประตูเพลิง', color: '#ff7043', f: 1.25, label: [1040, 380], shops: [['ร้านดาบ', 'mart'], ['ร้านเกราะ', 'clothes'], ['ภัตตาคารไฟ', 'food'], ['โรงแรมลาวา', 'onsen']] },
+      { name: 'Pagoda Peak', th: 'ยอดเจดีย์', color: '#ffb300', f: 1.2, label: [1450, 520], shops: [['ร้านชา', 'cafe'], ['ร้านพัด', 'clothes'], ['คลินิกสมุนไพร', 'clinic'], ['ร้านโมจิ', 'bakery']] },
+      { name: 'Lava Falls', th: 'น้ำตกลาวา', color: '#d84315', f: 1.4, label: [1150, 820], shops: [['ร้านหินภูเขาไฟ', 'mall'], ['ซาวน่าลาวา', 'onsen'], ['ร้านราเมงเผ็ด', 'food']] },
+      { name: 'Lava Bridge', th: 'สะพานลาวา', color: '#f06292', f: 1.15, label: [760, 760], shops: [['ร้านโซ่ทอง', 'mart'], ['ร้านทาโกะยากิ', 'food'], ['ร้านหน้ากาก', 'book']] },
+      { name: 'Volcano Base', th: 'เชิงภูเขาไฟ', color: '#8d6e63', f: 0.95, label: [330, 820], shops: [['ร้านถ่าน', 'mart'], ['ร้านมันเผา', 'food'], ['ร้านหมวกเหล็ก', 'clothes'], ['ร้านยา', 'clinic']] },
+    ],
+    paths: [
+      '100,250,W', '1565,745,W', '1560,250,W', '100,745,W',
+      '100,250,W 240,272,H 305,238,#1 370,218,#1 437,212,#1 510,240,#1 575,268,J 640,325,#2 705,325,#2 775,325,#2 835,325,B 905,325,L 965,325,#3 1030,300,#3 1095,282,#3 1160,265,#3 1255,240,Y 1340,270,#4 1430,275,D 1560,250,W 1590,335,#4 1580,390,#4 1535,440,Q 1505,480,#4 1525,535,E 1565,595,#5 1600,645,#5 1565,745,W 1470,755,#5 1395,755,S 1320,758,K 1245,758,L 1170,735,Q 1095,720,#6 1020,705,#6 950,690,#6 885,672,T 835,665,U 765,665,F 700,690,#7 640,720,#7 575,740,A 495,740,A 420,765,#7 350,765,#7 275,760,C 200,752,E 100,745,W 75,650,R 72,600,M 118,555,A 118,430,P 95,375,J 70,330,L >',
+      '835,325,B 835,400,P 835,470,X 835,580,G 835,665,U',
+    ],
+  },
+  {
+    id: 'w5', tour: 5, name: 'Future City', th: 'เมืองแห่งอนาคต', bg: 'bg_w5', img: [1672, 941], ts: 64, size: 'กลาง',
+    districts: [
+      { name: 'Neon Avenue', th: 'ถนนนีออน', color: '#ff4fa3', f: 1.1, label: [400, 330], shops: [['ร้านหุ่นยนต์', 'book'], ['คาเฟ่นีออน', 'cafe'], ['ร้านเกม', 'mall']] },
+      { name: 'Sky Plaza', th: 'พลาซ่าลอยฟ้า', color: '#29b6f6', f: 1.3, label: [700, 390], shops: [['ห้างลอยฟ้า', 'mall'], ['ร้านโฮโลแกรม', 'clothes'], ['ร้านซูชิอวกาศ', 'food']] },
+      { name: 'Tech Park', th: 'เทคพาร์ค', color: '#7e57c2', f: 1.35, label: [970, 390], shops: [['ศูนย์ AI', 'book'], ['ร้านชิป', 'mart'], ['คลินิกนาโน', 'clinic']] },
+      { name: 'Maglev Station', th: 'สถานีแม่เหล็ก', color: '#26a69a', f: 1.2, label: [1290, 330], shops: [['ร้านตั๋ว', 'mart'], ['ร้านเบนโตะ', 'food'], ['โรงแรมแคปซูล', 'onsen']] },
+      { name: 'Casino Row', th: 'ย่านคาสิโน', color: '#ffb300', f: 1.4, label: [1440, 650], shops: [['ร้านเพชร', 'clothes'], ['ภัตตาคารหรู', 'food'], ['ห้างดาวเทียม', 'mall']] },
+      { name: 'Gate District', th: 'ย่านประตูพลังงาน', color: '#ec407a', f: 1.25, label: [1090, 820], shops: [['ร้านแบตเตอรี่', 'mart'], ['ร้านโดรน', 'book'], ['ร้านเครป', 'bakery']] },
+      { name: 'Hover Lane', th: 'ถนนโฮเวอร์', color: '#66bb6a', f: 1.0, label: [470, 820], shops: [['ร้านสเก็ตบอร์ด', 'clothes'], ['ร้านพิซซ่า', 'food'], ['ร้านต้นไม้', 'mart'], ['คาเฟ่ดาว', 'cafe']] },
+    ],
+    paths: [
+      '118,268,W', '1555,765,W', '1555,268,W', '115,765,W',
+      '118,268,W 260,282,H 335,282,#1 415,282,A 495,282,#1 565,295,#1 625,330,L 685,335,#2 755,340,#2 835,340,B 905,340,#3 975,335,#3 1040,320,#3 1145,282,#4 1210,282,#4 1285,282,A 1355,282,#4 1430,282,D 1555,268,W 1560,355,J 1560,460,Q 1545,520,E 1555,580,K 1585,640,#5 1555,765,W 1470,755,#5 1395,755,S 1320,755,#5 1250,755,T 1180,755,#6 1110,755,#6 1045,735,A 975,735,#6 905,730,F 835,712,U 765,730,#7 655,735,A 580,745,#7 510,750,#7 440,755,#7 365,755,E 285,755,C 115,765,W 95,640,M 120,580,R 140,520,J 125,460,Q 100,350,#1 >',
+      '835,340,B 835,430,P 835,505,X 835,575,G 835,640,P 835,712,U',
+    ],
+  },
+  {
+    id: 'w6', tour: 6, name: 'Rainbow Land', th: 'ดินแดนสายรุ้ง', bg: 'bg_w6', img: [1672, 941], ts: 62, size: 'กลาง',
+    districts: [
+      { name: 'Balloon Cove', th: 'อ่าวบอลลูน', color: '#ff8fb3', f: 1.1, label: [420, 330], shops: [['ร้านบอลลูน', 'mart'], ['ร้านสายไหม', 'bakery'], ['ร้านปีกนางฟ้า', 'clothes']] },
+      { name: 'Star Palace', th: 'วังดวงดาว', color: '#ffd54f', f: 1.4, label: [700, 375], shops: [['ร้านดาวตก', 'clothes'], ['ห้างสวรรค์', 'mall']] },
+      { name: 'Moon Terrace', th: 'ระเบียงพระจันทร์', color: '#b39ddb', f: 1.35, label: [970, 375], shops: [['คาเฟ่พระจันทร์', 'cafe'], ['ร้านขนมเมฆ', 'bakery']] },
+      { name: 'Airship Dock', th: 'ท่าเรือเหาะ', color: '#4fc3f7', f: 1.2, label: [1280, 330], shops: [['ร้านเรือเหาะ', 'mart'], ['ร้านแผนที่ฟ้า', 'book'], ['ภัตตาคารเมฆ', 'food']] },
+      { name: 'Sakura Cloud', th: 'เมฆซากุระ', color: '#f48fb1', f: 1.25, label: [1430, 560], shops: [['ร้านต้นไม้ยักษ์', 'mart'], ['ร้านชาซากุระ', 'cafe'], ['คลินิกนางฟ้า', 'clinic']] },
+      { name: 'Carousel Park', th: 'สวนม้าหมุน', color: '#ff9a62', f: 1.45, label: [1150, 780], shops: [['ม้าหมุนหรรษา', 'mall'], ['ร้านป๊อปคอร์น', 'food'], ['ร้านตุ๊กตา', 'book']] },
+      { name: 'Ferris Plaza', th: 'ลานชิงช้าสวรรค์', color: '#7cc576', f: 1.3, label: [520, 780], shops: [['ร้านชิงช้า', 'mall'], ['ร้านเครป', 'bakery'], ['ร้านหมวกรุ้ง', 'clothes'], ['ร้านไอติม', 'cafe']] },
+      { name: 'Rainbow Falls', th: 'น้ำตกสายรุ้ง', color: '#26c6da', f: 1.0, label: [230, 560], shops: [['ร้านน้ำตกรุ้ง', 'onsen'], ['ร้านพลอย', 'clothes']] },
+    ],
+    paths: [
+      '100,258,W', '1570,660,W', '1565,265,W', '100,665,W',
+      '100,258,W 270,272,#1 345,272,H 420,272,#1 515,272,A 595,285,#1 650,320,#2 720,320,#2 765,320,N 835,320,B 905,320,#3 975,320,#3 1040,300,J 1150,272,A 1255,272,#4 1335,272,D 1410,272,#4 1490,272,#4 1565,265,W 1555,345,#5 1565,440,G 1550,530,#5 1560,610,#5 1570,660,W 1500,690,#6 1420,690,S 1340,690,#6 1210,690,N 1135,690,#6 1060,690,F 985,690,A 910,690,#7 835,655,L 760,690,#7 685,690,A 610,690,#7 540,690,#7 470,690,T 400,690,E 320,690,#7 245,690,C 100,665,W 110,580,#8 85,500,G 90,420,J 80,345,#8 >',
+      '835,320,B 835,370,P 835,430,Y 835,535,A 835,655,L',
+    ],
+  },
+];
+MAPS.push.apply(MAPS, TOUR_MAPS);
+// tournament: 6 worlds in order, 1st & 2nd go through. AI gets stronger every world.
+var TOUR_WORLDS = [
+  { tour: 1, target: 22000, rounds: 30, ai: ['beginner', 'normal', 'normal'] },
+  { tour: 2, target: 24000, rounds: 32, ai: ['normal', 'normal', 'advanced'] },
+  { tour: 3, target: 26000, rounds: 34, ai: ['normal', 'advanced', 'advanced'] },
+  { tour: 4, target: 28000, rounds: 36, ai: ['advanced', 'advanced', 'master'] },
+  { tour: 5, target: 30000, rounds: 38, ai: ['advanced', 'master', 'master'] },
+  { tour: 6, target: 32000, rounds: 40, ai: ['master', 'master', 'master'] },
+];
+TOUR_WORLDS.forEach(function (w) { w.map = MAPS.findIndex(function (m) { return m.tour === w.tour; }); });
+// mystery boxes by how far you got: index = worlds cleared before being knocked out; champion gets the top prize
+var TOUR_BOXES = { cleared: [0, 3, 5, 10, 20, 30], champion: 50 };
+
 var TILE_INFO = {
   B: { type: 'bank', name: 'ธนาคาร', icon: ['items', 42] },
   shop: { type: 'shop', name: 'ร้านค้า' },
@@ -336,6 +457,11 @@ var TILE_INFO = {
   Q: { type: 'splot', name: 'ที่ดินบ้านพิเศษ', icon: ['ui', 'build'], color: '#d1b3ff' },
   Z: { type: 'dragon', name: 'ป้อมสู้มังกร', icon: null, color: '#ef5350' },
   J: { type: 'chance', name: 'หีบสมบัติ', icon: null, color: '#ffcc80' },
+  A: { type: 'boost', name: 'ช่องพุ่งเร็ว', icon: null, color: '#5ec8ff' },
+  I: { type: 'ice', name: 'พื้นน้ำแข็งลื่น', icon: null, color: '#b3e5fc' },
+  Y: { type: 'whirl', name: 'วังวนมิติ', icon: null, color: '#9575cd' },
+  N: { type: 'wheel', name: 'วงล้อเสี่ยงโชค', icon: null, color: '#ffb74d' },
+  G: { type: 'gate', name: 'ประตูล็อก', icon: null, color: '#90a4ae' },
   O: { type: 'rollon', name: 'ทอยอีกครั้ง', icon: ['ui', 'd6'], color: '#fff59d' },
 };
 // one-time skills from chance cards (same kind replaces the old one)
@@ -409,6 +535,8 @@ var CARD_DEFS = [
  [97,'Golden Ticket','รับหุ้นฟรี 5 หุ้นและเงิน 500 G','J',74],[98,'Lucky Dice','ทอยลูกเต๋า 2 ครั้ง เลือกผลแล้วเดินต่อ','J',49],
  [99,'Second Chance','ยกเลิกผลเสียจากการ์ดหนึ่งครั้ง','J',46],[100,'Fortune Day','รับ 1,000 G และร้านหนึ่งแห่ง +5%','J',47],
 ];
+// card money is scaled down (CONFIG.cardGoldMult); keep the card text in sync with what is paid
+(function () { var k = 0.8; CARD_DEFS.forEach(function (c) { if (!/รับ|สุ่มรับ|โบนัส/.test(c[2])) return; c[2] = c[2].replace(/(\d{1,3}(?:,\d{3})+|\d{3,5})(?=\s*(?:–|-|G|\s*G))/g, function (m) { var v = Math.round(+m.replace(/,/g, '') * k / 50) * 50; return v.toLocaleString('en-US'); }); }); })();
 var CARD_CATS = { A: 'เงินและโชคลาภ', B: 'ธุรกิจและร้านค้า', C: 'การลงทุนและก่อสร้าง', D: 'โรงแรมและท่องเที่ยว', E: 'หุ้นและตลาดทุน', F: 'การเดินทาง', G: 'คู่แข่งและการซื้อขาย', H: 'ส่วนลดและการป้องกัน', I: 'เหตุการณ์ในเมือง', J: 'โชคดีและโชคร้าย' };
 
 // ---------------- SHOP CATALOG (SHOP SYSTEM spec) ----------------
@@ -484,4 +612,4 @@ var DICE_SKINS = [
 ];
 var DAILY_REWARDS = [{ gold: 500 }, { diamond: 5 }, { item: 'eq_move' }, { gold: 1000 }, { diamond: 10 }, { item: 'eq_lucky', n: 2 }, { gold: 2000, diamond: 10, item: 'SC_cash' }];
 
-if (typeof module !== 'undefined') module.exports = { BUFFS, CONFIG, PLAYER_COLORS, AI_LEVELS, AI_PERSONAS, TEAM_PAL, CHARACTERS, EXTRA_CHARS, JOB_CHARS, GOLD_CHARS, CHAR_SKILLS, BUSINESS, SPECIAL_BUILDINGS, MAPS, TILE_INFO, SUITS, SUIT_GLYPH, SUIT_COLOR, CARD_DEFS, CARD_CATS, EQUIPMENT, SPECIAL_CARDS, PACKAGES, EXCHANGE, DECOS, DICE_SKINS, DAILY_REWARDS };
+if (typeof module !== 'undefined') module.exports = { BUFFS, CONFIG, PLAYER_COLORS, AI_LEVELS, AI_PERSONAS, TEAM_PAL, CHARACTERS, EXTRA_CHARS, JOB_CHARS, GOLD_CHARS, CHAR_SKILLS, BUSINESS, SPECIAL_BUILDINGS, MAPS, TOUR_MAPS, TOUR_WORLDS, TOUR_BOXES, TILE_INFO, SUITS, SUIT_GLYPH, SUIT_COLOR, CARD_DEFS, CARD_CATS, EQUIPMENT, SPECIAL_CARDS, PACKAGES, EXCHANGE, DECOS, DICE_SKINS, DAILY_REWARDS };

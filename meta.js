@@ -107,8 +107,9 @@ var Meta = (function () {
     save(); return r;
   }
   var BOX_BY_RANK = [5, 3, 2, 1];
-  function matchReward(rank, won, nw) {
-    var gold = [4000, 2000, 1200, 600][rank] || 400, dia = won ? 15 : rank === 1 ? 5 : 2, boxes = BOX_BY_RANK[rank] || 1;
+  function addBoxes(n, rare) { P.boxes = (P.boxes || 0) + n; if (rare) P.jackpotNext = 1; save(); }
+  function matchReward(rank, won, nw, noBoxes) {
+    var gold = [4000, 2000, 1200, 600][rank] || 400, dia = won ? 15 : rank === 1 ? 5 : 2, boxes = noBoxes ? 0 : (BOX_BY_RANK[rank] || 1);
     P.gold += gold; P.diamond += dia; P.boxes = (P.boxes || 0) + boxes; P.jackpotNext = rank === 0 ? 1 : 0; P.stats.games++; if (won) P.stats.wins++; P.stats.best = Math.max(P.stats.best, nw);
     P.xp += 100 + (won ? 150 : 0); while (P.xp >= P.level * 300) { P.xp -= P.level * 300; P.level++; }
     P.hist.unshift({ tx: txid(), t: Date.now(), kind: 'reward', name: 'รางวัลจบเกม อันดับ ' + (rank + 1), cur: 'gold', amt: gold });
@@ -141,5 +142,5 @@ var Meta = (function () {
   function charSprite(key) { key = key || 'b0'; return [SHEET[key[0]] || 'chars', +key.slice(1) || 0]; }
   function charName(key) { key = key || 'b0'; var L = NAMES[key[0]] || CHARACTERS, c = L[+key.slice(1)]; return c ? c.name : ''; }
   function charSkill(key) { return CHAR_SKILLS[key] || null; }
-  return { load: load, save: save, reset: reset, get p() { return P; }, all: all, item: item, tags: tags, priceOf: priceOf, owned: owned, buy: buy, exchange: exchange, consume: consume, validLoadout: validLoadout, loginState: loginState, claimLogin: claimLogin, matchReward: matchReward, charSkill: charSkill, skillDesc: skillDesc, openBox: openBox, BOX_BY_RANK: BOX_BY_RANK, charSprite: charSprite, charName: charName, addItem: addItem };
+  return { load: load, save: save, reset: reset, get p() { return P; }, all: all, item: item, tags: tags, priceOf: priceOf, owned: owned, buy: buy, exchange: exchange, consume: consume, validLoadout: validLoadout, loginState: loginState, claimLogin: claimLogin, matchReward: matchReward, addBoxes: addBoxes, charSkill: charSkill, skillDesc: skillDesc, openBox: openBox, BOX_BY_RANK: BOX_BY_RANK, charSprite: charSprite, charName: charName, addItem: addItem };
 })();

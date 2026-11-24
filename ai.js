@@ -16,7 +16,7 @@
         return -g.shopRent(t) * (1 + (g.shopRent(t) > p.cash ? 3 : 0)) / 2;
       case 'chance': return 90; case 'splot': return !t.special ? (p.cash > 2500 ? 140 : 20) : g.mate(t.spOwner, p) ? (t.special === 'sp_party' ? 100 * (g.alive().length - 1) : t.special === 'sp_windmill' ? g.alive().reduce(function (a, q) { return a + (q.id !== p.id ? Math.max(0, q.cash) * 0.05 : 0); }, 0) : t.special === 'sp_portal' ? 200 : 10) : t.special === 'sp_portal' ? -g.netWorth(p) * 0.05 : t.special === 'sp_party' ? -100 * (g.alive().length - 1) : t.special === 'sp_windmill' ? -120 * g.activeBuffs(p).length - (g.loadoutSlots(p).some(function (x) { return !x.used; }) ? 150 : 0) - 120 * D.SUITS.filter(function (k) { return p.suits[k]; }).length : -50; case 'rollon': return 150; case 'switch': return 20; case 'road': return 0; case 'lucky': return 140; case 'superlucky': return 220; case 'tax': return -150;
       case 'casino': return 30; case 'broker': return 60; case 'vacant': return t.special ? (t.spOwner === p.id || t.spOwner < 0 ? 10 : -300) : 50;
-      case 'suit': return (p.suits[t.suit] ? 10 : 160) + 90; case 'rest': return 50; case 'festival': return 60; case 'event': return 60; case 'warp': return 40;
+      case 'suit': return (p.suits[t.suit] ? 10 : 160) + 90; case 'rest': return 50; case 'boost': return 70; case 'ice': return 50; case 'wheel': return 80; case 'whirl': return 20; case 'gate': return -40; case 'festival': return 60; case 'event': return 60; case 'warp': return 40;
     }
     return 0;
   };
@@ -27,12 +27,12 @@
     // biggest rival rent on the board
     var maxRent = 0;
     g.s.tiles.forEach(function (t) { if (t.type === 'shop' && t.owner >= 0 && !g.mate(t.owner, p)) maxRent = Math.max(maxRent, g.shopRent(t)); });
-    var base = lvl === 'advanced' ? 900 + maxRent * 0.8 : 700 + maxRent * 0.5;
+    var base = (lvl === 'advanced' || lvl === 'master') ? 900 + maxRent * 0.8 : 700 + maxRent * 0.5;
     if (p.ai.persona === 'Defensive') base *= 1.5;
     if (p.ai.persona === 'Aggressive') base *= 0.7;
     return base * (AI.reserveMult || 1);
   }
-  function noise(g, p) { return p.ai.level === 'beginner' ? 0.6 : p.ai.level === 'normal' ? 0.25 : 0.05; }
+  function noise(g, p) { return p.ai.level === 'beginner' ? 0.6 : p.ai.level === 'normal' ? 0.25 : p.ai.level === 'master' ? 0 : 0.05; }
 
   function pathScore(g, p, path) {
     var s = 0, suits = Object.assign({}, p.suits), bank = g.bankId();
@@ -93,7 +93,7 @@
     },
     chooseInvest: function (g, p, t, o) {
       var r = reserve(g, p), spare = p.cash - r;
-      var aggr = p.ai.level === 'beginner' ? 0.45 : p.ai.level === 'normal' ? 0.7 : 0.9;
+      var aggr = p.ai.level === 'beginner' ? 0.45 : p.ai.level === 'normal' ? 0.7 : p.ai.level === 'master' ? 1 : 0.9;
       if (p.ai.persona === 'Tycoon' || p.ai.persona === 'Aggressive') aggr += 0.1; if (p.ai.persona === 'Investor') aggr -= 0.1;
       if (spare < 300) return null;
       // best target: highest rent gain per gold (dominated / big districts first)
@@ -104,7 +104,7 @@
     confirmBuyout: function (g, p, t, cost) {
       if (p.ai.level === 'beginner') return false;
       var after = g.ownedIn(p.id, t.district) + 1, n = g.s.districts[t.district].tiles.length;
-      var want = after >= n ? 1 : after >= 2 ? 0.6 : 0.2;
+      var want = after >= n ? 1 : after >= 2 ? 0.6 : 0.2; if (p.ai.level === 'master') want += 0.25;
       if (p.ai.persona === 'Aggressive') want += 0.3;
       return p.cash - cost > reserve(g, p) * 1.3 && g.r() < want;
     },
@@ -116,11 +116,11 @@
       if (p.ai.level === 'beginner' && g.r() < 0.6) return;
       var spare = p.cash - r * 1.2; if (spare < 300) return;
       var frac = p.ai.persona === 'Investor' ? 0.6 : p.ai.persona === 'Defensive' ? 0.15 : 0.3;
-      if (p.ai.level === 'advanced') frac += 0.1;
+      if ((p.ai.level === 'advanced' || p.ai.level === 'master')) frac += 0.1;
       var bestD = -1, bv = -1e9;
       g.s.districts.forEach(function (d, i) {
         var mine = g.ownedIn(p.id, i), val = g.districtValue(i), dom = d.tiles.every(function (id) { return g.tile(id).owner === p.id; });
-        var v = mine * 3 + (dom ? 8 : 0) + (val / 4000) - d.price / 150 + (p.ai.level === 'advanced' ? (d.hist.length > 2 ? (d.price - d.hist[d.hist.length - 3]) / d.price * 10 : 0) : 0);
+        var v = mine * 3 + (dom ? 8 : 0) + (val / 4000) - d.price / 150 + ((p.ai.level === 'advanced' || p.ai.level === 'master') ? (d.hist.length > 2 ? (d.price - d.hist[d.hist.length - 3]) / d.price * 10 : 0) : 0);
         if (g.maxBuyShares(p, i) <= 0) v = -1e9;
         if (v > bv) { bv = v; bestD = i; }
       });
@@ -139,7 +139,7 @@
       if (p.ai.level === 'beginner' || !g.s.gridOwner) return free[Math.floor(g.r() * free.length)];
       // aim for the longest streak of own colour
       var o = g.s.gridOwner, best = free[0], bv = -1;
-      free.forEach(function (c) { o[c] = p.id; var v = g.cardRun(c, p.id) + g.r() * (p.ai.level === 'normal' ? 1.5 : 0.3); o[c] = -1; if (v > bv) { bv = v; best = c; } });
+      free.forEach(function (c) { o[c] = p.id; var v = g.cardRun(c, p.id) + g.r() * (p.ai.level === 'normal' ? 1.5 : p.ai.level === 'master' ? 0 : 0.3); o[c] = -1; if (v > bv) { bv = v; best = c; } });
       return best;
     },
     choose: function (g, p, req) {

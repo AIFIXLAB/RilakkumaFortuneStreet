@@ -91,7 +91,7 @@
       settings: { target: opts.target || C.targetNetWorth, maxRounds: opts.maxRounds || C.maxRounds, startCash: opts.startCash || C.startCash, rules: Object.assign({}, C.rules, opts.rules || {}) },
       players: opts.players.map(function (o, i) {
         return {
-          id: i, name: o.name, char: o.char, costume: o.costume || 'chars', color: (opts.teams && opts.teamInfo && o.team >= 0 && opts.teamInfo[o.team]) ? opts.teamInfo[o.team].c : D.PLAYER_COLORS[i], dice: o.dice || null, isAI: !!o.isAI,
+          id: i, name: o.name, char: o.char, costume: o.costume || 'chars', color: (opts.teams && opts.teamInfo && o.team >= 0 && opts.teamInfo[o.team]) ? opts.teamInfo[o.team].c : (o.color || D.PLAYER_COLORS[i]), dice: o.dice || null, isAI: !!o.isAI,
           ai: { level: o.aiLevel || 'normal', persona: o.persona || 'Balanced' },
           team: (opts.teams && o.team >= 0) ? o.team : -1,
           cash: (opts.startCash || C.startCash) + ((D.CHAR_SKILLS && D.CHAR_SKILLS[o.char] && D.CHAR_SKILLS[o.char].fx.startCash) || 0), pos: bank.id, prev: null, level: 1, suits: {}, shares: b.districts.map(function () { return 0; }),
@@ -255,6 +255,7 @@
 
   // ---------- Money ----------
   P.gain = async function (p, amt, why, event) {
+    if (this._inCard && C.cardGoldMult) amt = Math.round(amt * C.cardGoldMult / 10) * 10;
     amt = Math.round(amt); if (amt <= 0) return 0;
     var gb = this._inCard ? this.cs(p, 'cardGold') : this.cs(p, 'tileGold'); if (gb) { var add = Math.round(amt * gb); amt += add; this.log('✨ สกิลตัวละคร ' + p.name + ' +' + fmt(add) + ' G'); }
     if (event) { var u = await this.offerReactive(p, 'gain', { amt: amt, why: why }); if (u) { var extra = Math.min(amt, 3000); amt += extra; this.log('✨ Double Coin! +' + fmt(extra) + ' G'); } }
@@ -505,6 +506,10 @@
         t.toll = (t.toll || 100) + 10;
       }
     }
+    if (t.type === 'gate') {
+      if (D.SUITS.every(function (k) { return p.suits[k]; })) { this.log('🔓 ' + p.name + ' มีสัญลักษณ์ครบ 4 — ผ่านประตูล็อกฟรี'); }
+      else { var gf = C.gateFee; this.log('🔐 ' + p.name + ' จ่ายค่าเปิดประตูล็อก ' + fmt(gf) + ' G'); if (this.io.toast) this.io.toast('🔐 ' + p.name + ' จ่ายค่าเปิดประตู ' + fmt(gf) + ' G'); await this.lose(p, gf, 'ค่าเปิดประตูล็อก'); this.s.taxPool += gf; }
+    }
     if (t.special === 'toll' && t.spOwner >= 0 && t.spOwner !== p.id) {
       if (p.flags.freeRide) { p.flags.freeRide = 0; this.log('🚕 Free Ride — ไม่ต้องจ่ายค่าผ่านทาง'); }
       else { var fee = Math.min(500, 100 + 20 * Math.floor(this.s.round / 2)); var owner = this.s.players[t.spOwner]; await this.lose(p, fee, 'ค่าผ่านทาง ' + owner.name); if (!owner.bankrupt) owner.cash += fee; }
@@ -584,6 +589,37 @@
         if (fwd !== undefined) p.prev = fwd;
         this.log('🔄 ' + p.name + ' ตกช่องสลับ — เทิร์นหน้าเดินกลับทิศ!');
         if (io.toast) io.toast('🔄 ' + p.name + ' สลับทิศเดิน!');
+        break;
+      }
+      case 'boost': case 'ice': {
+        var nb = t.type === 'boost' ? C.boostSteps : C.iceSteps;
+        p.flags.boostChain = (p.flags.boostChain || 0) + 1; if (p.flags.boostChain > 3) { p.flags.boostChain = 0; break; }
+        this.log((t.type === 'boost' ? '⏩ ' + p.name + ' พุ่งไปข้างหน้าอีก ' : '⛸️ ' + p.name + ' ลื่นไถลไปอีก ') + nb + ' ช่อง!');
+        if (io.toast) io.toast(t.type === 'boost' ? '⏩ ' + p.name + ' พุ่งไปอีก ' + nb + ' ช่อง!' : '⛸️ ' + p.name + ' ลื่นไถลไปอีก ' + nb + ' ช่อง!');
+        await this.move(p, nb); if (!s.over && !p.bankrupt) await this.land(p);
+        p.flags.boostChain = 0;
+        break;
+      }
+      case 'whirl': {
+        var pool2 = s.tiles.filter(function (x) { return x.id !== t.id && x.type !== 'bank' && x.type !== 'road' && x.type !== 'whirl' && x.type !== 'warp'; });
+        var dst = pool2[Math.floor(this.r() * pool2.length)].id, from2 = p.pos;
+        this.log('🌀 ' + p.name + ' ถูกวังวนดูดไปโผล่ที่ ' + (this.tile(dst).name || 'ช่องอื่น') + '!');
+        if (io.toast) io.toast('🌀 วังวนดูด ' + p.name + ' ไปอีกที่!');
+        p.pos = dst; p.prev = null; if (io.teleport) await io.teleport(p, from2, dst);
+        if (!s.over && !p.bankrupt) await this.land(p);
+        break;
+      }
+      case 'wheel': {
+        var W = C.wheel, tot = W.reduce(function (a, x) { return a + x[0]; }, 0), rr = this.r() * tot, k3 = 0;
+        for (; k3 < W.length; k3++) { rr -= W[k3][0]; if (rr <= 0) break; }
+        k3 = Math.min(k3, W.length - 1); var out = W[k3];
+        if (io.wheel) await io.wheel(p, k3);
+        if (out[1] === 'g') await this.gain(p, out[2], 'วงล้อเสี่ยงโชค', true);
+        else if (out[1] === 'l') await this.lose(p, out[2], 'วงล้อเสี่ยงโชค');
+        else if (out[1] === 'card') await this.drawChance(p);
+        else if (out[1] === 'stock') { var dd = Math.floor(this.r() * s.districts.length); p.shares[dd] += 5; this.log('📈 ' + p.name + ' ได้หุ้นฟรี 5 หุ้น เขต ' + s.districts[dd].th); }
+        else if (out[1] === 'warp') { var pool3 = s.tiles.filter(function (x) { return x.type === 'shop' && x.owner < 0; }); if (!pool3.length) pool3 = s.tiles.filter(function (x) { return x.type === 'lucky' || x.type === 'superlucky'; }); if (pool3.length) { var d3 = pool3[Math.floor(this.r() * pool3.length)].id, f3 = p.pos; p.pos = d3; p.prev = null; if (io.teleport) await io.teleport(p, f3, d3); await this.land(p); } }
+        else if (out[1] === 'again') { var r3 = io.rollDice && !p.isAI ? await io.rollDice(p) : this.dice(); if (io.showDice && (p.isAI || !io.rollDice)) await io.showDice(p, r3); this.log('🎲 ' + p.name + ' ทอยต่อได้ ' + r3 + ' แต้ม'); await this.move(p, r3); if (!s.over && !p.bankrupt) await this.land(p); }
         break;
       }
       case 'rollon': {

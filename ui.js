@@ -51,9 +51,13 @@
   document.addEventListener('click', function (e) { if (e.target.closest('button,.opt,.tab,.hot')) sfx('tap'); }, true);
 
   // ---------- MODAL (queued, promise-based) ----------
-  var mq = Promise.resolve(), modalOpen = false;
+  var mq = Promise.resolve(), modalOpen = false, mgen = 0;
+  // drop every queued popup (used when a match ends: nothing from the old game may block the result screen)
+  U.flushModals = function () { mgen++; if (U._closeModal) U._closeModal(); $('#modal').classList.remove('on'); modalOpen = false; mq = Promise.resolve(); };
   function modal(o) {
+    var myGen = mgen;
     var run = function () {
+      if (myGen !== mgen) return Promise.resolve(null);
       return new Promise(function (resolve) {
         var box = $('#modalBox'), M = $('#modal'); modalOpen = true;
         box.style.width = o.width ? o.width + 'px' : ''; box.style.background = o.bg || '';
@@ -107,7 +111,8 @@
     if (act === 'play') playMenu(false);
     else if (act === 'ai') playMenu(true);
     else if (act === 'online') onlineMenu();
-    else if (act === 'tour') alertBox('🏆 ทัวร์นาเมนต์', 'จะเปิดหลังระบบออนไลน์พร้อม — ระหว่างนี้ลองเล่น “Long Match” กับ AI ระดับ Advanced ได้เลย!');
+    else if (act === 'tour') Tour.open();
+    else if (act === 'tourOld') alertBox('🏆 ทัวร์นาเมนต์', 'จะเปิดหลังระบบออนไลน์พร้อม — ระหว่างนี้ลองเล่น “Long Match” กับ AI ระดับ Advanced ได้เลย!');
     else if (act === 'shop') openShop('rec');
     else if (act === 'boxes') boxModal().then(renderMenu);
     else if (act === 'login') dailyLogin();
@@ -139,7 +144,7 @@
   }
   function backBtns() { document.querySelectorAll('.backbtn').forEach(function (b) { if (!b.innerHTML) b.innerHTML = spr(['ui', 'prev'], 70, 70); }); }
   backBtns();
-  document.querySelectorAll('[data-back]').forEach(function (b) { b.onclick = function () { show(b.dataset.back || 'menu'); }; });
+  document.querySelectorAll('[data-back]').forEach(function (b) { b.onclick = function () { if (U.tourPending && b.closest('#loadout')) { U.tourPending = false; if (U.selBak) { U.sel.map = U.selBak.map; U.sel.slots = U.selBak.slots; U.selBak = null; } Tour.hub(); return; } show(b.dataset.back || 'menu'); }; });
 
   function dailyLogin() {
     var ls = Meta.loginState();
@@ -211,7 +216,10 @@
   // SETUP
   // =====================================================================
   var LENGTHS = [{ n: 'Quick', t: 25000, d: '~25 รอบ' }, { n: 'Standard', t: 40000, d: '~40 รอบ' }, { n: 'Long', t: 60000, d: '~50 รอบ' }, { n: 'Marathon', t: 100000, d: '~70 รอบ' }];
-  U.rules = { target: 40000, rounds: 100, tax: false, endOnBankrupt: true };
+  U.rules = { target: 40000, rounds: 100, tax: false, endOnBankrupt: true, cash: 10000 };
+  // give every player a different colour: preferred palette index first, then the next free colours
+  function assignColors(prefs) { var used = {}, out = []; prefs.forEach(function (pi, i) { var k = (pi >= 0 && !used[pi]) ? pi : -1; if (k < 0) for (var j = 0; j < TEAM_PAL.length; j++) { var c = [0, 1, 5, 3, 2, 4, 6][j]; if (!used[c]) { k = c; break; } } used[k] = 1; out.push(TEAM_PAL[k].c); }); return out; }
+  U.assignColors = assignColors;
   try { var rs = JSON.parse(localStorage.getItem('rfs_rules') || 'null'); if (rs) Object.assign(U.rules, rs); } catch (e) { }
   function saveRules() { try { localStorage.setItem('rfs_rules', JSON.stringify(U.rules)); } catch (e) { } }
   function openSetup(vsAI) {
@@ -234,9 +242,9 @@
         '<div class="row" style="justify-content:center;cursor:pointer;margin:6px 0" data-ch="' + i + '">' + charSp + '</div>' +
         (s.type === 'ai' ? '<div class="seg">' + AI_LEVELS.map(function (l, k) { return '<div data-lv="' + i + ':' + k + '" class="' + (s.lv === k ? 'on' : '') + '">' + l.name + '</div>'; }).join('') + '</div>' : s.type === 'human' ? '<div style="text-align:center;font-weight:800">' + (i === 0 ? esc(Meta.p.name) + ' • ใช้ Loadout ของคุณ' : 'เล่นบนเครื่องเดียวกัน (Hot-seat)') + '</div>' : '<div style="text-align:center" class="muted">ไม่มีผู้เล่น</div>') + '</div>';
     }).join('');
-    document.querySelectorAll('[data-ty]').forEach(function (e) { e.onclick = function () { var a = e.dataset.ty.split(':'); var s = sel.slots[+a[0]]; s.type = a[1]; if (s.type === 'ai' && s.lv === undefined) s.lv = 1; if (s.type !== 'human') s.char = null; renderSetup(); }; });
+    document.querySelectorAll('[data-ty]').forEach(function (e) { e.onclick = function () { var a = e.dataset.ty.split(':'); var s = sel.slots[+a[0]]; s.type = a[1]; if (s.type === 'ai' && s.lv === undefined) s.lv = 1; if (s.type === 'off') s.char = null; renderSetup(); }; });
     document.querySelectorAll('[data-lv]').forEach(function (e) { e.onclick = function () { var a = e.dataset.lv.split(':'); sel.slots[+a[0]].lv = +a[1]; renderSetup(); }; });
-    document.querySelectorAll('[data-ch]').forEach(function (e) { e.onclick = function () { var i = +e.dataset.ch; if (sel.slots[i].type !== 'human' || i === 0) { if (i === 0) toast('เลือกตัวละครของคุณในหน้าถัดไป (Pre-Match Setup)'); return; } pickCharModal(i); }; });
+    document.querySelectorAll('[data-ch]').forEach(function (e) { e.onclick = function () { var i = +e.dataset.ch; if (sel.slots[i].type === 'off' || i === 0) { if (i === 0) toast('เลือกตัวละครของคุณในหน้าถัดไป (Pre-Match Setup)'); return; } pickCharModal(i); }; });
     renderRules();
   }
   function renderRules() {
@@ -245,27 +253,36 @@
       '<button class="small rbtn" data-tg="-5000">−5,000</button><button class="small rbtn" data-tg="-1000">−1,000</button>' +
       '<input class="tgt" id="tgtIn" inputmode="numeric" value="' + fmt(R.target) + '">' +
       '<button class="small rbtn" data-tg="1000">+1,000</button><button class="small rbtn" data-tg="5000">+5,000</button>' +
-      '<span class="muted" style="font-size:13px;font-weight:700">(เงินเริ่มต้น 10,000 G • ตั้งได้ 15,000–999,000)</span></div>' +
+      '<span class="muted" style="font-size:13px;font-weight:700">(ตั้งได้ 15,000–999,000)</span></div>' +
       '<div class="row" style="margin-top:8px;align-items:center"><b>ปุ่มลัด:</b>' + LENGTHS.map(function (l) { return '<button class="small rbtn ' + (R.target === l.t ? 'on' : '') + '" data-tp="' + l.t + '">' + l.n + ' ' + fmt(l.t) + ' <span style="font-size:11px">' + l.d + '</span></button>'; }).join('') + '</div>' +
       '<div class="row" style="margin-top:10px;align-items:center;gap:12px"><b>กติกา:</b>' +
       '<div class="tog ' + (R.tax ? 'on' : '') + '" data-rule="tax"><i></i>มีภาษี (ช่องภาษี/ภาษีทรัพย์สิน/ค่าธรรมเนียมหุ้น)</div>' +
       '<div class="tog ' + (R.endOnBankrupt ? 'on' : '') + '" data-rule="endOnBankrupt"><i></i>มีคนล้มละลาย = จบเกม (แบบเกมจริง)</div>' +
-      '<span>รอบสูงสุด</span>' + [50, 100, 200].map(function (n) { return '<button class="small rbtn ' + (R.rounds === n ? 'on' : '') + '" data-rd="' + n + '">' + n + '</button>'; }).join('') + '</div>';
+      '</div>' +
+      '<div class="row" style="margin-top:8px;align-items:center;gap:6px;flex-wrap:wrap"><b>จำนวนรอบ:</b>' + [30, 50, 100, 150, 200, 0].map(function (n) { return '<button class="small rbtn ' + (R.rounds === n ? 'on' : '') + '" data-rd="' + n + '">' + (n || '♾️ ไม่จำกัด') + '</button>'; }).join('') + '<input id="rdIn" type="number" value="' + (R.rounds || 0) + '" style="width:74px;font-size:16px;padding:4px 6px;border:2px solid #6b4226;border-radius:10px;font-family:inherit"> รอบ</div>' +
+      '<div class="row" style="margin-top:8px;align-items:center;gap:6px;flex-wrap:wrap"><b>เงินเริ่มต้น:</b>' + [5000, 10000, 15000, 20000, 30000].map(function (n) { return '<button class="small rbtn ' + ((R.cash || 10000) === n ? 'on' : '') + '" data-cs="' + n + '">' + fmt(n) + '</button>'; }).join('') + '<input id="csIn" type="number" value="' + (R.cash || 10000) + '" style="width:96px;font-size:16px;padding:4px 6px;border:2px solid #6b4226;border-radius:10px;font-family:inherit"> G</div>' +
+      '<div class="row" style="margin-top:8px;align-items:center;gap:4px;flex-wrap:wrap"><b>สีของคุณ:</b>' + colorDots(Meta.p.color || 0, 'pc') + '</div>';
     var clampT = function (v) { return Math.max(15000, Math.min(999000, Math.round(v / 1000) * 1000)); };
     box.querySelectorAll('[data-tg]').forEach(function (b) { b.onclick = function () { R.target = clampT(R.target + +b.dataset.tg); saveRules(); renderRules(); }; });
     box.querySelectorAll('[data-tp]').forEach(function (b) { b.onclick = function () { R.target = +b.dataset.tp; saveRules(); renderRules(); }; });
     box.querySelectorAll('[data-rd]').forEach(function (b) { b.onclick = function () { R.rounds = +b.dataset.rd; saveRules(); renderRules(); }; });
+    box.querySelectorAll('[data-cs]').forEach(function (b) { b.onclick = function () { R.cash = +b.dataset.cs; saveRules(); renderRules(); }; });
+    box.querySelectorAll('[data-pc]').forEach(function (b) { b.onclick = function () { Meta.p.color = +b.dataset.pc; Meta.save(); renderRules(); }; });
+    box.querySelector('#rdIn').onchange = function () { var v = Math.round(+this.value || 0); R.rounds = v <= 0 ? 0 : Math.max(5, Math.min(9999, v)); saveRules(); renderRules(); };
+    box.querySelector('#csIn').onchange = function () { R.cash = Math.max(1000, Math.min(999999, Math.round(+this.value || 10000))); saveRules(); renderRules(); };
     box.querySelectorAll('[data-rule]').forEach(function (b) { b.onclick = function () { R[b.dataset.rule] = !R[b.dataset.rule]; saveRules(); renderRules(); }; });
     var inp = box.querySelector('#tgtIn');
     inp.onfocus = function () { inp.value = R.target; inp.select(); };
     inp.onchange = inp.onblur = function () { var v = parseInt(String(inp.value).replace(/[^0-9]/g, ''), 10); if (v) { R.target = clampT(v); saveRules(); } renderRules(); };
     inp.onkeydown = function (e) { if (e.key === 'Enter') inp.blur(); };
   }
+  function colorDots(cur, attr, off) { return TEAM_PAL.map(function (c, ci) { return '<span class="tcdot' + (ci === cur ? ' on' : '') + (off === ci ? ' off' : '') + '" data-' + attr + '="' + ci + '" title="' + c.n + '" style="background:' + c.c + '"></span>'; }).join(''); }
+  U.colorDots = colorDots;
   function pickCharModal(i) {
     var taken = U.sel.slots.map(function (s, k) { return k !== i ? s.char : null; });
-    var keys = ['b0', 'b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7'];
-    modal({ title: 'เลือกตัวละคร P' + (i + 1), width: 900, body: '<div class="charpick">' + keys.map(function (k) { var dis = taken.indexOf(k) >= 0; return '<div class="charbtn ' + (dis ? 'lock' : '') + '" data-k="' + k + '">' + spr(Meta.charSprite(k, 'chars'), 80, 84) + '</div>'; }).join('') + '</div>', mount: function (box, close) { box.querySelectorAll('[data-k]').forEach(function (e) { e.onclick = function () { if (!e.classList.contains('lock')) close(e.dataset.k); }; }); } })
-      .then(function (k) { if (k) { U.sel.slots[i].char = k; renderSetup(); } });
+    var keys = allCharKeys();
+    modal({ title: 'เลือกตัวละคร P' + (i + 1), width: 900, body: '<div class="charpick">' + keys.map(function (k) { var dis = taken.indexOf(k) >= 0; return '<div class="charbtn ' + (dis ? 'lock' : '') + '" data-k="' + k + '">' + spr(Meta.charSprite(k, 'chars'), 80, 84) + '</div>'; }).join('') + '</div>', buttons: [{ t: '🎲 สุ่มตัวละคร', v: 'rnd', cls: 'pink' }], mount: function (box, close) { box.querySelectorAll('[data-k]').forEach(function (e) { e.onclick = function () { if (!e.classList.contains('lock')) close(e.dataset.k); }; }); } })
+      .then(function (k) { if (k) { U.sel.slots[i].char = k === 'rnd' ? null : k; renderSetup(); } });
   }
   $('#toLoadout').onclick = function () {
     var n = U.sel.slots.filter(function (s) { return s.type !== 'off'; }).length;
@@ -326,25 +343,26 @@
     });
   }
   $('#btnStart').onclick = function () {
+    if (U.tourPending && Tour.load()) { var e0 = Meta.p.equip; if (e0.eq.length !== new Set(e0.eq).size) { toast('ห้ามติดตั้งอุปกรณ์ชิ้นเดียวกันซ้ำ'); return; } Tour.startWorld(); return; }
     var P = Meta.p, e = P.equip, v = Meta.validLoadout();
     if (e.eq.length !== new Set(e.eq).size) { toast('ห้ามติดตั้งอุปกรณ์ชิ้นเดียวกันซ้ำ'); return; }
     if (!P.chars[e.char]) { toast('ต้องเลือกตัวละครที่ปลดล็อกแล้ว'); return; }
     var R = U.rules, slots = U.sel.slots;
     var usedChars = [e.char]; slots.slice(1).forEach(function (s) { if (s.char) usedChars.push(s.char); });
-    var pool = ['b0', 'b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7'].filter(function (k) { return usedChars.indexOf(k) < 0; });
-    var aiNames = ['คุมะ AI', 'โคริ AI', 'คิอิโระ AI', 'ชาอิ AI', 'เนโกะ AI', 'ริสุ AI', 'เพนกิ AI', 'ชิกะ AI'];
+    var pool = allCharKeys().filter(function (k) { return usedChars.indexOf(k) < 0; });
     var players = [], hn = 1;
     slots.forEach(function (s, i) {
       if (s.type === 'off') return;
       var ch = i === 0 ? e.char : (s.char || pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
       if (i !== 0 && s.type === 'human') hn++;
       players.push({
-        name: i === 0 ? P.name : s.type === 'human' ? 'ผู้เล่น ' + (i + 1) : aiNames[+ch.slice(1)] || ('AI ' + (i + 1)), char: ch, costume: i === 0 ? e.costume : 'chars', isAI: s.type === 'ai',
-        aiLevel: s.type === 'ai' ? AI_LEVELS[s.lv].id : null, persona: AI_PERSONAS[Math.floor(Math.random() * AI_PERSONAS.length)],
+        name: i === 0 ? P.name : s.type === 'human' ? 'ผู้เล่น ' + (i + 1) : Meta.charName(ch) + ' AI', char: ch, costume: i === 0 ? e.costume : 'chars', isAI: s.type === 'ai',
+        aiLevel: s.type === 'ai' ? (AI_LEVELS[s.lv] || AI_LEVELS[1]).id : null, persona: AI_PERSONAS[Math.floor(Math.random() * AI_PERSONAS.length)],
         loadout: i === 0 ? { eq: v.eq, sc: v.sc } : null, owner: i === 0,
       });
     });
-    var s = Game.create({ mapIdx: U.sel.map, players: players, target: R.target, maxRounds: R.rounds, rules: { tax: R.tax, endOnBankrupt: R.endOnBankrupt }, seed: Math.floor(Math.random() * 1e9) });
+    var cols = assignColors(players.map(function (q, k) { return k === 0 ? (Meta.p.color || 0) : -1; })); players.forEach(function (q, k) { q.color = cols[k]; });
+    var s = Game.create({ mapIdx: U.sel.map, players: players, target: R.target, startCash: R.cash || 10000, maxRounds: R.rounds > 0 ? R.rounds : 9999, rules: { tax: R.tax, endOnBankrupt: R.endOnBankrupt }, seed: Math.floor(Math.random() * 1e9) });
     s.ownerIdx = 0; s.dice = P.equip.dice; s.lenName = 'เป้า ' + fmt(R.target);
     startGame(s, true);
   };
@@ -430,7 +448,7 @@
       var btn = box.querySelector('.mbtns button'), left = s.players.length;
       s.players.forEach(function (p) {
         var sp = spinner(box.querySelector('#od' + p.id), 70, diceTint(p));
-        var stop = function () { if (res[p.id]) return; res[p.id] = sp.stop(); sfx('card'); box.querySelector('#ol' + p.id).innerHTML = '<b style="font-size:22px">' + res[p.id] + ' แต้ม</b>'; if (--left === 0) { btn.disabled = false; finalize(); } };
+        var stop = function () { if (res[p.id]) return; res[p.id] = sp.stop(); sfx('card'); var ol = box.querySelector('#ol' + p.id); if (!ol) return; ol.innerHTML = '<b style="font-size:22px">' + res[p.id] + ' แต้ม</b>'; if (--left === 0) { btn.disabled = false; finalize(); } };
         if (p.isAI || U.online) setTimeout(stop, 700 + Math.random() * 1600);
         else { box.querySelector('#ob' + p.id).onclick = stop; box.querySelector('#od' + p.id).onclick = stop; }
       });
@@ -508,6 +526,7 @@
       else if (k === 'follow') { CAM.follow = !CAM.follow; b.classList.toggle('on', CAM.follow); toast(CAM.follow ? '🎯 กล้องติดตามตัวละคร (เมื่อซูม)' : 'ปิดการติดตาม'); }
     });
   })();
+  var TOUR_ICON = { chance: '🃏', lucky: '⭐', superlucky: '🌟', tax: '🧾', casino: '🎰', broker: '📈', rest: '♨️', festival: '🎉', event: '❗', boost: '⏩', ice: '⛸️', whirl: '🌀', wheel: '🎡', gate: '🔐', switch: '🔄', warp: '🌀' };
   function tileHTML(t) {
     var g = U.g, s = g.s, T = BT, html = '', style = '', cls = 'ptile', fs = Math.max(8.5, T * 0.21);
     var lbl = function (txt, col) { return '<div class="lbl" style="font-size:' + fs + 'px;line-height:' + (fs * 1.35) + 'px;' + (col ? 'border-color:' + col : '') + '">' + txt + '</div>'; };
@@ -536,6 +555,8 @@
       var b = SPECIAL_BUILDINGS.find(function (x) { return x.id === t.special; }), ow = s.players[t.spOwner];
       style += ow ? 'border:' + Math.max(3, T * 0.09) + 'px solid ' + ow.color + ';background:' + hexA(ow.color, .3) + ';' : '';
       html = '<div class="bld">' + spr(b.spr, T * 1.05, T * 0.95) + '</div>' + (ow ? '<div class="own" style="border-color:' + ow.color + ';width:' + T * 0.5 + 'px;height:' + T * 0.5 + 'px">' + spr(charSpec(ow), T * 0.42, T * 0.42) + '</div>' : '') + lbl(b.th);
+    } else if (MAPS[s.mapIdx].tour && TOUR_ICON[t.type]) {
+      html = '<div class="tbadge" style="font-size:' + T * 0.42 + 'px">' + TOUR_ICON[t.type] + '</div>' + (t.type === 'gate' ? lbl('🔐 ' + fmt(CONFIG.gateFee), '#607d8b') : '');
     } else if (t.type === 'dragon') {
       cls += ' dragon'; html = lbl('🐉 ' + fmt(s.dragonPot || 0), '#e53935');
     } else if (t.ov && t.type === 'road') {
@@ -609,7 +630,7 @@
         '<div class="ptop"><span class="pno"' + (s.teams && p.team >= 0 ? ' style="background:' + TI(s, p.team).c + ';color:#fff" title="ทีม' + TI(s, p.team).n + '"' : '') + '>' + (s.teams && p.team >= 0 ? TI(s, p.team).e : '') + 'P' + (p.id + 1) + '</span><span class="nm">' + esc(p.name) + '</span></div>' +
         '<div class="cash coin">' + fmt(p.cash) + '</div>' +
         '<span class="nwpill">ทรัพย์สิน ' + fmt(g.netWorth(p)) + '</span>' + (s.teams && p.team >= 0 ? '<span class="teamsum" style="background:' + TI(s, p.team).c + '">' + TI(s, p.team).e + ' ทีมรวม ' + fmt(g.teamWorth(p)) + '</span>' : '') +
-        '<div class="lvl">' + (p.seat && !p.remote ? '<span style="color:#d0342c">📴 หลุด</span> • ' : '') + 'Lv' + p.level + (p.isAI ? ' • AI ' + { beginner: 'Easy', normal: 'Normal', advanced: 'Adv' }[p.ai.level] : '') + '</div>' +
+        '<div class="lvl">' + (p.seat && !p.remote ? '<span style="color:#d0342c">📴 หลุด</span> • ' : '') + 'Lv' + p.level + (p.isAI ? ' • AI ' + { beginner: 'ง่าย', master: 'เก่งโคตร', normal: 'ปานกลาง', advanced: 'เก่ง' }[p.ai.level] : '') + '</div>' +
         '<div class="suits">' + SUITS.map(function (k) { return '<span class="' + (p.suits[k] ? 'on' : '') + '" style="' + (p.suits[k] ? 'color:' + SUIT_COLOR[k] : '') + '">' + SUIT_GLYPH[k] + '</span>'; }).join('') + '</div>' +
         (function () { var b = g.activeBuffs(p); return b.length ? '<div class="buffrow" data-bf="' + p.id + '" title="สกิลที่มีอยู่">' + b.map(function (x) { return '<span>' + x[1] + '</span>'; }).join('') + '</div>' : ''; })() +
         '<div class="rankb">' + spr(['ui', 'rank' + rk], 92, 30) + '</div></div>';
@@ -691,6 +712,11 @@
       suit: 'เดินผ่านหรือหยุดเพื่อเก็บสัญลักษณ์ ' + SUIT_GLYPH[t.suit] + ' — ครบ 4 แบบแล้วกลับธนาคารเพื่อรับเงินเดือน • หยุดตรงช่องนี้พอดีได้เปิดการ์ด!', chance: 'เปิดการ์ด 1 ใบจากตาราง 100 ช่อง', lucky: 'รับเงินจากกองภาษีเมือง 50% (ขั้นต่ำ ' + CONFIG.luckyMin + ' G) • กองตอนนี้ ' + fmt(s.taxPool) + ' G', superlucky: 'รับกองภาษีเมืองทั้งหมด (ขั้นต่ำ ' + CONFIG.superLuckyMin + ' G) • กองตอนนี้ ' + fmt(s.taxPool) + ' G',
       tax: 'จ่ายภาษี 300 G หรือ 3% ของเงินสด (สูงสุด 1,000 G)', casino: 'เล่นสล็อตแมชชีน (เดิมพัน 100–500 G รางวัลสูงสุด 2,500 G)', broker: 'ซื้อ/ขายหุ้นทุกเขต', vacant: t.special ? SPECIAL_BUILDINGS.find(function (b) { return b.id === t.special; }).desc + (t.spOwner >= 0 ? ' • เจ้าของ: ' + s.players[t.spOwner].name : '') : 'ซื้อที่ดินและสร้างอาคารพิเศษ: ด่านเก็บเงิน, ที่จอดรถ, สวนดอกไม้, ตลาด, โรงแรม, ออนเซ็น',
       splot: t.special ? (SPECIAL_BUILDINGS.find(function (x) { return x.id === t.special; }).desc + (t.spOwner >= 0 ? ' • เจ้าของ: ' + s.players[t.spOwner].name : '') + (t.special === 'sp_toll' ? ' • ค่าผ่านทางตอนนี้ ' + fmt(t.toll || 100) + ' G' : '')) : 'ตกช่องนี้ = สร้างบ้านพิเศษได้ 1 ใน 4 แบบ: ประตูทะลุมิติ, บ้านปาร์ตี้, ประตูเก็บค่าผ่านทาง, บ้านกังหันลม',
+      boost: 'ตกแล้วพุ่งไปข้างหน้าอีก ' + CONFIG.boostSteps + ' ช่อง',
+      ice: 'ตกแล้วลื่นไถลต่ออีก ' + CONFIG.iceSteps + ' ช่อง',
+      whirl: 'ตกแล้วถูกวังวนดูดไปโผล่ช่องสุ่มบนแผนที่',
+      wheel: 'หมุนวงล้อ: ได้เงิน / เสียเงิน / เปิดการ์ด / หุ้นฟรี / ทอยต่อ / วาร์ป',
+      gate: 'เดินผ่านต้องจ่าย ' + fmt(CONFIG.gateFee) + ' G เข้ากองภาษีเมือง (มีสัญลักษณ์ครบ 4 ผ่านฟรี)',
       dragon: 'วางเดิมพัน 100/300/500/1,000 G แล้วโจมตีมังกร! โดน = ได้เงินสะสมทั้งหมด (ตอนนี้ ' + fmt(s.dragonPot || 0) + ' G) • พลาด = เงินเข้ากองสะสม แล้วถูกลมพัดไปช่องสุ่ม',
       warp: 'หยุดแล้ววาร์ปไปอีกฝั่งของแผนที่', switch: 'ตกช่องนี้แล้วทิศทางเดินจะกลับด้าน (เทิร์นหน้าเดินย้อนกลับ)', rollon: 'ตกช่องลูกเต๋า = ได้ทอยลูกเต๋าอีกครั้งทันที!', road: 'ทางเชื่อม', rest: 'พักผ่อน รับ ' + CONFIG.restBonus + ' G', festival: 'งานเทศกาล — ขายของได้เงิน หรือเป็นเจ้าภาพจ่ายให้ทุกคน', event: 'เหตุการณ์ในเมืองแบบสุ่ม (การ์ดหมวด I)',
     }[t.type];
@@ -782,6 +808,11 @@
     if (t.type === 'bank') return '📍 <b>ธนาคาร</b><br>' + (Game.suitsDone(p) ? 'เลื่อนระดับ + เงินเดือน ' + fmt(g.salary(p)) + ' G!' : 'ซื้อหุ้น • เลือกทิศได้อิสระ');
     if (t.type === 'splot') { if (!t.special) return '📍 <b>ที่ดินบ้านพิเศษ</b><br>สร้างบ้านพิเศษได้!'; var sb2 = SPECIAL_BUILDINGS.find(function (x) { return x.id === t.special; }); if (t.spOwner === p.id) return '📍 ' + sb2.th + ' (ของคุณ)' + (t.special === 'sp_portal' ? '<br><span style="color:#2c8a2c">🌀 วาร์ปฟรีไปช่องไหนก็ได้!</span>' : t.special === 'sp_party' ? '<br><span style="color:#2c8a2c">🎉 จัดปาร์ตี้ ทุกคนจ่ายคุณคนละ 100 G</span>' : t.special === 'sp_windmill' ? '<br><span style="color:#2c8a2c">🌪️ ขโมยเงิน 5% จากทุกคน</span>' : ''); return '📍 <b>' + sb2.th + '</b> ของ ' + esc(s.players[t.spOwner].name) + '<br><span style="color:#d0342c">' + (t.special === 'sp_portal' ? 'จ่าย 5–10% ของทรัพย์สิน' : t.special === 'sp_party' ? 'ทุกคนจ่ายคนละ 100 G' : t.special === 'sp_toll' ? 'จ่าย ' + fmt(t.toll || 100) + ' G' : 'สกิลการ์ด 2 + สัญลักษณ์ 1 + การ์ดพิเศษ 1 ปลิวหาย!') + '</span>'; }
     if (t.type === 'switch') return '📍 <b>ช่องสลับ 🔄</b><br>เทิร์นหน้าจะเดินกลับทิศ';
+    if (t.type === 'boost') return '📍 <b>ช่องพุ่งเร็ว ⏩</b><br>พุ่งต่ออีก ' + CONFIG.boostSteps + ' ช่อง';
+    if (t.type === 'ice') return '📍 <b>พื้นน้ำแข็งลื่น ⛸️</b><br>ไถลต่ออีก ' + CONFIG.iceSteps + ' ช่อง';
+    if (t.type === 'whirl') return '📍 <b>วังวนมิติ 🌀</b><br>ถูกดูดไปช่องสุ่ม!';
+    if (t.type === 'wheel') return '📍 <b>วงล้อเสี่ยงโชค 🎡</b><br>หมุนลุ้นรางวัล';
+    if (t.type === 'gate') return '📍 <b>ประตูล็อก 🔐</b><br>จ่าย ' + fmt(CONFIG.gateFee) + ' G (มีสัญลักษณ์ครบ 4 = ฟรี)';
     if (t.type === 'dragon') return '📍 <b>ป้อมสู้มังกร 🐉</b><br>เงินสะสม <span style="color:#d0342c">' + fmt(s.dragonPot || 0) + ' G</span>';
     if (t.type === 'chance') return '📍 <b>' + esc(t.name) + '</b><br>🃏 ได้เปิดการ์ด!';
     if (t.type === 'rollon') return '📍 <b>ช่องลูกเต๋า 🎲</b><br>ได้ทอยอีกครั้งทันที!';
@@ -1138,6 +1169,21 @@
         sfx('win');
         await modal({ title: '🎉 ปาร์ตี้ที่บ้านของ ' + esc(owner.name) + '!', width: 700, close: false, body: '<div style="text-align:center">' + spr(['sph', 1], 180, 180) + '<div style="font-weight:700;font-size:18px">' + (p.id === owner.id ? esc(owner.name) + ' จัดปาร์ตี้ที่บ้านตัวเอง' : esc(p.name) + ' ตกบ้านปาร์ตี้') + ' — ทุกคนถูกเรียกมารวมกันที่นี่!<br>ทุกคน (ยกเว้นเจ้าของ) จ่ายคนละ 100 G</div><div class="row" style="justify-content:center;gap:6px;margin-top:6px">' + g.alive().map(function (q) { return spr(charSpec(q), 70, 70); }).join('') + '</div></div>', buttons: [{ t: 'ไปปาร์ตี้!', v: 1, cls: 'pink' }], auto: p.isAI ? 2200 : 0 });
       },
+      wheel: async function (p, k) {
+        var W = CONFIG.wheel, lab = function (o) { return o[1] === 'g' ? '+' + fmt(o[2]) : o[1] === 'l' ? '-' + fmt(o[2]) : { card: '🃏 การ์ด', again: '🎲 ทอยต่อ', stock: '📈 หุ้น 5', warp: '🌀 วาร์ป' }[o[1]]; };
+        var n = W.length, seg = 360 / n, cols = ['#ff8fb3', '#ffd54f', '#7cc0ff', '#a5d6a7', '#ce93d8', '#ffab91'];
+        var grad = W.map(function (o, i) { return cols[i % cols.length] + ' ' + (i * seg) + 'deg ' + ((i + 1) * seg) + 'deg'; }).join(',');
+        var labels = W.map(function (o, i) { var a = (i + 0.5) * seg; return '<div class="wlab" style="transform:rotate(' + a + 'deg) translateY(-108px) rotate(' + (-a) + 'deg)">' + lab(o) + '</div>'; }).join('');
+        var final = 360 * 5 + (360 - (k + 0.5) * seg);
+        sfx('dice');
+        var html = '<div style="text-align:center"><div class="wheelwrap"><div class="wheelptr">▼</div><div class="wheel" style="background:conic-gradient(' + grad + ')">' + labels + '</div></div><div id="wres" style="font-weight:900;font-size:24px;min-height:34px;margin-top:8px"></div></div>';
+        var dur = p.isAI ? 1400 : 2400;
+        await modal({ title: '🎡 วงล้อเสี่ยงโชค — ' + esc(p.name), width: 560, close: false, body: html, auto: dur + 1400, autoValue: 1, mount: function (box) {
+          var wh = box.querySelector('.wheel'); wh.style.transition = 'transform ' + (dur / U.speed / 1000) + 's cubic-bezier(.15,.8,.2,1)';
+          requestAnimationFrame(function () { requestAnimationFrame(function () { wh.style.transform = 'rotate(' + final + 'deg)'; }); });
+          setTimeout(function () { var r = box.querySelector('#wres'); if (r) r.innerHTML = 'ได้: ' + lab(W[k]); sfx(W[k][1] === 'l' ? 'bad' : 'coin'); }, dur / U.speed);
+        } });
+      },
       dragonBet: function (p, pot, opts) {
         if (p.isAI) return aiWait(400).then(function () { var r = A.dragonBet(g, p, pot, opts); toast(r ? '⚔️ ' + esc(p.name) + ' พนัน ' + fmt(r) + ' G โจมตีมังกร!' : '🏰 ' + esc(p.name) + ' ไม่สู้มังกร'); return r; });
         sfx('tap');
@@ -1222,7 +1268,7 @@
   }
 
   // ---------- RESULT ----------
-  function showResult(g) { victoryScene(g).then(function () { showResultPage(g); }); }
+  function showResult(g) { U.flushModals(); victoryScene(g).then(function () { if (g.s.tour) Tour.afterWorld(g); else showResultPage(g); }); }
   U.victoryScene = function (g) { return victoryScene(g); };
   function victoryScene(g) {
     return new Promise(function (resolve) {
@@ -1261,6 +1307,150 @@
       setTimeout(function () { V.onclick = function (e) { if (e.target.id !== 'vNext') done(); }; }, 2500);
     });
   }
+  // =====================================================================
+  // TOURNAMENT — 6 worlds, 1st & 2nd go through, boxes by how far you get
+  // =====================================================================
+  var Tour = (function () {
+    var KEY = 'rfs_tour';
+    function load() { try { var t = JSON.parse(localStorage.getItem(KEY) || 'null'); return t && !t.done ? t : null; } catch (e) { return null; } }
+    function save(t) { try { localStorage.setItem(KEY, JSON.stringify(t)); } catch (e) { } }
+    function clear() { try { localStorage.removeItem(KEY); } catch (e) { } }
+    function newRivals(n, lv, avoid) {
+      var pool = allCharKeys().filter(function (k) { return avoid.indexOf(k) < 0; }), out = [];
+      for (var i = 0; i < n; i++) { var ch = pool.splice(Math.floor(Math.random() * pool.length), 1)[0]; out.push({ name: Meta.charName(ch) + ' AI', char: ch, isAI: true, aiLevel: lv[i] || 'normal', persona: AI_PERSONAS[Math.floor(Math.random() * AI_PERSONAS.length)] }); }
+      return out;
+    }
+    function boxesFor(cleared, champ) { return champ ? TOUR_BOXES.champion : (TOUR_BOXES.cleared[cleared] || 0); }
+    U.tourBoxesFor = boxesFor;
+    // ---------- story intro (6 comic panels) ----------
+    function story() {
+      return new Promise(function (res) {
+        var i = 0;
+        var draw = function (box) {
+          box.querySelector('#stP').src = 'assets/story' + (i + 1) + '.webp';
+          box.querySelector('#stN').textContent = (i + 1) + ' / 6';
+          box.querySelector('#stNext').textContent = i < 5 ? 'ต่อไป ▶' : 'เริ่มทัวร์นาเมนต์! 🏆';
+        };
+        modal({ title: '🏆 ทัวร์นาเมนต์แห่งอาณาจักรริลัคคุมะ', width: 860, close: false, body: '<img id="stP" class="storyP" draggable="false"><div class="row" style="justify-content:space-between;margin-top:10px"><span id="stN" class="chip"></span><div class="row" style="gap:8px"><button class="gray" id="stSkip">Skip ⏩</button><button class="pink" id="stNext"></button></div></div>', mount: function (box, close) {
+          draw(box);
+          box.querySelector('#stSkip').onclick = function () { close(); };
+          box.querySelector('#stNext').onclick = function () { if (i < 5) { i++; draw(box); sfx('tap'); } else close(); };
+        } }).then(res);
+      });
+    }
+    function rules() { return modal({ title: '📜 กติกาทัวร์นาเมนต์', width: 1100, body: '<img src="assets/tour_rules.webp" style="width:100%;border-radius:14px;border:3px solid #6b4226" draggable="false">', buttons: [{ t: 'เข้าใจแล้ว', v: 1, cls: 'green' }] }); }
+    // ---------- entry ----------
+    function open() {
+      var t = load();
+      if (t) { hub(); return; }
+      modal({ title: '🏆 โหมดทัวร์นาเมนต์', width: 760, body: '<div class="col" style="gap:12px;align-items:center"><img src="assets/tour_rules.webp" style="width:100%;max-height:300px;object-fit:cover;border-radius:14px;border:3px solid #6b4226" draggable="false"><div style="font-weight:700;text-align:center;line-height:1.6">แข่ง 6 เวิลด์ต่อเนื่อง • อันดับ 1–2 เท่านั้นที่ได้ไปต่อ • AI เก่งขึ้นทุกเวิลด์<br>รางวัล: ผ่าน 1 เวิลด์ 3 กล่อง → 5 → 10 → 20 → 30 • <b style="color:#d48a00">แชมป์ 50 กล่องสุ่ม!</b></div>' +
+        '<div class="opt bigopt pmA" data-tm="solo" style="width:100%"><span style="font-size:40px">👤</span><div class="col" style="gap:0"><span style="font-size:22px">เล่นคนเดียว ลุยกับ AI</span><span style="font-size:13px">คุณ + AI 3 ตัว • ติด 2 อันดับแรกเพื่อไปต่อ</span></div></div>' +
+        '<div class="opt bigopt pmD" data-tm="team" style="width:100%"><span style="font-size:40px">🤝</span><div class="col" style="gap:0"><span style="font-size:22px">เล่นกับเพื่อน (ทีมเดียวกัน) vs ทีม AI</span><span style="font-size:13px">ออนไลน์ • สีเดียวกัน • ทีมชนะได้ไปต่อ • ได้กล่องเท่ากันทั้งคู่</span></div></div>' +
+        '<button class="small" id="tRules">📜 ดูกติกา</button></div>', mount: function (box, close) {
+          box.querySelector('#tRules').onclick = function () { close(); rules().then(open); };
+          box.querySelectorAll('[data-tm]').forEach(function (e) { e.onclick = function () { close(e.dataset.tm); }; });
+        } }).then(function (v) {
+          if (v === 'solo') story().then(function () { var me = Meta.p.equip.char; save({ kind: 'solo', world: 0, rivals: newRivals(3, TOUR_WORLDS[0].ai, [me]), hist: [] }); hub(); });
+          else if (v === 'team') story().then(function () { Online.host({ tour: true }); });
+        });
+    }
+    // ---------- hub: bracket of 6 worlds ----------
+    function hub() {
+      var t = load(); if (!t) { show('menu'); return; }
+      var P = Meta.p, w = t.world;
+      var cards = TOUR_WORLDS.map(function (W, i) {
+        var m = MAPS[W.map], st = i < w ? 'done' : i === w ? 'cur' : 'lock';
+        return '<div class="twcard ' + st + '"><div class="twimg" style="background-image:url(assets/' + m.bg + '.webp)"></div><div class="twnm">World ' + (i + 1) + '<br><b>' + m.th + '</b></div><div class="twst">' + (st === 'done' ? '✅ ผ่านแล้ว' : st === 'cur' ? '▶ รอบนี้' : '🔒') + '</div></div>';
+      }).join('<div class="twarrow">➜</div>');
+      var rv = t.rivals.map(function (r) { return '<div class="twriv">' + spr(Meta.charSprite(r.char), 64, 70) + '<div>' + esc(r.name) + '<br><span class="chip">' + ({ beginner: 'ง่าย', normal: 'ปานกลาง', advanced: 'เก่ง', master: 'เก่งโคตร' }[r.aiLevel]) + '</span></div></div>'; }).join('');
+      $('#tour').innerHTML = '<div class="scrhead"><div class="title"><span class="ttl">🏆 ทัวร์นาเมนต์ — World ' + (w + 1) + ' / 6</span></div><div class="uibtn" id="tHome">' + spr(['ui', 'home'], 110, 80) + '</div></div>' +
+        '<div class="scrbody"><div class="twrow">' + cards + '</div>' +
+        '<div class="row" style="gap:18px;align-items:stretch;margin-top:14px"><div class="panel grow" style="padding:14px"><b style="font-size:18px">⚔️ คู่แข่งใน World ' + (w + 1) + ' — ' + MAPS[TOUR_WORLDS[w].map].th + '</b><div class="row" style="gap:10px;margin-top:8px;flex-wrap:wrap"><div class="twriv me">' + spr(Meta.charSprite(P.equip.char), 64, 70) + '<div>' + esc(P.name) + '<br><span class="chip">คุณ</span></div></div>' + rv + '</div>' +
+        '<div class="muted" style="font-weight:700;margin-top:8px">เป้าหมาย ' + fmt(TOUR_WORLDS[w].target) + ' G • สูงสุด ' + TOUR_WORLDS[w].rounds + ' รอบ • เงินเริ่มต้น 10,000 G • ต้องติดอันดับ 1–2 เพื่อไปต่อ</div></div>' +
+        '<div class="panel" style="padding:14px;width:360px"><b>🎁 รางวัลตอนนี้ถ้าตกรอบ: ' + boxesFor(w, false) + ' กล่อง</b><div class="muted" style="font-size:13px;font-weight:700">ผ่าน World ' + (w + 1) + ' แล้วตกรอบถัดไป = ' + boxesFor(w + 1, false) + ' กล่อง • แชมป์ = ' + TOUR_BOXES.champion + ' กล่อง</div>' +
+        '<div style="margin-top:8px"><b>สีของคุณ:</b><div class="row" style="gap:2px;margin-top:4px">' + colorDots(P.color || 0, 'tc') + '</div></div>' +
+        '<div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap"><button class="pink" id="tGo" style="font-size:20px">▶ เตรียมตัวลง World ' + (w + 1) + '</button><button class="small" id="tRules2">📜 กติกา</button><button class="small gray" id="tQuit">🏳️ สละสิทธิ์</button></div></div></div></div>';
+      show('tour');
+      $('#tHome').onclick = function () { show('menu'); };
+      $('#tRules2').onclick = function () { rules(); };
+      $('#tour').querySelectorAll('[data-tc]').forEach(function (e) { e.onclick = function () { P.color = +e.dataset.tc; Meta.save(); hub(); }; });
+      $('#tQuit').onclick = function () { modal({ title: 'สละสิทธิ์ทัวร์นาเมนต์?', body: '<div style="text-align:center;font-weight:700">ได้รางวัลตามเวิลด์ที่ผ่านมาแล้ว: ' + boxesFor(w, false) + ' กล่อง</div>', buttons: [{ t: 'สละสิทธิ์', v: 1, cls: 'pink' }, { t: 'ยกเลิก', v: 0 }] }).then(function (v) { if (!v) return; var b = boxesFor(w, false); clear(); if (b) Meta.addBoxes(b); show('menu'); if (b) boxModal(); }); };
+      $('#tGo').onclick = function () { U.tourPending = true; U.selBak = { map: U.sel.map, slots: U.sel.slots }; U.sel.map = TOUR_WORLDS[w].map; U.sel.slots = [{ type: 'human', name: P.name, char: P.equip.char }].concat(t.rivals.map(function (r) { return { type: 'ai', char: r.char }; })); show('loadout'); renderLoadout(); toast('🏆 เลือกตัวละคร อุปกรณ์ 2 ชิ้น และการ์ดพิเศษ 1 ใบ แล้วกดเริ่ม'); };
+    }
+    // ---------- start a world (solo) ----------
+    function startWorld() {
+      var t = load(); if (!t) return false;
+      var P = Meta.p, e = P.equip, v = Meta.validLoadout(), W = TOUR_WORLDS[t.world];
+      var players = [{ name: P.name, char: e.char, costume: e.costume, isAI: false, loadout: { eq: v.eq, sc: v.sc }, owner: true }].concat(t.rivals.map(function (r) { return Object.assign({}, r); }));
+      var cols = assignColors(players.map(function (q, k) { return k === 0 ? (P.color || 0) : -1; })); players.forEach(function (q, k) { q.color = cols[k]; });
+      var s = Game.create({ mapIdx: W.map, players: players, target: W.target, startCash: 10000, maxRounds: W.rounds, rules: { tax: false, endOnBankrupt: true }, seed: Math.floor(Math.random() * 1e9) });
+      s.ownerIdx = 0; s.dice = P.equip.dice; s.lenName = 'World ' + (t.world + 1); s.tour = { kind: 'solo', world: t.world };
+      U.tourPending = false; if (U.selBak) { U.sel.map = U.selBak.map; U.sel.slots = U.selBak.slots; U.selBak = null; } startGame(s, true); return true;
+    }
+    // ---------- after a world ----------
+    function statRows(g, rk, passN) {
+      var s = g.s;
+      return '<table class="ttable"><tr><th>อันดับ</th><th></th><th>ผู้เล่น</th><th>เงินสด</th><th>ร้านค้า</th><th>หุ้น</th><th>ทรัพย์สินรวม</th><th>ร้าน</th><th>สัญลักษณ์</th><th>สถานะ</th></tr>' + rk.map(function (r, i) {
+        var p = s.players[r.id], pass = passN(p, i);
+        return '<tr class="' + (pass ? 'pass' : 'out') + '"><td><b>' + (i + 1) + '</b></td><td>' + spr(charSpec(p), 46, 50) + '</td><td style="color:' + p.color + ';font-weight:900">' + esc(p.name) + '</td><td>' + fmt(p.cash) + '</td><td>' + fmt(g.propertyValue(p)) + '</td><td>' + fmt(g.stockValue(p)) + '</td><td><b>' + fmt(g.netWorth(p)) + '</b></td><td>' + g.shopsOf(p).length + '</td><td>' + SUITS.filter(function (k) { return p.suits[k]; }).map(function (k) { return SUIT_GLYPH[k]; }).join('') + '</td><td>' + (pass ? '<span class="tpass">✅ ผ่านรอบ</span>' : '<span class="tout">❌ ตกรอบ</span>') + '</td></tr>';
+      }).join('') + '</table>';
+    }
+    function afterWorld(g) {
+      U.flushModals();
+      var s = g.s, T = s.tour, w = T.world, owner = s.players[s.ownerIdx || 0];
+      var rk = s.ranking || s.players.map(function (p) { return { id: p.id }; });
+      var team = T.kind === 'team';
+      var passN = team ? function (p) { return s.winTeam >= 0 && p.team === s.winTeam; } : function (p, i) { return i < 2 && !p.bankrupt; };
+      var myIdx = rk.findIndex(function (r) { return r.id === owner.id; }), iPass = passN(owner, myIdx), last = w === TOUR_WORLDS.length - 1;
+      var champ = iPass && last && (team || myIdx === 0);
+      Meta.matchReward(Math.max(0, myIdx), iPass, g.netWorth(owner), true);
+      var status, boxes = 0, finished = false;
+      if (!iPass) { boxes = boxesFor(w, false); finished = true; status = '<div class="tbanner out">❌ ตกรอบที่ World ' + (w + 1) + '</div>'; }
+      else if (champ) { boxes = boxesFor(6, true); finished = true; status = '<div class="tbanner champ">👑 แชมป์ทัวร์นาเมนต์!</div>'; }
+      else if (last) { boxes = TOUR_BOXES.cleared[5]; finished = true; status = '<div class="tbanner pass">🥈 รองแชมป์ทัวร์นาเมนต์!</div>'; }
+      else status = '<div class="tbanner pass">✅ ผ่านเข้าสู่ World ' + (w + 2) + '!</div>';
+      if (finished && boxes) Meta.addBoxes(boxes, champ);
+      if (finished) { try { var tr = JSON.parse(localStorage.getItem('rfs_trophies') || '[]'); tr.unshift({ res: champ ? 'champ' : iPass ? 'runner' : 'out', world: w + 1, date: new Date().toLocaleDateString('th-TH') }); localStorage.setItem('rfs_trophies', JSON.stringify(tr.slice(0, 30))); } catch (e) { } }
+      // solo bookkeeping
+      if (!team) {
+        var t = load();
+        if (t) {
+          if (finished) clear();
+          else {
+            var keep = rk.slice(0, 2).map(function (r) { return s.players[r.id]; }).filter(function (p) { return p.isAI; }).map(function (p) { return { name: p.name, char: p.char, isAI: true, aiLevel: p.ai.level, persona: p.ai.persona }; });
+            var avoid = keep.map(function (r) { return r.char; }).concat([Meta.p.equip.char]);
+            keep.forEach(function (r, k) { r.aiLevel = TOUR_WORLDS[w + 1].ai[TOUR_WORLDS[w + 1].ai.length - 1 - k]; });
+            t.world = w + 1; t.rivals = keep.concat(newRivals(3 - keep.length, TOUR_WORLDS[w + 1].ai.slice(0, 3 - keep.length), avoid)); t.hist.push({ world: w, rank: myIdx + 1 }); save(t);
+          }
+        }
+      }
+      var host = !team || (U.online && U.online.role === 'host');
+      var btns = finished ? '<button class="pink" id="tFin" style="font-size:20px">' + (boxes ? '🎁 รับรางวัล ' + boxes + ' กล่องสุ่ม' : 'กลับหน้าหลัก') + '</button>'
+        : team ? (host ? '<button class="pink" id="tNext" style="font-size:20px">▶ ไป World ' + (w + 2) + ' กับเพื่อน</button>' : '<div class="chip" style="font-size:16px">⏳ รอโฮสต์เริ่ม World ' + (w + 2) + '...</div>')
+        : '<button class="pink" id="tNext" style="font-size:20px">▶ ไปต่อ World ' + (w + 2) + '</button>';
+      $('#tour').innerHTML = '<div class="scrhead"><div class="title"><span class="ttl">🏆 ผล World ' + (w + 1) + ' — ' + MAPS[s.mapIdx].th + '</span></div></div><div class="scrbody">' + status +
+        '<div class="panel" style="padding:12px;margin-top:10px">' + statRows(g, rk, passN) + '<div class="muted" style="font-weight:700;margin-top:6px">เล่นไป ' + Math.min(s.round, s.settings.maxRounds) + ' รอบ • ' + esc(s.endReason || '') + (team ? ' • ทีมที่ชนะได้ไปต่อทั้งคู่' : ' • อันดับ 1–2 ได้ไปต่อ') + '</div></div>' +
+        '<div class="row" style="justify-content:center;gap:12px;margin-top:14px">' + btns + '</div></div>';
+      show('tour'); sfx(iPass ? 'win' : 'bad');
+      var fin = $('#tFin'); if (fin) fin.onclick = function () { if (U.online) Online.leave(); if (champ) champion(g, boxes); else { show('menu'); if (boxes) boxModal(); } };
+      var nx = $('#tNext'); if (nx) nx.onclick = function () { if (team) Online.nextWorld(); else hub(); };
+      if (champ && finished) setTimeout(function () { champion(g, boxes); }, 1500);
+    }
+    // ---------- champion podium ----------
+    function champion(g, boxes) {
+      var s = g.s, rk = s.ranking || [];
+      var spots = [[50, 61], [31.5, 67], [68.5, 69]], ord = rk.slice(0, 3);
+      var chars = ord.map(function (r, i) { var p = s.players[r.id]; return '<div class="chpod" style="left:' + spots[i][0] + '%;top:' + spots[i][1] + '%;animation-delay:' + (0.3 + (2 - i) * 0.4) + 's"><div class="vplate" style="--pc:' + p.color + '"><b>' + (i + 1) + '</b>' + esc(p.name) + '</div>' + spr(charSpec(p), i === 0 ? 190 : 150, i === 0 ? 190 : 150) + '</div>'; }).join('');
+      $('#tour').innerHTML = '<div class="champbg">' + chars + '<canvas id="chconf" width="1280" height="860"></canvas><div class="chbtn"><button class="pink" id="chGo" style="font-size:24px">🎁 เปิด ' + boxes + ' กล่องสุ่มแชมป์!</button></div></div>';
+      show('tour'); sfx('win');
+      var c = $('#chconf').getContext('2d'), conf = [], alive = true, COLS = ['#ff5d8f', '#ffd25e', '#7cc0ff', '#7fcf6b', '#b99cf0', '#ffffff'];
+      for (var i = 0; i < 180; i++) conf.push({ x: Math.random() * 1280, y: -Math.random() * 860, w: 6 + Math.random() * 8, h: 10 + Math.random() * 10, r: Math.random() * 6, vy: 1.2 + Math.random() * 2.2, ph: Math.random() * 6, c: COLS[i % COLS.length] });
+      (function fr() { if (!alive || !document.getElementById('chconf')) return; c.clearRect(0, 0, 1280, 860); conf.forEach(function (q) { q.y += q.vy; q.ph += 0.05; q.x += Math.sin(q.ph); q.r += 0.05; if (q.y > 880) { q.y = -20; q.x = Math.random() * 1280; } c.save(); c.translate(q.x, q.y); c.rotate(q.r); c.fillStyle = q.c; c.fillRect(-q.w / 2, -q.h / 2, q.w, q.h); c.restore(); }); requestAnimationFrame(fr); })();
+      $('#chGo').onclick = function () { alive = false; show('menu'); boxModal(); };
+    }
+    return { open: open, hub: hub, startWorld: startWorld, afterWorld: afterWorld, load: load, champion: champion, boxesFor: boxesFor };
+  })();
+  U.Tour = Tour;
   // ---------- mystery boxes ----------
   function boxModal() {
     var P = Meta.p, n = P.boxes || 0; if (!n) return Promise.resolve();
@@ -1318,6 +1508,7 @@
     } }).then(function (v) { if (v && onPick) onPick(); });
   }
   function showResultPage(g) {
+    U.flushModals();
     var s = g.s, owner = s.players[s.ownerIdx || 0];
     var rk = s.ranking || s.players.map(function (p) { return { id: p.id, nw: g.netWorth(p) }; }).sort(function (a, b) { return b.nw - a.nw; });
     var myRank = rk.findIndex(function (r) { return r.id === owner.id; });
@@ -1327,10 +1518,11 @@
     var W = 560, H = 220, mx = Math.max.apply(null, s.players.map(function (p) { return Math.max.apply(null, p.hist.concat([g.netWorth(p), 1])); }));
     var lines = s.players.map(function (p) { var h = p.hist.concat([g.netWorth(p)]); if (h.length < 2) h = [h[0], h[0]]; return '<polyline fill="none" stroke="' + p.color + '" stroke-width="4" points="' + h.map(function (v, i) { return (i / (h.length - 1) * W).toFixed(1) + ',' + (H - v / mx * (H - 10)).toFixed(1); }).join(' ') + '"/>'; }).join('');
     var ranks = rk.map(function (r, i) { var p = s.players[r.id]; return '<div class="row panel" style="padding:8px 14px;gap:14px;' + (i === 0 ? 'background:#fff3a8' : '') + '">' + spr(['ui', [55, 57, 59, 61][i]], 140, 40) + spr(charSpec(p), 70, 74) + '<div class="grow"><div style="font-weight:900;font-size:20px;color:' + p.color + '">' + esc(p.name) + (p.bankrupt ? ' 💥' : '') + '</div><div style="font-weight:800">ทรัพย์สิน ' + fmt(r.nw) + ' G • ร้าน ' + g.shopsOf(p).length + ' • Lv' + p.level + '</div></div></div>'; }).join('');
-    $('#result').innerHTML = '<div class="scrhead"><div class="title"><span class="ttl">🏆 ผลการแข่งขัน — ' + MAPS[s.mapIdx].th + '</span></div><div class="uibtn" id="resMenu">' + spr(['ui', 'home'], 110, 80) + '</div></div><div class="scrbody"><div class="row" style="align-items:flex-start;gap:20px"><div class="col" style="width:600px">' + ranks + '<div class="panel" style="padding:10px;font-weight:800">' + esc(s.endReason || '') + '</div></div><div class="col" style="width:610px"><div class="panel" style="padding:12px"><b>กราฟทรัพย์สินรายรอบ</b><svg width="' + W + '" height="' + H + '" style="margin-top:6px;background:#fffdf5;border-radius:12px">' + lines + '</svg></div>' + (reward ? '<div class="panel" style="padding:12px;text-align:center;font-weight:900;font-size:20px">🎁 รางวัล: +' + fmt(reward.gold) + ' Gold Coin' + (reward.diamond ? ' • +' + reward.diamond + ' 💎' : '') + ' • 🎁 กล่องสุ่ม ×' + reward.boxes + '<div style="font-size:14px">ใช้ซื้อไอเทมในร้านค้าได้เลย!</div></div>' : '') + '<div class="panel" style="padding:12px;text-align:center">' + (s.winner !== null && s.winner !== undefined ? spr(charSpec(s.players[s.winner]), 200, 200) + '<div style="font-size:26px;font-weight:900">' + esc(s.players[s.winner].name) + ' ชนะ!</div>' : '') + '</div></div></div></div>';
+    $('#result').innerHTML = '<div class="scrhead"><div class="title"><span class="ttl">🏆 ผลการแข่งขัน — ' + MAPS[s.mapIdx].th + '</span></div><div class="uibtn" id="resMenu">' + spr(['ui', 'home'], 110, 80) + '</div></div><div class="scrbody"><div class="row" style="align-items:flex-start;gap:20px"><div class="col" style="width:600px">' + ranks + '<div class="panel" style="padding:10px;font-weight:800">' + esc(s.endReason || '') + '</div></div><div class="col" style="width:610px"><div class="panel" style="padding:12px"><b>กราฟทรัพย์สินรายรอบ</b><svg width="' + W + '" height="' + H + '" style="margin-top:6px;background:#fffdf5;border-radius:12px">' + lines + '</svg></div>' + (reward ? '<div class="panel" style="padding:12px;text-align:center;font-weight:900;font-size:20px">🎁 รางวัล: +' + fmt(reward.gold) + ' Gold Coin' + (reward.diamond ? ' • +' + reward.diamond + ' 💎' : '') + ' • 🎁 กล่องสุ่ม ×' + reward.boxes + '<div style="font-size:14px">ใช้ซื้อไอเทมในร้านค้าได้เลย!</div><button class="pink small" id="resBox" style="margin-top:6px">🎁 เปิดกล่องสุ่ม</button></div>' : '') + '<div class="panel" style="padding:12px;text-align:center">' + (s.winner !== null && s.winner !== undefined ? spr(charSpec(s.players[s.winner]), 200, 200) + '<div style="font-size:26px;font-weight:900">' + esc(s.players[s.winner].name) + ' ชนะ!</div>' : '') + '</div></div></div></div>';
     $('#resMenu').onclick = function () { show('menu'); };
     show('result'); sfx('win');
-    if (reward && Meta.p.boxes > 0) setTimeout(boxModal, 700);
+    var rb = $('#resBox'); if (rb) rb.onclick = function () { if (Meta.p.boxes > 0) boxModal(); else toast('เปิดกล่องครบแล้ว'); };
+    if (reward && Meta.p.boxes > 0 && !s.tour) setTimeout(function () { U.flushModals(); boxModal(); }, 600);
   }
 
   // =====================================================================
@@ -1527,10 +1719,11 @@
       .then(function (v) { if (v === 'leave' && Online.room && !Online.room.started) { Online.leave(); toast('ออกจากห้องแล้ว'); } });
   }
   function TI(s, k) { return (s && s.teamInfo && s.teamInfo[k]) || TEAM_PAL[k] || TEAM_PAL[0]; }
-  var AILV = { beginner: 'ง่าย', normal: 'ปกติ', advanced: 'เก่ง' };
+  var AILV = { beginner: 'ง่าย', normal: 'ปานกลาง', advanced: 'เก่ง', master: 'เก่งโคตร' };
   function renderLobby() {
     var B = document.getElementById('lobbyB'), R = Online.room; if (!B || !R) return;
     var host = R.role === 'host', S = R.settings || {}, ps = R.players || [], fill = S.fillAI || S.teams;
+    if (S.tour) { renderTourLobby(B, R, host, S, ps); return; }
     var teamOf = S.teamOf || [0, 1, 0, 1], aiLv = S.aiLv || ['normal', 'normal', 'normal', 'normal'];
     var tcol = S.teamCol || [0, 1], TC = [TEAM_PAL[tcol[0]].c, TEAM_PAL[tcol[1]].c], TN = ['ทีม' + TEAM_PAL[tcol[0]].n, 'ทีม' + TEAM_PAL[tcol[1]].n];
     var slots = [0, 1, 2, 3].map(function (i) {
@@ -1538,7 +1731,7 @@
       if (x) return '<div style="border-color:' + (S.teams ? TC[teamOf[i]] : PLAYER_COLORS[i]) + '">' + tm + spr(Meta.charSprite(x.char), 80, 90) + '<div>P' + (i + 1) + ' ' + esc(x.name) + '</div><div style="font-size:12px;color:#2c9a2c">' + (i === 0 ? '👑 โฮสต์' : '✅ พร้อม') + '</div></div>';
       if (!fill) return '<div style="border-color:#ccc"><div style="padding-top:40px;opacity:.5">รอผู้เล่น...</div></div>';
       return '<div style="border-color:' + (S.teams ? TC[teamOf[i]] : PLAYER_COLORS[i]) + '">' + tm + '<div style="font-size:40px;margin-top:6px">🤖</div><div>AI เติม</div>' +
-        (host ? '<div class="row" style="gap:3px;justify-content:center;margin-top:4px">' + ['beginner', 'normal', 'advanced'].map(function (l) { return '<button class="small rbtn ' + (aiLv[i] === l ? 'on' : '') + '" data-al="' + i + ':' + l + '" style="padding:2px 7px;font-size:12px">' + AILV[l] + '</button>'; }).join('') + '</div>' : '<div style="font-size:12px">ระดับ: ' + AILV[aiLv[i]] + '</div>') + '</div>';
+        (host ? '<div class="row" style="gap:3px;justify-content:center;margin-top:4px">' + ['beginner', 'normal', 'advanced', 'master'].map(function (l) { return '<button class="small rbtn ' + (aiLv[i] === l ? 'on' : '') + '" data-al="' + i + ':' + l + '" style="padding:2px 5px;font-size:11px">' + AILV[l] + '</button>'; }).join('') + '</div>' : '<div style="font-size:12px">ระดับ: ' + AILV[aiLv[i]] + '</div>') + '</div>';
     }).join('');
     var tgPre = S.teams ? [50000, 80000, 120000, 200000] : [25000, 40000, 60000, 100000];
     var num = function (id, v, w) { return '<input type="number" id="' + id + '" value="' + v + '" style="width:' + (w || 110) + 'px;font-size:16px;padding:5px 8px;border:2px solid #6b4226;border-radius:10px;font-family:inherit">'; };
@@ -1548,7 +1741,7 @@
       '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px"><b>' + (S.teams ? 'เป้าหมายรวมของทีม:' : 'เป้าหมาย:') + '</b>' + tgPre.map(function (t) { return '<button class="small rbtn ' + (S.target === t ? 'on' : '') + '" data-lt="' + t + '">' + fmt(t) + '</button>'; }).join('') + num('lobTg', S.target) + ' G</div>' +
       '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px"><b>เงินเริ่มต้น:</b>' + [5000, 10000, 15000, 20000, 30000].map(function (t) { return '<button class="small rbtn ' + (S.startCash === t ? 'on' : '') + '" data-lc="' + t + '">' + fmt(t) + '</button>'; }).join('') + num('lobCash', S.startCash || 10000) + ' G</div>' +
       '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px"><b>จำนวนรอบ:</b>' + [30, 50, 100, 150, 200, 0].map(function (t) { return '<button class="small rbtn ' + (S.rounds === t ? 'on' : '') + '" data-lr="' + t + '">' + (t ? t : '♾️ ไม่จำกัด') + '</button>'; }).join('') + num('lobRd', S.rounds || 0, 80) + ' รอบ</div>' +
-      '<div class="row" style="gap:10px;flex-wrap:wrap;margin-top:8px">' + (S.teams ? '<span class="muted" style="font-weight:700">โหมดทีมเติม AI ให้ครบ 4 คนอัตโนมัติ</span>' : '<div class="tog ' + (S.fillAI ? 'on' : '') + '" data-lf="fillAI"><i></i>เติม AI ให้ครบ 4 คน</div>') + '<div class="tog ' + (S.tax ? 'on' : '') + '" data-lf="tax"><i></i>มีภาษี</div></div>'
+      '<div class="row" style="gap:10px;flex-wrap:wrap;margin-top:8px">' + (S.teams ? '<span class="muted" style="font-weight:700">โหมดทีมเติม AI ให้ครบ 4 คนอัตโนมัติ</span>' : '<div class="tog ' + (S.fillAI ? 'on' : '') + '" data-lf="fillAI"><i></i>เติม AI ให้ครบ 4 คน</div>') + '<div class="tog ' + (S.tax ? 'on' : '') + '" data-lf="tax"><i></i>มีภาษี</div></div>' + (!S.teams ? '<div class="row" style="gap:4px;align-items:center;margin-top:8px"><b>สีของคุณ:</b>' + colorDots(ps[0] && typeof ps[0].color === 'number' ? ps[0].color : (Meta.p.color || 0), 'myc') + '<span class="muted" style="font-size:12px;font-weight:700">(เพื่อนใช้สีที่ตั้งไว้ในเครื่องตัวเอง ถ้าซ้ำระบบเลือกสีอื่นให้)</span></div>' : '')
       : '<div style="text-align:center;font-weight:700;margin-top:10px;line-height:1.7">แผนที่: ' + (MAPS[S.map] || MAPS[0]).th + ' • ' + (S.teams ? '🤝 โหมดทีม 2 vs 2 • เป้าหมายรวมทีม ' : 'เป้าหมาย ') + fmt(S.target || 40000) + ' G<br>เงินเริ่มต้น ' + fmt(S.startCash || 10000) + ' G • ' + (S.rounds ? S.rounds + ' รอบ' : 'ไม่จำกัดรอบ') + (fill ? ' • เติม AI' : '') + (S.tax ? ' • มีภาษี' : '') + '</div>';
     B.innerHTML = '<div class="row" style="justify-content:center;gap:16px"><span style="font-weight:700">รหัสห้อง</span><span class="roomcode">' + R.code + '</span><span class="chip">' + (Online.kind === 'p2p' ? '🌐 ออนไลน์ P2P' : '📱 โหมดทดสอบเครื่องเดียว') + '</span></div>' +
       '<div style="text-align:center;font-weight:700;margin:6px 0">' + (host ? 'ส่งรหัสนี้ให้เพื่อน แล้วเพื่อนกด “โหมดออนไลน์ → เข้าห้องด้วยรหัส”' : 'เข้าห้องแล้ว! รอโฮสต์เริ่มเกม...') + '</div>' +
@@ -1564,9 +1757,23 @@
     B.querySelectorAll('[data-mode]').forEach(function (e) { e.onclick = function () { var on = e.dataset.mode === '1'; if (on === !!S.teams) return; Online.setSetting('target', on ? Math.max(50000, (S.target || 40000) * 2) : Math.max(10000, Math.round((S.target || 80000) / 2))); set('teams', on); }; });
     B.querySelectorAll('[data-tm]').forEach(function (e) { e.onclick = function () { var t = teamOf.slice(), i = +e.dataset.tm; t[i] = 1 - t[i]; set('teamOf', t); }; });
     B.querySelectorAll('[data-tc]').forEach(function (e) { e.onclick = function () { var a = e.dataset.tc.split(':'), k = +a[0], ci = +a[1]; if (ci === tcol[1 - k]) return; var t = tcol.slice(); t[k] = ci; set('teamCol', t); }; });
+    B.querySelectorAll('[data-myc]').forEach(function (e) { e.onclick = function () { Meta.p.color = +e.dataset.myc; Meta.save(); if (Online.room.players[0]) Online.room.players[0].color = Meta.p.color; Online.setSetting('_c', Date.now()); renderLobby(); }; });
     B.querySelectorAll('[data-al]').forEach(function (e) { e.onclick = function () { var a = e.dataset.al.split(':'), l = aiLv.slice(); l[+a[0]] = a[1]; set('aiLv', l); }; });
     var clampIn = function (id, k, lo, hi) { var el = B.querySelector('#' + id); el.onchange = function () { var v = Math.round(+el.value || 0); if (k === 'rounds' && v <= 0) v = 0; else v = Math.max(lo, Math.min(hi, v)); set(k, v); }; };
     clampIn('lobTg', 'target', 10000, 9999999); clampIn('lobCash', 'startCash', 1000, 999999); clampIn('lobRd', 'rounds', 5, 9999);
+    B.querySelector('#lobStart').onclick = function () { Online.startHost(); };
+  }
+  function renderTourLobby(B, R, host, S, ps) {
+    var w = S.tour.world, W = TOUR_WORLDS[w], tcol = S.teamCol || [0, 1], C0 = TEAM_PAL[tcol[0]], C1 = TEAM_PAL[tcol[1]];
+    var hum = [0, 1].map(function (i) { var x = ps[i]; return x ? '<div style="border-color:' + C0.c + '"><div class="teamchip" style="background:' + C0.c + '">ทีม' + C0.n + '</div>' + spr(Meta.charSprite(x.char), 80, 90) + '<div>' + esc(x.name) + '</div><div style="font-size:12px;color:#2c9a2c">' + (i === 0 ? '👑 โฮสต์' : '✅ พร้อม') + '</div></div>' : '<div style="border-color:' + C0.c + ';border-style:dashed"><div class="teamchip" style="background:' + C0.c + '">ทีม' + C0.n + '</div><div style="padding-top:30px;opacity:.6">รอเพื่อน...</div></div>'; }).join('');
+    var ais = [1, 2].map(function (k) { return '<div style="border-color:' + C1.c + '"><div class="teamchip" style="background:' + C1.c + '">ทีม AI</div><div style="font-size:40px;margin-top:6px">🤖</div><div>AI สุ่มตัวละคร</div><div style="font-size:12px">ระดับ: ' + AILV[W.ai[k]] + '</div></div>'; }).join('');
+    B.innerHTML = '<div class="row" style="justify-content:center;gap:16px"><span style="font-weight:700">🏆 ทัวร์นาเมนต์ทีม • รหัสห้อง</span><span class="roomcode">' + R.code + '</span><span class="chip">' + (Online.kind === 'p2p' ? '🌐 ออนไลน์ P2P' : '📱 โหมดทดสอบเครื่องเดียว') + '</span></div>' +
+      '<div style="text-align:center;font-weight:700;margin:6px 0">' + (host ? 'ส่งรหัสนี้ให้เพื่อน → เพื่อนกด “โหมดออนไลน์ → เข้าห้องด้วยรหัส”' : 'เข้าห้องแล้ว! รอโฮสต์เริ่มทัวร์นาเมนต์...') + '</div>' +
+      '<div class="lobbyP">' + hum + ais + '</div>' +
+      '<div style="text-align:center;font-weight:700;margin-top:10px;line-height:1.7">World ' + (w + 1) + ' — ' + MAPS[W.map].th + ' • เป้าหมายรวมทีม ' + fmt(W.target * 2) + ' G • ' + W.rounds + ' รอบ • เงินเริ่มต้น 10,000 G<br><span class="muted">ทีมที่ชนะได้ไปเวิลด์ถัดไป • ทั้งคุณและเพื่อนได้กล่องสุ่มเท่ากัน (ตกรอบหลังผ่าน W1 = 3 • 5 • 10 • 20 • 30 • แชมป์ 50)</span></div>' +
+      (host ? '<div class="row" style="gap:4px;align-items:center;justify-content:center;margin-top:8px"><b>สีทีมเรา:</b>' + colorDots(tcol[0], 'ttc', tcol[1]) + '<span class="muted" style="font-size:12px;font-weight:700;margin-left:6px">(ทัวร์นาเมนต์เปลี่ยนได้แค่สี)</span></div><div style="text-align:center;margin-top:12px"><button class="pink" id="lobStart" style="font-size:22px">▶ เริ่ม World ' + (w + 1) + '</button></div>' : '');
+    if (!host) return;
+    B.querySelectorAll('[data-ttc]').forEach(function (e) { e.onclick = function () { var ci = +e.dataset.ttc, t = tcol.slice(); if (ci === t[1]) t[1] = t[0]; t[0] = ci; Meta.p.color = ci; Meta.save(); Online.setSetting('teamCol', t); renderLobby(); }; });
     B.querySelector('#lobStart').onclick = function () { Online.startHost(); };
   }
   function startGuest(state, idx) {
@@ -1591,7 +1798,7 @@
     setWaiting: function (p, off) { setTurn(p, false); setAct(off ? '<div style="font-size:16px">📴 ' + esc(p.name) + ' หลุดการเชื่อมต่อ<br>รอกลับเข้ามา...</div>' : '<div style="font-size:17px">⏳ รอ ' + esc(p.name) + '<br>ตัดสินใจ...</div>'); },
     netStatus: function (msg) { var o = document.getElementById('netOverlay'); if (!msg) { if (o) o.remove(); return; } if (!o) { o = document.createElement('div'); o.id = 'netOverlay'; document.getElementById('stage').appendChild(o); } o.innerHTML = '<div>' + msg + '<br><span style="font-size:14px">เกมยังอยู่ ไม่ต้องปิดหน้านี้</span></div>'; },
     setTurnLabel: function (p, mine) { setTurn(p, mine); },
-    renderLobby: renderLobby, closeModal: function () { if (U._closeModal) U._closeModal(); },
+    renderLobby: renderLobby, lobbyModal: lobbyModal, allCharKeys: allCharKeys, assignColors: assignColors, closeModal: function () { if (U._closeModal) U._closeModal(); },
     startGame: startGame, startGuest: startGuest, setOnline: setOnline, consumeUsed: consumeUsed, addLog: addLog,
     showResult: function (g) { showResult(g); }, toMenu: function () { U.token++; U.g = null; show('menu'); },
   });

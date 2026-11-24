@@ -434,7 +434,9 @@ button.pink{background:linear-gradient(#fff0f5,#ffb0c8 60%,#ff8fb3)} button.gree
 .buffitem{display:flex;gap:10px;align-items:center;border:3px solid #ffb3cc;border-radius:14px;padding:6px 10px;background:#fff}
 .buffitem .bi{font-size:28px}
 .skillban{background:#fff3c4;border:3px solid #ffb300;border-radius:14px;padding:6px 12px;font-weight:700;text-align:center;margin-bottom:8px}
-#mapCards{flex-wrap:nowrap}
+#mapCards{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start!important;padding:6px 8px 12px;scroll-snap-type:x proximity}
+#mapCards .mapcard{flex:0 0 170px;scroll-snap-align:start}
+#mapCards::-webkit-scrollbar{height:12px}#mapCards::-webkit-scrollbar-thumb{background:#e0a96d;border-radius:8px;border:2px solid #6b4226}
 .mapcard{width:170px}.mapcard .thumb{height:96px;background-size:contain;background-repeat:no-repeat;background-color:#eaf6ff}.mapcard .nm{font-size:14px;padding:4px 8px}
 #itemBar{width:410px!important}
 #actBox{width:560px!important}#actMain{width:210px!important}
@@ -508,6 +510,35 @@ button.pink{background:linear-gradient(#fff0f5,#ffb0c8 60%,#ff8fb3)} button.gree
 .tcdot.on{box-shadow:0 0 0 3px #6b4226,0 0 0 6px #ffd54f;transform:scale(1.1)}
 .tcdot.off{opacity:.25;cursor:not-allowed}
 .teamsum{display:inline-block;color:#fff;font-weight:900;font-size:11px;border-radius:999px;padding:1px 8px;margin-top:2px;white-space:nowrap;text-shadow:0 1px 1px rgba(0,0,0,.25)}
+.tbadge{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);filter:drop-shadow(0 2px 2px rgba(0,0,0,.35));pointer-events:none}
+.wheelwrap{position:relative;width:280px;height:280px;margin:0 auto}
+.wheel{width:280px;height:280px;border-radius:50%;border:6px solid #6b4226;box-shadow:0 4px 0 rgba(0,0,0,.2);position:relative}
+.wheelptr{position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-size:34px;color:#d0342c;z-index:2;text-shadow:0 2px 0 #fff}
+.wlab{position:absolute;left:50%;top:50%;width:80px;margin:-10px 0 0 -40px;text-align:center;font-weight:900;font-size:13px;color:#4a2c17}
+.storyP{display:block;margin:0 auto;height:540px;aspect-ratio:557/448;border-radius:14px;border:4px solid #6b4226}
+#tour{background:linear-gradient(#fff4d6,#ffe2ee)}
+.twrow{display:flex;align-items:center;justify-content:center;gap:4px;margin-top:6px}
+.twcard{width:178px;border:4px solid #6b4226;border-radius:16px;background:#fff;overflow:hidden;text-align:center;position:relative}
+.twcard .twimg{height:96px;background-size:cover;background-position:center}
+.twcard .twnm{font-size:13px;font-weight:700;padding:4px}
+.twcard .twst{font-weight:900;font-size:13px;padding-bottom:6px}
+.twcard.lock{filter:grayscale(.85);opacity:.7}
+.twcard.cur{box-shadow:0 0 0 4px #ffd54f,0 0 18px #ffb300;transform:scale(1.06)}
+.twcard.done .twst{color:#2c8a2c}
+.twarrow{font-size:22px;color:#b5651d;font-weight:900}
+.twriv{display:flex;gap:6px;align-items:center;background:#fff8ec;border:2px solid #e5cfae;border-radius:14px;padding:4px 10px;font-weight:800;font-size:14px}
+.twriv.me{border-color:#ff5d8f;background:#fff0f6}
+.ttable{width:100%;border-collapse:collapse;font-weight:700;font-size:15px;text-align:center}
+.ttable th{background:#ffe3b0;padding:6px;border-bottom:3px solid #6b4226}
+.ttable td{padding:4px 6px;border-bottom:2px dashed #e5cfae}
+.ttable tr.out td{opacity:.65}
+.tpass{color:#2c8a2c;font-weight:900}.tout{color:#d0342c;font-weight:900}
+.tbanner{text-align:center;font-size:34px;font-weight:900;padding:8px;border-radius:18px;border:4px solid #6b4226}
+.tbanner.pass{background:#d8f5d0;color:#2c7a2c}.tbanner.out{background:#ffe0e0;color:#c62828}.tbanner.champ{background:linear-gradient(#fff6a8,#ffc46b);color:#8a5a00}
+.champbg{position:absolute;inset:0;background:url(assets/bg_champ.webp) center/cover}
+.champbg canvas{position:absolute;inset:0;pointer-events:none}
+.chpod{position:absolute;transform:translate(-50%,-100%);text-align:center;animation:vdrop .8s cubic-bezier(.2,1.4,.4,1) both}
+.chbtn{position:absolute;left:50%;bottom:24px;transform:translateX(-50%)}
 /* dragon */
 .dragonpot{font-weight:900;font-size:40px;color:#d48a00;text-shadow:0 2px 0 #fff,0 0 12px rgba(255,200,0,.6);margin:4px 0}
 .ptile.dragon .lbl{background:#fff0f0;color:#c62828;font-weight:900}
@@ -600,6 +631,7 @@ button.pink{background:linear-gradient(#fff0f5,#ffb0c8 60%,#ff8fb3)} button.gree
 
   <!-- RESULT -->
   <div id="result" class="screen"></div>
+  <div id="tour" class="screen"></div>
   <!-- SHOP -->
   <div id="shop" class="screen"></div>
   <!-- INVENTORY -->

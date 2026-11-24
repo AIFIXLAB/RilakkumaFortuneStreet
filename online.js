@@ -7,7 +7,7 @@ var Online = (function () {
   var room = null;        // { code, role, players:[{peer,name,char,costume,loadout}], settings }
   var pending = {}, rpcSeq = 0, chain = Promise.resolve(), dirty = false, dirtyT = null;
   var DECIDE = ['preRoll', 'rollDice', 'planPath', 'chooseDir', 'confirmBuy', 'chooseInvest', 'confirmBuyout', 'bank', 'broker', 'pickCard', 'choose', 'chooseNumber', 'confirmUse', 'confirmDeal', 'auctionBid', 'casinoBet', 'chooseBuilding', 'chooseSpecialHouse', 'portalChoice', 'pickTile', 'debtSell', 'dragonBet'];
-  var DISPLAY = ['turnStart', 'showDice', 'step', 'teleport', 'landed', 'rent', 'dividend', 'money', 'promotion', 'suit', 'built', 'showCard', 'lineBonus', 'casinoShow', 'notify', 'info', 'party', 'windmill', 'toll', 'dragonResult', 'windSteal'];
+  var DISPLAY = ['wheel', 'turnStart', 'showDice', 'step', 'teleport', 'landed', 'rent', 'dividend', 'money', 'promotion', 'suit', 'built', 'showCard', 'lineBonus', 'casinoShow', 'notify', 'info', 'party', 'windmill', 'toll', 'dragonResult', 'windSteal'];
   var LOCAL_ONLY = { info: 1 };
 
   function code() { var c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', s = ''; for (var i = 0; i < 4; i++) s += c[Math.floor(Math.random() * c.length)]; return s; }
@@ -197,14 +197,15 @@ var Online = (function () {
     if (d.t === 'pong') return;
     if (d.t === 'hello') {
       if (room.started) { net.send(peer, { t: 'full', why: 'เกมเริ่มไปแล้ว' }); return; }
+      if (room.settings.tour && room.players.length >= 2) { net.send(peer, { t: 'full', why: 'ห้องทัวร์นาเมนต์เต็มแล้ว (ทีมละ 2 คน)' }); return; }
       if (room.players.length >= 4) { net.send(peer, { t: 'full', why: 'ห้องเต็มแล้ว (4 คน)' }); return; }
       var ex = room.players.find(function (x) { return x.token && x.token === d.token; });
       if (ex) { ex.peer = peer; lobbyBroadcast(); A.renderLobby(); return; }
       var used = room.players.map(function (x) { return x.char; }), ch = d.char, nm = String(d.name || 'ผู้เล่น').slice(0, 12), k = 2;
       while (room.players.some(function (x) { return x.name === nm; })) nm = String(d.name || 'ผู้เล่น').slice(0, 12) + ' ' + (k++);
       d.name = nm;
-      if (used.indexOf(ch) >= 0) ch = ['b0', 'b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7'].find(function (k) { return used.indexOf(k) < 0; });
-      room.players.push({ peer: peer, token: d.token, name: d.name, char: ch, costume: ch === d.char ? d.costume : 'chars', loadout: d.loadout || { eq: [], sc: null }, dice: typeof d.dice === 'string' ? d.dice : null });
+      if (used.indexOf(ch) >= 0) ch = A.allCharKeys().find(function (k) { return used.indexOf(k) < 0; });
+      room.players.push({ peer: peer, token: d.token, name: d.name, char: ch, costume: ch === d.char ? d.costume : 'chars', loadout: d.loadout || { eq: [], sc: null }, dice: typeof d.dice === 'string' ? d.dice : null, color: typeof d.color === 'number' ? d.color : -1 });
       lobbyBroadcast(); A.renderLobby();
     } else if (d.t === 'rejoin') {
       var g = A.game(), pl = g && room.started ? g.s.players.find(function (q) { return q.seat && q.seat === d.token; }) : null;
@@ -223,10 +224,13 @@ var Online = (function () {
     Object.keys(pending).forEach(function (id) { if (pending[id].peer === peer) { var pd = pending[id]; delete pending[id]; pd.rej('left'); } });
     A.refresh(); pushState(g);
   }
-  function lobbyBroadcast() { net.all({ t: 'lobby', players: room.players.map(function (x) { return { name: x.name, char: x.char, costume: x.costume }; }), settings: room.settings }); }
-  function host(done) {
-    var c = code(), P = Meta.p;
-    room = { code: c, role: 'host', started: false, players: [{ peer: null, name: P.name, char: P.equip.char, costume: P.equip.costume, dice: P.equip.dice, loadout: Meta.validLoadout() }], settings: { map: 0, target: 40000, fillAI: true, tax: false, teams: false, teamCol: [0, 1], startCash: 10000, rounds: 100, aiLv: ['normal', 'normal', 'normal', 'normal'], teamOf: [0, 1, 0, 1] } };
+  function lobbyBroadcast() { net.all({ t: 'lobby', players: room.players.map(function (x) { return { name: x.name, char: x.char, costume: x.costume, color: x.color }; }), settings: room.settings }); }
+  function host(done, opt) {
+    if (typeof done === 'object' && done) { opt = done; done = null; }
+    done = done || function (err) { if (err) { A.toast('⚠️ ' + err, 3500); leave(); return; } A.lobbyModal(); };
+    var c = code(), P = Meta.p, tour = opt && opt.tour, mc = P.color || 0;
+    room = { code: c, role: 'host', started: false, players: [{ peer: null, name: P.name, char: P.equip.char, costume: P.equip.costume, dice: P.equip.dice, loadout: Meta.validLoadout(), color: mc }], settings: { map: 0, target: 40000, fillAI: true, tax: false, teams: !!tour, teamCol: [mc, mc === 1 ? 0 : 1], startCash: 10000, rounds: 100, aiLv: ['normal', 'normal', 'normal', 'normal'], teamOf: tour ? [0, 0, 1, 1] : [0, 1, 0, 1] } };
+    if (tour) room.settings.tour = { world: 0 };
     loadPeer().then(function (ok) {
       if (!ok && !localMode()) { done('โหลดระบบออนไลน์ไม่ได้ — ตรวจอินเทอร์เน็ตแล้วลองใหม่'); return; }
       net = makeNet(c, true, onHostMsg, function (pid) { lastSeen[pid] = Date.now(); }, onHostLeave, function () { startHeartbeat(true); done(null, room); }, function (err) { done(err); });
@@ -234,19 +238,25 @@ var Online = (function () {
   }
   function startHost() {
     var R = room.settings, players = room.players.map(function (x, i) { return { name: x.name, char: x.char, costume: x.costume, isAI: false, remote: x.peer || undefined, seat: x.peer ? x.token : null, loadout: x.loadout, team: R.teamOf[i], dice: x.dice || null }; });
-    var used = players.map(function (p) { return p.char; }), pool = ['b0', 'b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7'].filter(function (k) { return used.indexOf(k) < 0; });
-    var names = ['คุมะ AI', 'โคริ AI', 'คิอิโระ AI', 'ชาอิ AI', 'เนโกะ AI', 'ริสุ AI', 'เพนกิ AI', 'ชิกะ AI'];
-    if (R.fillAI || R.teams) while (players.length < 4) { var ch = pool.shift(), sl = players.length; players.push({ name: names[+ch.slice(1)], char: ch, isAI: true, aiLevel: R.aiLv[sl] || 'normal', persona: AI_PERSONAS[sl % 5], team: R.teamOf[sl] }); }
+    var used = players.map(function (p) { return p.char; }), pool = A.allCharKeys().filter(function (k) { return used.indexOf(k) < 0; }).sort(function () { return Math.random() - 0.5; });
+    var TW = R.tour ? TOUR_WORLDS[R.tour.world] : null;
+    if (TW && players.length < 2) { A.toast('🤝 ทัวร์นาเมนต์แบบทีมต้องมีเพื่อนเข้าห้องก่อน 1 คน (ส่งรหัสห้องให้เพื่อน)', 3500); return; }
+    if (R.fillAI || R.teams) while (players.length < 4) { var ch = pool.shift(), sl = players.length; players.push({ name: Meta.charName(ch) + ' AI', char: ch, isAI: true, aiLevel: TW ? TW.ai[sl - 1] : (R.aiLv[sl] || 'normal'), persona: AI_PERSONAS[Math.floor(Math.random() * 5)], team: R.teamOf[sl] }); }
+    if (!R.teams) { var cols = A.assignColors(room.players.map(function (x) { return typeof x.color === 'number' ? x.color : -1; }).concat(players.slice(room.players.length).map(function () { return -1; }))); players.forEach(function (q, k) { q.color = cols[k]; }); }
     if (players.length < 2) { A.toast('ต้องมีผู้เล่นอย่างน้อย 2 คน (เปิด “เติม AI” ได้)'); return; }
     if (R.teams) { var c0 = players.filter(function (q) { return q.team === 0; }).length; if (c0 !== 2) { A.toast('⚠️ โหมดทีมต้องแบ่ง ทีมชมพู 2 คน / ทีมฟ้า 2 คน — แตะป้ายทีมเพื่อสลับ', 3500); return; } }
-    var tc = R.teamCol || [0, 1], s = Game.create({ mapIdx: R.map, players: players, teams: !!R.teams, teamInfo: [TEAM_PAL[tc[0]], TEAM_PAL[tc[1]]], target: R.target, startCash: R.startCash || 10000, maxRounds: R.rounds > 0 ? R.rounds : 9999, rules: { tax: R.tax, endOnBankrupt: true }, seed: Math.floor(Math.random() * 1e9) });
+    var tc = R.teamCol || [0, 1], s = Game.create({ mapIdx: TW ? TW.map : R.map, players: players, teams: !!R.teams, teamInfo: [TEAM_PAL[tc[0]], TEAM_PAL[tc[1]]], target: TW ? TW.target * 2 : R.target, startCash: TW ? 10000 : (R.startCash || 10000), maxRounds: TW ? TW.rounds : (R.rounds > 0 ? R.rounds : 9999), rules: { tax: TW ? false : R.tax, endOnBankrupt: true }, seed: Math.floor(Math.random() * 1e9) });
+    if (TW) { s.tour = { kind: 'team', world: R.tour.world }; s.lenName = 'World ' + (R.tour.world + 1); }
     s.players.forEach(function (p, i) { p.remote = players[i].remote || null; p.seat = players[i].seat || null; });
     s.ownerIdx = 0; s.dice = Meta.p.equip.dice; s.online = true;
     room.started = true; A.setOnline({ role: 'host', code: room.code, kind: net.kind });
     s.players.forEach(function (p) { if (p.remote) net.send(p.remote, { t: 'start', s: snap(s, true), idx: p.id }); });
     A.closeModal(); A.startGame(s, true);
   }
-  function end(g) { try { localStorage.removeItem('rfs_online_host'); } catch (e) { } if (net) net.all({ t: 'end', s: snap(g.s, true) }); setTimeout(leave, 4000); }
+  // tournament: the team goes on together unless it was knocked out or this was the last world
+  function tourGoesOn(s) { return !!(s.tour && s.tour.kind === 'team' && s.winTeam === 0 && s.tour.world < TOUR_WORLDS.length - 1); }
+  function end(g) { try { localStorage.removeItem('rfs_online_host'); } catch (e) { } if (net) net.all({ t: 'end', s: snap(g.s, true) }); if (!tourGoesOn(g.s)) setTimeout(function () { if (room && room.started && A.game() === g) leave(); }, 15000); }
+  function nextWorld() { if (!room || room.role !== 'host' || !room.settings.tour) return; var g = A.game(); room.settings.tour.world = (g && g.s.tour ? g.s.tour.world : room.settings.tour.world) + 1; room.players = room.players.filter(function (x, i) { return i === 0 || x.peer; }); startHost(); }
   function savedHost() { try { var x = JSON.parse(localStorage.getItem('rfs_online_host') || 'null'); return x && x.s && !x.s.over && Date.now() - x.t < 3 * 3600e3 ? x : null; } catch (e) { return null; } }
   // reopen a room this device was hosting (page reloaded / app closed). Players rejoin with their seat token.
   function resumeHost(done) {
@@ -278,7 +288,7 @@ var Online = (function () {
     var P = Meta.p;
     net = makeNet(roomCode, false, onGuestMsg, function () { }, function () { if (room && room.started) reconnect(); else if (room) { A.toast('📴 โฮสต์ออกจากห้องแล้ว'); leave(); A.closeModal(); } }, function () {
       lastSeen.host = Date.now();
-      net.host(isRejoin ? { t: 'rejoin', token: token() } : { t: 'hello', token: token(), name: P.name, char: P.equip.char, costume: P.equip.costume, dice: P.equip.dice, loadout: Meta.validLoadout() });
+      net.host(isRejoin ? { t: 'rejoin', token: token() } : { t: 'hello', token: token(), color: P.color || 0, name: P.name, char: P.equip.char, costume: P.equip.costume, dice: P.equip.dice, loadout: Meta.validLoadout() });
       startHeartbeat(false); done(null, room);
     }, function (err) { done(err); });
   }
@@ -327,7 +337,11 @@ var Online = (function () {
     if (d.t === 'full') { A.toast('⚠️ ' + d.why); try { localStorage.removeItem('rfs_online_seat'); } catch (e) { } rc = null; A.netStatus(null); var st0 = room && room.started; leave(); A.closeModal(); if (st0) A.toMenu(); return; }
     if (d.t === 'start') { rc = null; A.netStatus(null); queued = 0; chain = Promise.resolve(); curRpc = null; room.started = true; gstate.idx = d.idx; try { localStorage.setItem('rfs_online_seat', JSON.stringify({ code: room.code, idx: d.idx, t: Date.now() })); } catch (e) { } if (d.rejoin) A.toast('🔌 กลับเข้าเกมแล้ว!'); A.setOnline({ role: 'guest', code: room.code, idx: d.idx, kind: net.kind }); A.closeModal(); A.startGuest(d.s, d.idx); return; }
     var g = A.game(); if (!g) return;
-    if (d.t === 'state') { applyState(g, d.s); return; }
+    if (d.t === 'state' && !(d.s && d.s.over)) { applyState(g, d.s); return; }
+    if (d.t === 'end' || d.t === 'state') { if (g._ended) return; g._ended = true; d = { t: 'end', s: d.s }; // game over: don't wait behind queued animations / open popups
+      chain = Promise.resolve(); queued = 0; curRpc = null; A.closeModal();
+      handle(g, d).catch(function (e) { console.error(e); }); return;
+    }
     queued++;
     chain = chain.then(function () { return handle(g, d); }).catch(function (e) { if (e !== 'abort') console.error(e); }).then(function () { queued--; });
   }
@@ -341,7 +355,7 @@ var Online = (function () {
   var FAST_TOAST = { showCard: function (a) { return '🃏 ' + a[0].name + ': ' + a[1].name; }, rent: function (a) { return '🏪 ' + a[0].name + ' จ่าย ' + Game.fmt(a[3]) + ' G ให้ ' + a[1].name; }, promotion: function (a) { return '🎉 ' + a[0].name + ' เลื่อนระดับ +' + Game.fmt(a[1]) + ' G'; }, lineBonus: function (a) { return '🌈 ' + a[0].name + ' แถวการ์ด +' + Game.fmt(a[2]) + ' G'; }, casinoShow: function (a) { return '🎰 ' + a[0].name + (a[3] ? ' ชนะ +' + Game.fmt(a[3]) : ' เสีย ' + a[2]) + ' G'; }, notify: function (a) { return a[1]; }, party: function (a) { return '🎉 ปาร์ตี้ที่บ้าน ' + a[1].name + ' ทุกคนจ่าย 100 G'; }, windmill: function (a) { return '🌬️ ' + a[0].name + ' สกิลปลิวหาย ' + a[3].length + ' ใบ'; } };
   async function handle(g, d) {
     var io = g.io;
-    if (d.t === 'end') { try { localStorage.removeItem('rfs_online_seat'); } catch (e) { } applyState(g, d.s); A.consumeUsed(g); leave(); A.showResult(g); return; }
+    if (d.t === 'end') { try { localStorage.removeItem('rfs_online_seat'); } catch (e) { } applyState(g, d.s); A.consumeUsed(g); if (!tourGoesOn(d.s)) leave(); A.showResult(g); return; }
     if (d.t === 'ev') {
       if (d.m === 'log') { A.addLog(d.args[0], d.args[1]); return; }
       if (d.m === 'toast') { A.toast(d.args[0]); return; }
@@ -381,7 +395,7 @@ var Online = (function () {
 
   return {
     init: function (api) { A = api; },
-    host: host, join: join, rejoin: rejoin, savedSeat: savedSeat, savedHost: savedHost, resumeHost: resumeHost, startHost: startHost, hostIO: hostIO, end: end, leave: leave, instrumentGuest: instrumentGuest,
+    host: host, nextWorld: nextWorld, join: join, rejoin: rejoin, savedSeat: savedSeat, savedHost: savedHost, resumeHost: resumeHost, startHost: startHost, hostIO: hostIO, end: end, leave: leave, instrumentGuest: instrumentGuest,
     get room() { return room; }, get kind() { return net && net.kind; },
     setSetting: function (k, v) { if (room && room.role === 'host') { room.settings[k] = v; lobbyBroadcast(); } },
   };

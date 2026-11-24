@@ -385,11 +385,23 @@
     (async function () {
       try {
         if (isNew) await orderIntro(g);
+        if (isNew) { try { localStorage.setItem(saveKey(g.s), JSON.stringify(g.s)); } catch (e) { } }
+        setTimeout(function () { if (tok === U.token) U.crash = 0; }, 60000);
         while (!g.s.over && tok === U.token) { await g.playTurn(); if (tok !== U.token) return; refresh(); }
-        if (tok === U.token) { consumeUsed(g); localStorage.removeItem('rfs_save_auto'); if (U.online) Online.end(g); await wait(600); showResult(g); }
-      } catch (err) { if (err !== 'abort') { console.error(err); toast('⚠️ ' + (err && err.message || err)); } }
+        if (tok === U.token) { consumeUsed(g); localStorage.removeItem(saveKey(g.s)); if (U.online) Online.end(g); await wait(600); showResult(g); }
+      } catch (err) {
+        if (err === 'abort' || tok !== U.token) return;
+        console.error(err);
+        // something broke mid-turn: reload the last turn-start save instead of leaving the game stuck
+        var key = saveKey(g.s), sv = null; try { sv = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { }
+        U.crash = (U.crash || 0) + 1;
+        if (sv && !U.online && U.crash <= 3) { toast('⚠️ เกิดข้อผิดพลาด — กำลังโหลดต่อจากจุดบันทึกล่าสุด (รอบ ' + sv.round + ')', 3500); setTimeout(function () { if (tok === U.token) startGame(sv, false); }, 1200); }
+        else toast('⚠️ ' + (err && err.message || err));
+      }
     })();
   }
+  function saveKey(s) { return s && s.tour && s.tour.kind === 'solo' ? 'rfs_save_tour' : 'rfs_save_auto'; }
+  U.saveKey = saveKey;
   // ---------- 3D dice (faces from the project's dice art) ----------
   var FACE_ROT = { 1: [0, 0], 6: [0, 180], 2: [0, -90], 5: [0, 90], 3: [-90, 0], 4: [90, 0] };
   var TINT = { dice_1: '#ffe9c7', dice_2: '#ffd34d', dice_3: '#ffb3c6', dice_4: '#a9d8ff', dice_5: '#bfe8a8', dice_6: '#d9a066' };
@@ -924,7 +936,7 @@
       log: function (m, k) { addLog(m, k); },
       toast: toast,
       money: function (p, amt) { floatText(p, amt); renderPlayers(); if (amt > 0) sfx('coin'); },
-      autosave: function (s) { consumeUsed(g); try { localStorage.setItem('rfs_save_auto', JSON.stringify(s)); localStorage.setItem('rfs_save_auto_meta', JSON.stringify({ map: MAPS[s.mapIdx].th, round: s.round, date: new Date().toLocaleString('th-TH') })); } catch (e) { } },
+      autosave: function (s) { consumeUsed(g); try { var key = saveKey(s); localStorage.setItem(key, JSON.stringify(s)); if (key !== 'rfs_save_auto') return; localStorage.setItem('rfs_save_auto_meta', JSON.stringify({ map: MAPS[s.mapIdx].th, round: s.round, date: new Date().toLocaleString('th-TH') })); } catch (e) { } },
       turnStart: async function (p) {
         if (!p.isAI) U.view = p.id;
         if (p.isAI) { try { await wait(350); } catch (e) { } }
@@ -1328,6 +1340,8 @@
       for (var i = 0; i < n; i++) { var ch = pool.splice(Math.floor(Math.random() * pool.length), 1)[0]; out.push({ name: Meta.charName(ch) + ' AI', char: ch, isAI: true, aiLevel: lv[i] || 'normal', persona: AI_PERSONAS[Math.floor(Math.random() * AI_PERSONAS.length)] }); }
       return out;
     }
+    var confirmRestart = false;
+    function savedWorld(t) { try { var s = JSON.parse(localStorage.getItem('rfs_save_tour') || 'null'); return s && !s.over && s.tour && t && s.tour.world === t.world ? s : null; } catch (e) { return null; } }
     function boxesFor(cleared, champ) { return champ ? TOUR_BOXES.champion : (TOUR_BOXES.cleared[cleared] || 0); }
     U.tourBoxesFor = boxesFor;
     // ---------- story intro (6 comic panels) ----------
@@ -1366,6 +1380,7 @@
     function hub() {
       var t = load(); if (!t) { show('menu'); return; }
       var P = Meta.p, w = t.world;
+      var sv = savedWorld(t);
       var cards = TOUR_WORLDS.map(function (W, i) {
         var m = MAPS[W.map], st = i < w ? 'done' : i === w ? 'cur' : 'lock';
         return '<div class="twcard ' + st + '"><div class="twimg" style="background-image:url(assets/' + m.bg + '.webp)"></div><div class="twnm">World ' + (i + 1) + '<br><b>' + m.th + '</b></div><div class="twst">' + (st === 'done' ? '✅ ผ่านแล้ว' : st === 'cur' ? '▶ รอบนี้' : '🔒') + '</div></div>';
@@ -1377,13 +1392,14 @@
         '<div class="muted" style="font-weight:700;margin-top:8px">เป้าหมาย ' + fmt(TOUR_WORLDS[w].target) + ' G • สูงสุด ' + TOUR_WORLDS[w].rounds + ' รอบ • เงินเริ่มต้น 10,000 G • ต้องติดอันดับ 1–2 เพื่อไปต่อ</div></div>' +
         '<div class="panel" style="padding:14px;width:360px"><b>🎁 รางวัลตอนนี้ถ้าตกรอบ: ' + boxesFor(w, false) + ' กล่อง</b><div class="muted" style="font-size:13px;font-weight:700">ผ่าน World ' + (w + 1) + ' แล้วตกรอบถัดไป = ' + boxesFor(w + 1, false) + ' กล่อง • แชมป์ = ' + TOUR_BOXES.champion + ' กล่อง</div>' +
         '<div style="margin-top:8px"><b>สีของคุณ:</b><div class="row" style="gap:2px;margin-top:4px">' + colorDots(P.color || 0, 'tc') + '</div></div>' +
-        '<div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap"><button class="pink" id="tGo" style="font-size:20px">▶ เตรียมตัวลง World ' + (w + 1) + '</button><button class="small" id="tRules2">📜 กติกา</button><button class="small gray" id="tQuit">🏳️ สละสิทธิ์</button></div></div></div></div>';
+        '<div class="row" style="gap:8px;margin-top:12px;flex-wrap:wrap">' + (sv ? '<button class="green" id="tResume" style="font-size:20px">▶ เล่นต่อ World ' + (w + 1) + ' (รอบ ' + sv.round + ')</button><button class="small" id="tGo">🔄 เริ่ม World ' + (w + 1) + ' ใหม่</button>' : '<button class="pink" id="tGo" style="font-size:20px">▶ เตรียมตัวลง World ' + (w + 1) + '</button>') + '<button class="small" id="tRules2">📜 กติกา</button><button class="small gray" id="tQuit">🏳️ สละสิทธิ์</button></div></div></div></div>';
       show('tour');
       $('#tHome').onclick = function () { show('menu'); };
       $('#tRules2').onclick = function () { rules(); };
       $('#tour').querySelectorAll('[data-tc]').forEach(function (e) { e.onclick = function () { P.color = +e.dataset.tc; Meta.save(); hub(); }; });
-      $('#tQuit').onclick = function () { modal({ title: 'สละสิทธิ์ทัวร์นาเมนต์?', body: '<div style="text-align:center;font-weight:700">ได้รางวัลตามเวิลด์ที่ผ่านมาแล้ว: ' + boxesFor(w, false) + ' กล่อง</div>', buttons: [{ t: 'สละสิทธิ์', v: 1, cls: 'pink' }, { t: 'ยกเลิก', v: 0 }] }).then(function (v) { if (!v) return; var b = boxesFor(w, false); clear(); if (b) Meta.addBoxes(b); show('menu'); if (b) boxModal(); }); };
-      $('#tGo').onclick = function () { U.tourPending = true; U.selBak = { map: U.sel.map, slots: U.sel.slots }; U.sel.map = TOUR_WORLDS[w].map; U.sel.slots = [{ type: 'human', name: P.name, char: P.equip.char }].concat(t.rivals.map(function (r) { return { type: 'ai', char: r.char }; })); show('loadout'); renderLoadout(); toast('🏆 เลือกตัวละคร อุปกรณ์ 2 ชิ้น และการ์ดพิเศษ 1 ใบ แล้วกดเริ่ม'); };
+      $('#tQuit').onclick = function () { try { localStorage.removeItem('rfs_save_tour'); } catch (e) { } modal({ title: 'สละสิทธิ์ทัวร์นาเมนต์?', body: '<div style="text-align:center;font-weight:700">ได้รางวัลตามเวิลด์ที่ผ่านมาแล้ว: ' + boxesFor(w, false) + ' กล่อง</div>', buttons: [{ t: 'สละสิทธิ์', v: 1, cls: 'pink' }, { t: 'ยกเลิก', v: 0 }] }).then(function (v) { if (!v) return; var b = boxesFor(w, false); clear(); if (b) Meta.addBoxes(b); show('menu'); if (b) boxModal(); }); };
+      if (sv) $('#tResume').onclick = function () { startGame(sv, false); toast('▶ เล่นต่อ World ' + (w + 1) + ' รอบ ' + sv.round); };
+      $('#tGo').onclick = function () { if (sv && !confirmRestart) { confirmRestart = true; toast('กดอีกครั้งเพื่อเริ่ม World ' + (w + 1) + ' ใหม่ (เกมที่ค้างไว้จะหายไป)', 3000); setTimeout(function () { confirmRestart = false; }, 3000); return; } confirmRestart = false; try { localStorage.removeItem('rfs_save_tour'); } catch (e) { } U.tourPending = true; U.selBak = { map: U.sel.map, slots: U.sel.slots }; U.sel.map = TOUR_WORLDS[w].map; U.sel.slots = [{ type: 'human', name: P.name, char: P.equip.char }].concat(t.rivals.map(function (r) { return { type: 'ai', char: r.char }; })); show('loadout'); renderLoadout(); toast('🏆 เลือกตัวละคร อุปกรณ์ 2 ชิ้น และการ์ดพิเศษ 1 ใบ แล้วกดเริ่ม'); };
     }
     // ---------- start a world (solo) ----------
     function startWorld() {
@@ -1456,7 +1472,7 @@
       (function fr() { if (!alive || !document.getElementById('chconf')) return; c.clearRect(0, 0, 1280, 860); conf.forEach(function (q) { q.y += q.vy; q.ph += 0.05; q.x += Math.sin(q.ph); q.r += 0.05; if (q.y > 880) { q.y = -20; q.x = Math.random() * 1280; } c.save(); c.translate(q.x, q.y); c.rotate(q.r); c.fillStyle = q.c; c.fillRect(-q.w / 2, -q.h / 2, q.w, q.h); c.restore(); }); requestAnimationFrame(fr); })();
       $('#chGo').onclick = function () { alive = false; show('menu'); boxModal(); };
     }
-    return { open: open, hub: hub, startWorld: startWorld, afterWorld: afterWorld, load: load, champion: champion, boxesFor: boxesFor };
+    return { savedWorld: savedWorld, open: open, hub: hub, startWorld: startWorld, afterWorld: afterWorld, load: load, champion: champion, boxesFor: boxesFor };
   })();
   U.Tour = Tour;
   // ---------- mystery boxes ----------
@@ -1869,5 +1885,20 @@
   $('#nowPlay').onclick = function (e) { e.stopPropagation(); if (!Music.playing) { U.music = true; saveSettings(); Music.start(); } else Music.next(); };
   // ---------- boot ----------
   renderMenu();
-  if (Meta.loginState().canClaim) setTimeout(dailyLogin, 600);
+  (function resumePrompt() {
+    var t = Tour.load(), sv = t && Tour.savedWorld(t), hs = Online.savedHost(), seat = Online.savedSeat();
+    if (!sv && !hs && !seat) { if (Meta.loginState().canClaim) setTimeout(dailyLogin, 600); return; }
+    var opts = (sv ? '<div class="opt bigopt pmA" data-rs="tour" style="width:100%"><span style="font-size:38px">🏆</span><div class="col" style="gap:0"><span style="font-size:20px">เล่นทัวร์นาเมนต์ต่อ — World ' + (t.world + 1) + ' รอบ ' + sv.round + '</span><span style="font-size:13px">กลับไปเล่นต่อจากจุดที่บันทึกไว้</span></div></div>' : '') +
+      (hs ? '<div class="opt bigopt pmD" data-rs="host" style="width:100%"><span style="font-size:38px">🏠</span><div class="col" style="gap:0"><span style="font-size:20px">เปิดห้องออนไลน์ ' + hs.code + ' ต่อ (รอบ ' + hs.s.round + ')</span><span style="font-size:13px">คุณเป็นโฮสต์ — เพื่อนจะกลับเข้ามาที่นั่งเดิมเอง</span></div></div>' : '') +
+      (seat && !hs ? '<div class="opt bigopt pmD" data-rs="seat" style="width:100%"><span style="font-size:38px">🔄</span><div class="col" style="gap:0"><span style="font-size:20px">กลับเข้าห้องออนไลน์ ' + seat.code + '</span><span style="font-size:13px">กลับไปนั่งที่เดิมในเกมที่หลุดออกมา</span></div></div>' : '');
+    setTimeout(function () {
+      modal({ title: '⏯️ มีเกมที่ค้างไว้', width: 640, body: '<div class="col" style="gap:12px">' + opts + '</div>', buttons: [{ t: 'ไว้ทีหลัง', v: 0 }], mount: function (box, close) { box.querySelectorAll('[data-rs]').forEach(function (e) { e.onclick = function () { close(e.dataset.rs); }; }); } })
+        .then(function (v) {
+          if (v === 'tour') startGame(sv, false);
+          else if (v === 'host') { toast('⏳ กำลังเปิดห้องเดิม...'); Online.resumeHost(function (err) { if (err) toast('⚠️ ' + err, 3500); }); }
+          else if (v === 'seat') { toast('⏳ กำลังกลับเข้าห้อง...'); Online.rejoin(function (err) { if (err) toast('⚠️ ' + err, 3500); }); }
+          else if (Meta.loginState().canClaim) dailyLogin();
+        });
+    }, 500);
+  })();
 })();

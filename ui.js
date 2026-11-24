@@ -140,7 +140,7 @@
     var it = function (k, n, t) { return '<div class="hubit" data-hb="' + k + '">' + spr(['ui', n], 150, 120) + '</div>'; };
     modal({ title: 'เมนู', width: 720, body: '<div class="hub">' + it('settings', 'settings') + it('lessons', 'guide') + it('music', 'music') + it('load', 'load') + it('inv', 'assets') + it('prof', 'chars') + it('achv', 'achv') + it('rank', 'rank') + '</div>',
       mount: function (box, close) { box.querySelectorAll('[data-hb]').forEach(function (e) { e.onclick = function () { close(e.dataset.hb); }; }); } })
-      .then(function (v) { ({ settings: settingsModal, lessons: lessonsModal, guide: guideModal, music: function () { if (!Music.playing) { U.music = true; saveSettings(); Music.start('menu'); } else Music.next(); toast('🎵 ' + (Music.song ? esc(Music.song.title) : '')); }, load: loadModal, inv: function () { openInventory('Game Equipment'); }, prof: openProfile, achv: achievements, rank: rankingModal }[v] || function () { })(); });
+      .then(function (v) { ({ settings: settingsModal, lessons: lessonsModal, guide: guideModal, music: function () { if (!Music.playing) { U.music = true; saveSettings(); Music.start('menu'); } else Music.next(); toast('🎵 ' + (Music.song ? esc(Music.song.title) : '')); }, load: loadModal, inv: function () { openInventory('🎽 ติดตั้ง'); }, prof: openProfile, achv: achievements, rank: rankingModal }[v] || function () { })(); });
   }
   function backBtns() { document.querySelectorAll('.backbtn').forEach(function (b) { if (!b.innerHTML) b.innerHTML = spr(['ui', 'prev'], 70, 70); }); }
   backBtns();
@@ -1576,9 +1576,53 @@
   // =====================================================================
   // INVENTORY
   // =====================================================================
-  var INV_TABS = ['Characters', 'Buildings', 'Decorations', 'Game Equipment', 'Special Cards', 'Packages', 'Dice Skins', 'Other Items'];
-  var IV = { tab: 'Game Equipment' };
+  var INV_TABS = ['🎽 ติดตั้ง', 'Characters', 'Buildings', 'Decorations', 'Game Equipment', 'Special Cards', 'Packages', 'Dice Skins', 'Other Items'];
+  var IV = { tab: '🎽 ติดตั้ง' };
   function openInventory(tab) { if (tab) IV.tab = tab; renderInventory(); show('inventory'); }
+  // ---------- "ติดตั้ง" tab: one saved loadout used by every mode ----------
+  var EQS = { slot: 0 };
+  function renderEquipTab(box) {
+    var P = Meta.p, e = P.equip, v = Meta.validLoadout(); e.eq = v.eq; e.sc = v.sc;
+    var chars = allCharKeys().filter(function (k) { return P.chars[k]; }).map(function (k) {
+      return '<div class="charbtn ' + (e.char === k ? 'sel ' : '') + (k[0] === 'g' ? 'goldc' : '') + '" data-ec="' + k + '" title="' + esc(Meta.charName(k)) + '" style="height:80px">' + spr(Meta.charSprite(k), 52, 68) + '</div>';
+    }).join('');
+    var dice = DICE_SKINS.filter(function (d) { return P.dice[d.id]; }).map(function (d) {
+      return '<div class="invitem ' + (e.dice === d.id ? 'eqd' : '') + '" data-ed="' + d.id + '" style="padding:4px">' + spr(d.spr, 60, 56) + '<div style="font-size:11px">' + d.name + '</div></div>';
+    }).join('');
+    var slot = function (k) {
+      var id = k === 'sc' ? e.sc : e.eq[k], it = id && Meta.item(id), on = EQS.slot === k;
+      return '<div class="eqslot ' + (it ? 'filled' : '') + '" data-es="' + k + '" style="width:118px;height:132px;' + (on ? 'outline:5px solid #ff7aa8' : '') + '">' + (it ? spr(it.spr, 70, 60) + '<div style="font-size:13px">' + it.name + '</div><div style="font-size:10px;color:#c0392b">แตะซ้ำเพื่อถอด</div>' : '<div style="font-size:28px">＋</div><div style="font-size:12px">' + (k === 'sc' ? 'การ์ดพิเศษ' : 'อุปกรณ์ ' + (k + 1)) + '</div>') + '</div>';
+    };
+    var items = EQUIPMENT.concat(SPECIAL_CARDS).filter(function (it) { return Meta.owned(it.id) > 0; }).map(function (it) {
+      var isSC = /^SC_/.test(it.id), eqd = isSC ? e.sc === it.id : e.eq.indexOf(it.id) >= 0;
+      return '<div class="invitem' + (eqd ? ' eqd' : '') + '" data-ei="' + it.id + '" title="' + esc(it.th || it.desc || '') + '" style="padding:4px"><span class="q">x' + Meta.owned(it.id) + '</span>' + spr(it.spr, 54, 50) + '<div style="font-size:11px">' + it.name + '</div><div style="font-size:9px;font-weight:700">' + (isSC ? 'การ์ดพิเศษ' : 'อุปกรณ์') + '</div></div>';
+    }).join('') || '<div class="muted" style="font-weight:700">ยังไม่มีอุปกรณ์/การ์ดพิเศษ — ซื้อได้ที่ร้านค้า หรือได้จากกล่องสุ่ม</div>';
+    var dk = DICE_SKINS.find(function (d) { return d.id === e.dice; }) || DICE_SKINS[0];
+    box.innerHTML = '<div class="row" style="align-items:flex-start;gap:14px">' +
+      '<div class="col" style="width:520px;gap:10px"><div class="panel" style="padding:10px"><b>1) ตัวละคร</b> <span class="muted" style="font-size:12px">(' + (chars.split('data-ec').length - 1) + ' ตัวที่มี)</span><div class="charpick" style="margin-top:6px;max-height:262px">' + chars + '</div></div>' +
+      '<div class="panel" style="padding:10px"><b>2) สกินลูกเต๋า</b><div class="invgrid" style="grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:6px;margin-top:6px;max-height:190px;overflow:auto">' + dice + '</div></div></div>' +
+      '<div class="col" style="width:290px;align-items:center;gap:8px"><div class="panel" style="padding:12px;width:100%;text-align:center">' + spr(Meta.charSprite(e.char), 190, 180) + '<div style="font-weight:900;font-size:20px">' + Meta.charName(e.char) + '</div>' + skillChip(e.char, true) + '<div class="row" style="justify-content:center;gap:6px;margin-top:6px;font-weight:800">' + spr(dk.spr, 46, 44) + dk.name + '</div></div>' +
+      '<button class="pink" id="eqSave" style="font-size:20px;width:100%">💾 บันทึกการติดตั้ง</button><div class="muted" style="font-size:12px;font-weight:700;text-align:center">ใช้กับทุกโหมดอัตโนมัติ: เล่นกับ AI • ออนไลน์ • ทัวร์นาเมนต์</div></div>' +
+      '<div class="col" style="width:400px;gap:10px"><div class="panel" style="padding:10px"><b>3) ไอเทมติดตัว (3 ชิ้น)</b><div class="row" style="gap:8px;margin-top:6px;justify-content:center">' + slot(0) + slot(1) + slot('sc') + '</div><div class="muted" style="font-size:11px;font-weight:700;margin-top:4px">อุปกรณ์ 2 ชิ้น + การ์ดพิเศษ 1 ใบ • ไอเทมถูกหักเมื่อใช้จริงในเกม</div></div>' +
+      '<div class="panel" style="padding:10px"><b>ไอเทมที่มี — แตะเพื่อใส่ช่องที่เลือก</b><div class="invgrid" style="grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:6px;margin-top:6px;max-height:262px;overflow:auto">' + items + '</div></div></div></div>';
+    var re = function () { Meta.save(); renderEquipTab(box); };
+    box.querySelectorAll('[data-ec]').forEach(function (x) { x.onclick = function () { e.char = x.dataset.ec; sfx('tap'); re(); }; });
+    box.querySelectorAll('[data-ed]').forEach(function (x) { x.onclick = function () { e.dice = x.dataset.ed; sfx('tap'); re(); }; });
+    box.querySelectorAll('[data-es]').forEach(function (x) { x.onclick = function () { var k = x.dataset.es === 'sc' ? 'sc' : +x.dataset.es; if (EQS.slot === k) { if (k === 'sc') e.sc = null; else e.eq.splice(k, 1); } EQS.slot = k; re(); }; });
+    box.querySelectorAll('[data-ei]').forEach(function (x) {
+      x.onclick = function () {
+        var id = x.dataset.ei;
+        if (/^SC_/.test(id)) { e.sc = e.sc === id ? null : id; EQS.slot = 'sc'; }
+        else {
+          var at = e.eq.indexOf(id);
+          if (at >= 0) e.eq.splice(at, 1);
+          else { var s = typeof EQS.slot === 'number' ? EQS.slot : (e.eq.length < 2 ? e.eq.length : 1); if (s > e.eq.length) s = e.eq.length; e.eq[s] = id; e.eq = e.eq.slice(0, 2); EQS.slot = e.eq.length < 2 ? e.eq.length : 'sc'; }
+        }
+        sfx('tap'); re();
+      };
+    });
+    box.querySelector('#eqSave').onclick = function () { Meta.save(); sfx('win'); toast('💾 บันทึกแล้ว! ' + Meta.charName(e.char) + ' • ' + dk.name + ' • ไอเทม ' + (e.eq.length + (e.sc ? 1 : 0)) + '/3 — ใช้กับทุกโหมด'); };
+  }
   function renderInventory() {
     var P = Meta.p, items = [];
     if (IV.tab === 'Characters') { allCharKeys().forEach(function (k) { if (P.chars[k]) items.push({ id: k, name: Meta.charName(k), spr: Meta.charSprite(k), q: 1, eq: P.equip.char === k }); }); }
@@ -1588,18 +1632,20 @@
     else {
       Meta.all().forEach(function (it) { if (it.type === IV.tab && Meta.owned(it.id)) items.push({ id: it.id, name: it.name, spr: it.spr, q: Meta.owned(it.id), desc: it.desc, eq: P.equip.eq.indexOf(it.id) >= 0 || P.equip.sc === it.id }); });
     }
-    var grid = items.length ? '<div class="invgrid">' + items.map(function (i) { return '<div class="invitem ' + (i.eq ? 'eqd' : '') + '" data-iv="' + i.id + '"><span class="q">x' + i.q + '</span>' + spr(i.spr, 90, 84) + '<div>' + i.name + '</div>' + (i.eq ? '<div style="font-size:11px;color:#2c8a2c">ติดตั้ง/ใช้งานอยู่</div>' : '') + '</div>'; }).join('') + '</div>' : '<div class="panel" style="padding:20px;text-align:center;font-weight:800">' + (IV.tab === 'Packages' ? 'แพ็กเกจจะถูกแยกสินค้าเข้า Inventory ตามประเภทอัตโนมัติเมื่อซื้อ' : 'ยังไม่มีไอเทมในหมวดนี้') + '</div>';
+    var setupTab = IV.tab === '🎽 ติดตั้ง';
+    var grid = setupTab ? '<div id="eqTab"></div>' : items.length ? '<div class="invgrid">' + items.map(function (i) { return '<div class="invitem ' + (i.eq ? 'eqd' : '') + '" data-iv="' + i.id + '"><span class="q">x' + i.q + '</span>' + spr(i.spr, 90, 84) + '<div>' + i.name + '</div>' + (i.eq ? '<div style="font-size:11px;color:#2c8a2c">ติดตั้ง/ใช้งานอยู่</div>' : '') + '</div>'; }).join('') + '</div>' : '<div class="panel" style="padding:20px;text-align:center;font-weight:800">' + (IV.tab === 'Packages' ? 'แพ็กเกจจะถูกแยกสินค้าเข้า Inventory ตามประเภทอัตโนมัติเมื่อซื้อ' : 'ยังไม่มีไอเทมในหมวดนี้') + '</div>';
     $('#inventory').innerHTML = '<div class="scrhead">' + '<div class="uibtn backbtn" id="ivBack">' + spr(['ui', 'prev'], 70, 70) + '</div>' + '<div class="title"><span class="ttl">🎒 คลังไอเทม</span></div><span class="chip coin">' + fmt(P.gold) + '</span><span class="chip">💎 ' + P.diamond + '</span><div class="uibtn" id="ivShop">' + spr(['ui', 'shop'], 100, 72) + '</div></div><div class="scrbody"><div class="tabs" style="margin-bottom:12px">' + INV_TABS.map(function (t) { return '<div class="tab ' + (IV.tab === t ? 'on' : '') + '" data-ivt="' + t + '">' + t + '</div>'; }).join('') + '</div>' + grid + '</div>';
     $('#ivBack').onclick = function () { show('menu'); };
     $('#ivShop').onclick = function () { openShop(); };
     document.querySelectorAll('[data-ivt]').forEach(function (e) { e.onclick = function () { IV.tab = e.dataset.ivt; renderInventory(); }; });
+    if (setupTab) renderEquipTab($('#eqTab'));
     document.querySelectorAll('[data-iv]').forEach(function (e) {
       e.onclick = function () {
         var id = e.dataset.iv;
         if (IV.tab === 'Characters') { P.equip.char = id; Meta.save(); toast('ตั้ง ' + Meta.charName(id) + ' เป็นตัวละครหลัก'); renderInventory(); }
         else if (IV.tab === 'Dice Skins') { P.equip.dice = id; Meta.save(); toast('เปลี่ยนสกินลูกเต๋าแล้ว'); renderInventory(); }
         else if (IV.tab === 'Buildings' || IV.tab === 'Decorations') openProfile();
-        else { var it = Meta.item(id); modal({ title: it.name, body: '<div class="col" style="align-items:center;min-width:380px">' + spr(it.spr, 130, 110) + '<div style="font-weight:800">' + it.desc + '</div><div class="chip">มี ' + Meta.owned(id) + ' ชิ้น</div><div class="muted" style="font-size:13px">ติดตั้งได้ในหน้า Pre-Match Setup ก่อนเริ่มเกม</div></div>', buttons: [{ t: 'ปิด', v: 1 }] }); }
+        else { var it = Meta.item(id); modal({ title: it.name, body: '<div class="col" style="align-items:center;min-width:380px">' + spr(it.spr, 130, 110) + '<div style="font-weight:800">' + it.desc + '</div><div class="chip">มี ' + Meta.owned(id) + ' ชิ้น</div><div class="muted" style="font-size:13px">ติดตั้งได้ที่แท็บ 🎽 ติดตั้ง</div></div>', buttons: [{ t: 'ปิด', v: 1 }] }); }
       };
     });
   }

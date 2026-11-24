@@ -319,19 +319,19 @@
     var html = '<div class="row" style="align-items:flex-start;gap:16px">' +
       '<div class="col" style="width:560px"><div class="panel" style="padding:10px"><b>1) Character Selection</b><div class="charpick" style="margin-top:6px">' + chars + '</div>' +
       '<div style="margin-top:8px"><b>2) สกิลติดตัว</b> ' + skillChip(e.char) + '</div></div>' +
-      '<div class="panel" style="padding:10px"><b>6) Inventory — แตะเพื่อใส่ช่องที่เลือก</b> <span class="muted" style="font-size:13px">(ใช้ได้เมื่อมีใน Inventory • ไอเทมจะถูกหักเมื่อใช้งานจริงในเกม)</span><div class="invgrid" style="margin-top:6px;max-height:300px;overflow:auto">' + inv + '</div></div></div>' +
+      '<div class="panel" style="padding:10px"><b>6) Inventory — แตะเพื่อใส่ช่องที่เลือก</b> <span class="muted" style="font-size:13px">(ใช้ได้เมื่อมีใน Inventory • ไอเทมจะถูกหักเมื่อใช้งานจริงในเกม)</span><div class="invgrid" style="margin-top:6px;max-height:230px;overflow:auto">' + inv + '</div>' + itemInfoBox(LO.info) + '</div></div>' +
       '<div class="col" style="width:330px;align-items:center"><div class="panel" style="padding:12px;width:100%;text-align:center">' + spr(Meta.charSprite(e.char), 200, 190) + '<div style="font-weight:900;font-size:20px">' + Meta.charName(e.char) + '</div>' + skillChip(e.char, true) + '</div>' +
       '<div class="row" style="gap:10px">' + slot(0) + slot(1) + '</div>' + slot(0, 'sc') + '</div>' +
       '<div class="col" style="width:300px"><div class="panel" style="padding:10px"><b>7) Map Preview</b><div style="height:170px;border-radius:14px;border:3px solid #6b4226;margin-top:6px;background:url(assets/' + m.bg + '.webp) center/cover"></div><div style="font-weight:900;font-size:18px;margin-top:4px">' + m.th + '</div>' + m.districts.map(function (d) { return '<div class="row" style="font-size:13px;font-weight:800;gap:6px"><span style="width:16px;height:12px;border-radius:4px;background:' + d.color + ';border:2px solid #6b4226"></span>' + d.th + '</div>'; }).join('') + '</div>' +
       '<div class="panel" style="padding:10px;font-weight:800;font-size:14px"><b>5) ตรวจสอบความพร้อม</b><div>ตัวละคร: ' + Meta.charName(e.char) + '</div><div>อุปกรณ์: ' + (e.eq.map(function (id) { return Meta.item(id).name; }).join(', ') || '-') + ' (' + e.eq.length + '/2)</div><div>การ์ดพิเศษ: ' + (e.sc ? Meta.item(e.sc).name : '-') + ' (' + (e.sc ? 1 : 0) + '/1)</div><div>โหมด: ' + LENGTHS[U.sel.len].n + '</div></div></div></div>';
     $('#loadoutBody').innerHTML = html;
     var B = $('#loadoutBody');
-    B.querySelectorAll('[data-c]').forEach(function (x) { x.onclick = function () { if (x.classList.contains('lock')) { toast(Meta.p.chars[x.dataset.c] ? 'ตัวละครนี้ถูกเลือกแล้ว' : '🔒 ปลดล็อกตัวละครนี้ได้ที่ร้านค้า'); return; } e.char = x.dataset.c; Meta.save(); renderLoadout(); }; });
+    B.querySelectorAll('[data-c]').forEach(function (x) { x.onclick = function () { if (x.classList.contains('lock')) { LO.info = x.dataset.c; renderLoadout(); toast(Meta.p.chars[x.dataset.c] ? 'ตัวละครนี้ถูกเลือกแล้ว' : '🔒 ปลดล็อกตัวละครนี้ได้ที่ร้านค้า'); return; } e.char = x.dataset.c; LO.info = x.dataset.c; Meta.save(); renderLoadout(); }; });
     B.querySelectorAll('[data-slot]').forEach(function (x) { x.onclick = function () { var s = x.dataset.slot === 'sc' ? 'sc' : +x.dataset.slot; if (LO.slot === s) { if (s === 'sc') e.sc = null; else e.eq.splice(s, 1); Meta.save(); } LO.slot = s; renderLoadout(); }; });
     B.querySelectorAll('[data-it]').forEach(function (x) {
       x.onclick = function () {
-        var id = x.dataset.it, isSC = /^SC_/.test(id);
-        if (!Meta.owned(id)) { toast('ยังไม่มีไอเทมนี้ใน Inventory — ซื้อได้ที่ร้านค้า'); return; }
+        var id = x.dataset.it, isSC = /^SC_/.test(id); LO.info = id;
+        if (!Meta.owned(id)) { renderLoadout(); toast('ยังไม่มีไอเทมนี้ใน Inventory — ซื้อได้ที่ร้านค้า'); return; }
         if (isSC) { e.sc = e.sc === id ? null : id; LO.slot = 'sc'; }
         else {
           var at = e.eq.indexOf(id);
@@ -767,6 +767,7 @@
   // ---------- Stock trading panel ----------
   function stockPanel(p, mode, title, extraTabs) {
     var g = U.g, s = g.s, custom = {};
+    var pend = function () { if (mode === 'sell' || p.flags.stockBuyDone) return null; for (var k in custom) { var n = Math.min(g.maxBuyShares(p, +k), Math.floor(+custom[k] || 0)); if (n > 0) return { i: +k, n: n }; } return null; };
     return modal({
       title: title, width: 1000, close: true, xValue: 'done', bgClose: false, buttons: [{ t: 'เสร็จสิ้น', v: 'done', cls: 'green' }],
       body: '<div id="spBody"></div>',
@@ -780,7 +781,9 @@
             var sellBtns = mode !== 'buy' ? [1, 5, 10, 25].map(function (n) { return '<button class="small pink" data-s="' + i + ':' + n + '" ' + (n > p.shares[i] ? 'disabled' : '') + '>-' + n + '</button>'; }).join('') + '<button class="small pink" data-s="' + i + ':' + p.shares[i] + '" ' + (!p.shares[i] ? 'disabled' : '') + '>ขายหมด</button>' : '';
             var own = d.tiles.map(function (id) { return s.tiles[id]; }); return '<div class="row" style="border-bottom:2px dashed #e5cfae;padding:6px 0;gap:8px"><span style="width:16px;height:30px;border-radius:5px;background:' + d.color + ';border:2px solid #6b4226"></span><div style="width:210px;cursor:pointer" data-peek="' + i + '"><b>' + esc(d.th) + ' <span style="font-size:13px;color:#3f86f0">📍ดูบนแผนที่</span></b><div style="display:flex;gap:2px;margin:1px 0">' + own.map(function (t) { return '<span title="' + esc(t.name) + '" style="width:16px;height:16px;border-radius:5px;border:2px solid ' + (t.owner >= 0 ? s.players[t.owner].color : '#ccc') + ';background:' + (t.owner >= 0 ? hexA(s.players[t.owner].color, .5) : '#fff') + ';font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:700">' + (t.owner >= 0 ? t.level : '') + '</span>'; }).join('') + '</div><div style="font-size:12px;font-weight:700">ราคา ' + d.price + ' G • ถือ ' + p.shares[i] + ' • ซื้อได้อีก ' + max + '</div></div>' + spark(d.hist, d.color, 90, 34) + '<div class="row" style="gap:4px;flex-wrap:wrap;flex:1">' + buyBtns + sellBtns + '</div></div>';
           }).join('');
-          body.innerHTML = '<div class="row" style="justify-content:center;gap:10px;margin-bottom:6px"><span class="chip coin">' + fmt(p.cash) + ' G</span>' + (fee || sfee ? '<span class="chip">ค่าธรรมเนียมซื้อ ' + (fee * 100) + '% • ขาย ' + (sfee * 100) + '%</span>' : '<span class="chip">ไม่มีค่าธรรมเนียม</span>') + (mode !== 'sell' ? (p.flags.stockBuyDone ? '<span class="chip" style="background:#d8f5d0">✅ ซื้อหุ้นแล้วในเทิร์นนี้</span>' : '<span class="chip" style="background:#fff3c4">ซื้อหุ้นได้ 1 ครั้ง/เทิร์น • เลือก 1 เขต (สูงสุด 99 หุ้น)</span>') : '') + '<span class="chip">💡 แตะชื่อเขตเพื่อดูบนแผนที่</span></div>' + rows;
+          body.innerHTML = '<div class="row" style="justify-content:center;gap:10px;margin-bottom:6px"><span class="chip coin">' + fmt(p.cash) + ' G</span>' + (fee || sfee ? '<span class="chip">ค่าธรรมเนียมซื้อ ' + (fee * 100) + '% • ขาย ' + (sfee * 100) + '%</span>' : '<span class="chip">ไม่มีค่าธรรมเนียม</span>') + (mode !== 'sell' ? (p.flags.stockBuyDone ? '<span class="chip" style="background:#d8f5d0">✅ ซื้อหุ้นแล้วในเทิร์นนี้</span>' : '<span class="chip" style="background:#fff3c4">ซื้อหุ้นได้ 1 ครั้ง/เทิร์น • เลือก 1 เขต (สูงสุด 99 หุ้น)</span>') : '') + '<span class="chip">💡 แตะชื่อเขตเพื่อดูบนแผนที่</span></div>' + rows + (mode !== 'sell' && !p.flags.stockBuyDone ? (function () { var pd = pend(); return '<div class="stbar">' + (pd ? '<div style="font-weight:900;font-size:18px">🧾 ' + esc(s.districts[pd.i].th) + ' × ' + pd.n + ' หุ้น = ' + fmt(Math.ceil(pd.n * s.districts[pd.i].price * (1 + fee))) + ' G</div><button class="green" id="stOk" style="font-size:22px;padding:10px 34px">✅ ตกลงซื้อหุ้น</button><button class="small gray" id="stCancel">ยกเลิก</button>' : '<div style="font-weight:800">👆 เลือกจำนวนหุ้นของเขตที่ต้องการ แล้วกด “ตกลงซื้อหุ้น” ตรงนี้</div>') + '</div>'; })() : '');
+          var okB = body.querySelector('#stOk'); if (okB) okB.onclick = function () { var pd = pend(); if (pd) { var bc = body.querySelector('[data-bc="' + pd.i + '"]'); if (bc) bc.onclick(); } };
+          var cB = body.querySelector('#stCancel'); if (cB) cB.onclick = function () { custom = {}; draw(); };
           body.querySelectorAll('[data-peek]').forEach(function (e) { e.onclick = function () { peekDistrict(+e.dataset.peek); }; });
           body.querySelectorAll('[data-b]').forEach(function (b) { b.onclick = function () { var a = b.dataset.b.split(':'), i = +a[0]; custom = {}; custom[i] = Math.min(+a[1], g.maxBuyShares(p, i)); sfx('click'); draw(); }; });
           body.querySelectorAll('[data-ci]').forEach(function (inp) { inp.onchange = function () { var i = +inp.dataset.ci; custom = {}; custom[i] = Math.max(0, Math.min(g.maxBuyShares(p, i), Math.floor(+inp.value || 0))); draw(); }; });
@@ -795,6 +798,11 @@
         }
         draw();
       },
+    }).then(function (v) {
+      // closed with a purchase still selected → buy it (players often forget to press the buy button)
+      var pd = pend();
+      if (pd && g.buyStock(p, pd.i, pd.n)) { sfx('coin'); refresh(); toast('🧾 ซื้อหุ้น ' + esc(s.districts[pd.i].th) + ' ' + pd.n + ' หุ้นตามที่เลือกไว้แล้ว', 2600); }
+      return v;
     });
   }
   function landPreview(p, t) {
@@ -1580,7 +1588,12 @@
   var IV = { tab: '🎽 ติดตั้ง' };
   function openInventory(tab) { if (tab) IV.tab = tab; renderInventory(); show('inventory'); }
   // ---------- "ติดตั้ง" tab: one saved loadout used by every mode ----------
-  var EQS = { slot: 0 };
+  var EQS = { slot: 0, info: null };
+  function itemInfoBox(id) {
+    if (!id) return '<div class="iinfo muted">👆 แตะไอเทมหรือตัวละครเพื่อดูสรรพคุณ</div>';
+    if (/^[bxjg]\d+$/.test(id)) { var sk = Meta.charSkill(id); return '<div class="iinfo">' + spr(Meta.charSprite(id), 46, 50) + '<div><b>' + esc(Meta.charName(id)) + '</b><br>' + (sk ? '⭐ <b>' + esc(sk.name) + '</b>: ' + esc(sk.desc) : 'ไม่มีสกิลพิเศษ') + '</div></div>'; }
+    var it = Meta.item(id); if (!it) return ''; return '<div class="iinfo">' + spr(it.spr, 46, 44) + '<div><b>' + esc(it.name) + '</b> <span class="chip" style="font-size:11px">' + (/^SC_/.test(id) ? 'การ์ดพิเศษ' : /^dice/.test(id) ? 'สกินลูกเต๋า' : 'อุปกรณ์') + ' • มี ' + (Meta.owned(id) || (Meta.p.dice[id] ? 1 : 0)) + '</span><br>' + esc(it.desc || it.th || '') + '</div></div>';
+  }
   function renderEquipTab(box) {
     var P = Meta.p, e = P.equip, v = Meta.validLoadout(); e.eq = v.eq; e.sc = v.sc;
     var chars = allCharKeys().filter(function (k) { return P.chars[k]; }).map(function (k) {
@@ -1604,14 +1617,14 @@
       '<div class="col" style="width:290px;align-items:center;gap:8px"><div class="panel" style="padding:12px;width:100%;text-align:center">' + spr(Meta.charSprite(e.char), 190, 180) + '<div style="font-weight:900;font-size:20px">' + Meta.charName(e.char) + '</div>' + skillChip(e.char, true) + '<div class="row" style="justify-content:center;gap:6px;margin-top:6px;font-weight:800">' + spr(dk.spr, 46, 44) + dk.name + '</div></div>' +
       '<button class="pink" id="eqSave" style="font-size:20px;width:100%">💾 บันทึกการติดตั้ง</button><div class="muted" style="font-size:12px;font-weight:700;text-align:center">ใช้กับทุกโหมดอัตโนมัติ: เล่นกับ AI • ออนไลน์ • ทัวร์นาเมนต์</div></div>' +
       '<div class="col" style="width:400px;gap:10px"><div class="panel" style="padding:10px"><b>3) ไอเทมติดตัว (3 ชิ้น)</b><div class="row" style="gap:8px;margin-top:6px;justify-content:center">' + slot(0) + slot(1) + slot('sc') + '</div><div class="muted" style="font-size:11px;font-weight:700;margin-top:4px">อุปกรณ์ 2 ชิ้น + การ์ดพิเศษ 1 ใบ • ไอเทมถูกหักเมื่อใช้จริงในเกม</div></div>' +
-      '<div class="panel" style="padding:10px"><b>ไอเทมที่มี — แตะเพื่อใส่ช่องที่เลือก</b><div class="invgrid" style="grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:6px;margin-top:6px;max-height:262px;overflow:auto">' + items + '</div></div></div></div>';
+      '<div class="panel" style="padding:10px"><b>ไอเทมที่มี — แตะเพื่อใส่ช่องที่เลือก</b><div class="invgrid" style="grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:6px;margin-top:6px;max-height:200px;overflow:auto">' + items + '</div>' + itemInfoBox(EQS.info) + '</div></div></div>';
     var re = function () { Meta.save(); renderEquipTab(box); };
-    box.querySelectorAll('[data-ec]').forEach(function (x) { x.onclick = function () { e.char = x.dataset.ec; sfx('tap'); re(); }; });
-    box.querySelectorAll('[data-ed]').forEach(function (x) { x.onclick = function () { e.dice = x.dataset.ed; sfx('tap'); re(); }; });
-    box.querySelectorAll('[data-es]').forEach(function (x) { x.onclick = function () { var k = x.dataset.es === 'sc' ? 'sc' : +x.dataset.es; if (EQS.slot === k) { if (k === 'sc') e.sc = null; else e.eq.splice(k, 1); } EQS.slot = k; re(); }; });
+    box.querySelectorAll('[data-ec]').forEach(function (x) { x.onclick = function () { e.char = x.dataset.ec; EQS.info = x.dataset.ec; sfx('tap'); re(); }; });
+    box.querySelectorAll('[data-ed]').forEach(function (x) { x.onclick = function () { e.dice = x.dataset.ed; EQS.info = x.dataset.ed; sfx('tap'); re(); }; });
+    box.querySelectorAll('[data-es]').forEach(function (x) { x.onclick = function () { var k = x.dataset.es === 'sc' ? 'sc' : +x.dataset.es; var sid = k === 'sc' ? e.sc : e.eq[k]; if (sid) EQS.info = sid; if (EQS.slot === k) { if (k === 'sc') e.sc = null; else e.eq.splice(k, 1); } EQS.slot = k; re(); }; });
     box.querySelectorAll('[data-ei]').forEach(function (x) {
       x.onclick = function () {
-        var id = x.dataset.ei;
+        var id = x.dataset.ei; EQS.info = id;
         if (/^SC_/.test(id)) { e.sc = e.sc === id ? null : id; EQS.slot = 'sc'; }
         else {
           var at = e.eq.indexOf(id);

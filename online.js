@@ -57,7 +57,7 @@ var Online = (function () {
       peer.on('error', function (e) { var t = e && e.type; if (isHost && readyDone && (t === 'network' || t === 'server-error' || t === 'socket-error' || t === 'socket-closed')) { keepSignal(); return; } if (readyDone && t !== 'peer-unavailable') return; if (failed) return; failed = true; clearTimeout(timer); onFail(t === 'unavailable-id' ? 'รหัสห้องนี้ถูกใช้แล้ว ลองสร้างใหม่' : t === 'peer-unavailable' ? 'ไม่พบห้องนี้ — ตรวจรหัสห้องอีกครั้ง' : t === 'browser-incompatible' ? 'เบราว์เซอร์นี้ไม่รองรับการเล่นออนไลน์' : 'เชื่อมต่อไม่ได้ (' + (t || 'network') + ')'); });
       if (!isHost) timer = setTimeout(function () { if (!readyDone && !failed) { failed = true; try { peer.destroy(); } catch (e) { } onFail('เชื่อมต่อนานเกินไป — ลองใหม่ หรือเปลี่ยนเครือข่าย Wi-Fi'); } }, 15000);
       var send = function (c, m) { if (c && c.open) pack(m, function (x) { try { c.send(x); } catch (e) { } }); };
-      return { kind: 'p2p', send: function (to, m) { send(conns[to], m); }, all: function (m, except) { Object.keys(conns).forEach(function (k) { if (k !== except) send(conns[k], m); }); }, host: function (m) { send(conns[Object.keys(conns)[0]], m); }, drop: function (k) { var c = conns[k]; delete conns[k]; try { c && c.close(); } catch (e) { } }, close: function () { try { peer.destroy(); } catch (e) { } } };
+      return { kind: 'p2p', send: function (to, m) { send(conns[to], m); }, all: function (m, except) { Object.keys(conns).forEach(function (k) { if (k !== except) send(conns[k], m); }); }, host: function (m) { send(conns[Object.keys(conns)[0]], m); }, drop: function (k) { var c = conns[k]; delete conns[k]; try { c && c.close(); } catch (e) { } }, close: function () { Object.keys(conns).forEach(function (k) { delete conns[k]; }); clearTimeout(timer); failed = true; try { peer.destroy(); } catch (e) { } } };
     }
     // BroadcastChannel (same device testing: add ?local=1 to the URL)
     var me = isHost ? 'host' : 'g' + Math.random().toString(36).slice(2, 8), bc0 = new BroadcastChannel('rfs-room-' + roomCode), peers = {}, closed = false;
@@ -75,7 +75,7 @@ var Online = (function () {
     var gotOk = false;
     if (isHost) setTimeout(onReady, 50); else { setTimeout(function () { bc.postMessage({ sys: 'join', from: me, to: 'host' }); }, 50); setTimeout(function () { if (!gotOk && !closed) { bc.close(); onFail('ไม่พบห้อง'); } }, 6000); }
     var post = function (to, m) { if (window.__mute) return; pack(m, function (x) { bc.postMessage({ to: to, from: me, m: x }); }); };
-    return { kind: 'local', send: post, all: function (m, except) { Object.keys(peers).forEach(function (k) { if (k !== except) post(k, m); }); }, host: function (m) { post('host', m); }, drop: function (k) { delete peers[k]; }, close: function () { bc.postMessage({ sys: 'bye', from: me, to: '*' }); bc.close(); } };
+    return { kind: 'local', send: post, all: function (m, except) { Object.keys(peers).forEach(function (k) { if (k !== except) post(k, m); }); }, host: function (m) { post('host', m); }, drop: function (k) { delete peers[k]; }, close: function () { if (window.__syncClose && !isHost) onLeave('host'); bc.postMessage({ sys: 'bye', from: me, to: '*' }); bc.close(); } };
   }
   // ---------- heartbeat: detects locked iPads / lost Wi-Fi so nobody waits forever ----------
   var hb = null, lastSeen = {};
@@ -91,7 +91,7 @@ var Online = (function () {
       } else {
         net.host({ t: 'pong' });
         if (!lastSeen.host) lastSeen.host = now;
-        if (now - lastSeen.host > 10000) { if (room.started) reconnect(); else { A.toast('📴 ขาดการเชื่อมต่อกับโฮสต์'); leave(); A.closeModal(); } }
+        if (now - lastSeen.host > 10000) { var g1 = A.game(); if (room.started && g1 && (g1._ended || g1.s.over)) { leave(); return; } if (room.started) reconnect(); else { A.toast('📴 ขาดการเชื่อมต่อกับโฮสต์'); leave(); A.closeModal(); } }
       }
     }, 3000);
   }
@@ -212,6 +212,7 @@ var Online = (function () {
       if (!pl) { if (!room.started) { onHostMsg(peer, Object.assign({}, d, { t: 'hello' })); return; } net.send(peer, { t: 'full', why: 'ไม่พบที่นั่งของคุณในห้องนี้' }); return; }
       if (pl.remote && pl.remote !== peer) { var old = pl.remote; Object.keys(pending).forEach(function (id) { if (pending[id].peer === old) { var pd = pending[id]; delete pending[id]; pd.rej('left'); } }); try { net.drop(old); } catch (e) { } }
       pl.remote = peer; pl.offline = 0; lastSeen[peer] = Date.now();
+      if (g.s.over) { net.send(peer, { t: 'end', s: snap(g.s, true) }); return; }
       net.send(peer, { t: 'start', s: snap(g.s, true), idx: pl.id, rejoin: 1 });
       A.toast('🔌 ' + A.esc(pl.name) + ' กลับเข้าเกมแล้ว!'); net.all({ t: 'ev', m: 'toast', args: ['🔌 ' + pl.name + ' กลับเข้าเกมแล้ว!'] }, peer); A.refresh();
     } else if (d.t === 'res') { var pd = pending[d.id]; if (pd) { delete pending[d.id]; pd.res({ v: d.v, ops: d.ops }); } }
@@ -255,7 +256,7 @@ var Online = (function () {
   }
   // tournament: the team goes on together unless it was knocked out or this was the last world
   function tourGoesOn(s) { return !!(s.tour && s.tour.kind === 'team' && s.winTeam === 0 && s.tour.world < TOUR_WORLDS.length - 1); }
-  function end(g) { try { localStorage.removeItem('rfs_online_host'); } catch (e) { } if (net) net.all({ t: 'end', s: snap(g.s, true) }); if (!tourGoesOn(g.s)) setTimeout(function () { if (room && room.started && A.game() === g) leave(); }, 15000); }
+  function end(g) { try { localStorage.removeItem('rfs_online_host'); } catch (e) { } if (net) net.all({ t: 'end', s: snap(g.s, true) }); if (!tourGoesOn(g.s)) setTimeout(function () { if (room && room.started && A.game() === g) leave(); }, 60000); }
   function nextWorld() { if (!room || room.role !== 'host' || !room.settings.tour) return; var g = A.game(); room.settings.tour.world = (g && g.s.tour ? g.s.tour.world : room.settings.tour.world) + 1; room.players = room.players.filter(function (x, i) { return i === 0 || x.peer; }); startHost(); }
   function savedHost() { try { var x = JSON.parse(localStorage.getItem('rfs_online_host') || 'null'); return x && x.s && !x.s.over && Date.now() - x.t < 3 * 3600e3 ? x : null; } catch (e) { return null; } }
   // reopen a room this device was hosting (page reloaded / app closed). Players rejoin with their seat token.
@@ -286,7 +287,7 @@ var Online = (function () {
   function savedSeat() { try { var x = JSON.parse(localStorage.getItem('rfs_online_seat') || 'null'); return x && Date.now() - x.t < 3 * 3600e3 ? x : null; } catch (e) { return null; } }
   function guestNet(roomCode, isRejoin, done) {
     var P = Meta.p;
-    net = makeNet(roomCode, false, onGuestMsg, function () { }, function () { if (room && room.started) reconnect(); else if (room) { A.toast('📴 โฮสต์ออกจากห้องแล้ว'); leave(); A.closeModal(); } }, function () {
+    net = makeNet(roomCode, false, onGuestMsg, function () { }, function () { var g0 = A.game(); if (room && room.started && g0 && (g0._ended || g0.s.over)) { leave(); return; } if (room && room.started) reconnect(); else if (room) { A.toast('📴 โฮสต์ออกจากห้องแล้ว'); leave(); A.closeModal(); } }, function () {
       lastSeen.host = Date.now();
       net.host(isRejoin ? { t: 'rejoin', token: token() } : { t: 'hello', token: token(), color: P.color || 0, name: P.name, char: P.equip.char, costume: P.equip.costume, dice: P.equip.dice, loadout: Meta.validLoadout() });
       startHeartbeat(false); done(null, room);
@@ -313,6 +314,7 @@ var Online = (function () {
   }
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState !== 'visible' || !room || room.role !== 'guest' || !room.started) return;
+    var g2 = A.game(); if (g2 && (g2._ended || g2.s.over)) return;
     if (Date.now() - (lastSeen.host || 0) > 5000) { rc = null; reconnect(); }
   });
   function rejoin(done) {
@@ -391,7 +393,7 @@ var Online = (function () {
     };
     ['chooseNumber', 'choose'].forEach(function (m) { var f = g.io[m]; g.io[m] = function () { return Promise.resolve(f.apply(g.io, arguments)).then(function (v) { if (g._ans) g._ans.push(v); return v; }); }; });
   }
-  function leave() { clearInterval(hb); rc = null; if (net) { try { net.close(); } catch (e) { } } net = null; room = null; pending = {}; queued = 0; chain = Promise.resolve(); A.setOnline(null); }
+  function leave() { clearInterval(hb); rc = null; var n0 = net; net = null; room = null; if (n0) { try { n0.close(); } catch (e) { } } A.netStatus(null); pending = {}; queued = 0; chain = Promise.resolve(); A.setOnline(null); }
 
   return {
     init: function (api) { A = api; },

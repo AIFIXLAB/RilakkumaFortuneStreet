@@ -421,6 +421,131 @@ var TOUR_MAPS = [
   },
 ];
 MAPS.push.apply(MAPS, TOUR_MAPS);
+// Easter event — four painted boards (stage order)
+var EASTER_MAPS = [
+  {
+    id: 'e1', easter: 1, name: "Clover Forest", th: "ป่าโคลเวอร์", bg: 'bg_e1', img: [1536, 1093], ts: 64, size: 'กลาง',
+    districts: [
+      { name: "Treehouse", th: "บ้านต้นไม้", color: '#f48fb1', f: 1.0, label: [620, 280], shops: [["คาเฟ่บ้านต้นไม้", "cafe"], ["ร้านขนมโคลเวอร์", "bakery"], ["ร้านดอกซากุระ", "mart"]] },
+      { name: "Pink Grove", th: "ป่าชมพู", color: '#a5d6a7', f: 0.9, label: [330, 260], shops: [["ร้านน้ำผึ้ง", "food"], ["ร้านหมวกใบไม้", "clothes"]] },
+      { name: "Lavender Path", th: "ทางลาเวนเดอร์", color: '#ce93d8', f: 1.0, label: [420, 420], shops: [["ร้านสมุนไพร", "clinic"], ["ร้านชาลาเวนเดอร์", "cafe"]] },
+      { name: "Glass Dome", th: "โดมกระจก", color: '#ffcc80', f: 1.15, label: [900, 270], shops: [["เรือนกระจก", "mall"], ["ร้านคริสตัล", "clothes"], ["ร้านต้นไม้แก้ว", "mart"]] },
+      { name: "Sky Leaf", th: "ใบไม้ท้องฟ้า", color: '#81d4fa', f: 1.1, label: [1230, 260], shops: [["ร้านว่าวใบไม้", "book"], ["ร้านพายหมี", "bakery"]] },
+      { name: "Violet Brook", th: "ลำธารไวโอเล็ต", color: '#b39ddb', f: 1.2, label: [1130, 420], shops: [["สปาลำธาร", "onsen"], ["ร้านปลาเงิน", "food"]] },
+      { name: "Mushroom Lane", th: "ซอยเห็ด", color: '#90caf9', f: 1.25, label: [420, 610], shops: [["ร้านเห็ดหอม", "food"], ["บ้านเห็ดของเล่น", "book"]] },
+      { name: "Bunny Hollow", th: "โพรงกระต่าย", color: '#ffd54f', f: 1.3, label: [320, 780], shops: [["ร้านแครอท", "mart"], ["ร้านผ้าพันคอ", "clothes"]] },
+      { name: "Coin Brook", th: "ลำธารเหรียญ", color: '#f8bbd0', f: 1.35, label: [600, 790], shops: [["ร้านทองใบไม้", "clothes"], ["ห้างป่าโคลเวอร์", "mall"]] },
+      { name: "Sunflower Field", th: "ทุ่งทานตะวัน", color: '#80cbc4', f: 1.25, label: [1120, 610], shops: [["ร้านเมล็ดทานตะวัน", "mart"], ["ร้านน้ำมันดอกไม้", "food"]] },
+      { name: "Windmill Farm", th: "ฟาร์มกังหัน", color: '#ffab91', f: 1.3, label: [1250, 800], shops: [["โรงสีกังหัน", "bakery"], ["ร้านนมฟาร์ม", "cafe"]] },
+      { name: "Lucky Clover", th: "โคลเวอร์นำโชค", color: '#f06292', f: 1.45, label: [900, 800], shops: [["โรงแรมโคลเวอร์", "onsen"], ["คาสิโนเล็ก", "mall"]] },
+    ],
+    paths: [
+      "770,460,B 699,290,#1 653,223,? 575,175,#1 460,155,H 349,182,#2 271,251,#2 265,365,S 327,436,J 408,470,#3 490,486,#3 585,515,P 770,460,B",
+      "770,460,B 842,288,#4 893,220,? 972,175,#4 1085,155,E 1195,180,#5 1275,250,#5 1282,365,C 1215,435,J 1134,470,#6 1049,486,#6 955,515,P 770,460,B",
+      "585,515,P 476,545,#7 375,562,#7 290,610,L 235,700,M 249,791,#8 298,850,#8 385,890,U 496,902,? 593,872,#9 661,815,#9 715,760,P 770,690,K",
+      "955,515,P 1060,545,#10 1163,562,#10 1251,603,L 1300,700,E 1284,796,#11 1213,868,#11 1095,895,D 965,883,? 881,823,#12 820,760,#12 770,690,K",
+      "770,460,B 770,690,K",
+    ],
+  },
+  {
+    id: 'e2', easter: 2, name: "Butterfly Island", th: "เกาะผีเสื้อ", bg: 'bg_e2', img: [1536, 950], ts: 64, size: 'กลาง',
+    districts: [
+      { name: "Castle Wing", th: "ปีกปราสาท", color: '#f48fb1', f: 1.0, label: [520, 300], shops: [["คาเฟ่ปราสาท", "cafe"], ["ร้านมงกุฎ", "clothes"], ["ร้านขนมเจ้าหญิง", "bakery"]] },
+      { name: "Sakura Hill", th: "เนินซากุระ", color: '#ffd54f', f: 0.9, label: [240, 250], shops: [["ร้านดอกไม้", "mart"], ["ร้านชาซากุระ", "cafe"]] },
+      { name: "Lilac Path", th: "ทางไลแลค", color: '#b39ddb', f: 1.05, label: [400, 450], shops: [["ร้านโบว์", "clothes"], ["ร้านหนังสือนิทาน", "book"], ["ร้านน้ำหอม", "mart"]] },
+      { name: "Star Dome", th: "โดมดวงดาว", color: '#81d4fa', f: 1.15, label: [1000, 300], shops: [["หอดูดาว", "book"], ["ร้านแว่นนักบิน", "clothes"], ["คาเฟ่ท้องฟ้า", "cafe"]] },
+      { name: "Rainbow Edge", th: "ขอบสายรุ้ง", color: '#a5d6a7', f: 1.1, label: [1300, 250], shops: [["ร้านลูกกวาดรุ้ง", "food"], ["ร้านว่าว", "mall"]] },
+      { name: "Moon Pond", th: "บึงดวงจันทร์", color: '#ce93d8', f: 1.2, label: [1150, 450], shops: [["สปาบึงจันทร์", "onsen"], ["ร้านปลาดาว", "food"], ["ร้านโคมไฟ", "mart"]] },
+      { name: "Candy Stall", th: "ซุ้มขนม", color: '#ff8a80', f: 1.25, label: [430, 610], shops: [["ร้านโดนัท", "bakery"], ["ซุ้มเครปผีเสื้อ", "food"], ["ร้านไอศกรีม", "cafe"]] },
+      { name: "Coin Garden", th: "สวนเหรียญทอง", color: '#f8bbd0', f: 1.35, label: [470, 780], shops: [["ร้านกระปุกออมสิน", "mall"], ["ร้านทองผีเสื้อ", "clothes"], ["ภัตตาคารสวน", "food"]] },
+      { name: "Crystal Spring", th: "น้ำพุคริสตัล", color: '#e1bee7', f: 1.3, label: [1090, 610], shops: [["ร้านคริสตัล", "clothes"], ["คลินิกน้ำพุ", "clinic"], ["ร้านชาผีเสื้อ", "cafe"]] },
+      { name: "Bunny Meadow", th: "ทุ่งกระต่าย", color: '#f06292', f: 1.4, label: [1050, 780], shops: [["โรงแรมกระต่าย", "onsen"], ["ร้านแครอททอง", "mart"], ["ห้างทุ่งหญ้า", "mall"]] },
+    ],
+    paths: [
+      "760,470,B 630,350,#1 595,284,#1 530,222,? 440,168,#1 325,140,H 207,156,#2 127,218,#2 114,332,L 150,420,S 247,488,#3 355,506,#3 469,505,J 570,523,#3 760,470,B",
+      "760,470,B 900,345,#4 950,272,#4 1008,216,? 1096,172,#4 1205,145,E 1329,158,#5 1406,220,#5 1418,336,L 1370,425,C 1278,488,#6 1170,507,#6 1060,505,J 959,522,#6 760,470,B",
+      "760,470,B 625,565,#7 525,552,#7 425,555,? 330,575,#7 255,640,M 235,750,K 313,827,#8 426,838,#8 524,809,J 625,770,#8 760,830,D",
+      "760,470,B 895,565,#9 995,552,#9 1095,555,? 1190,575,#9 1265,640,L 1290,750,E 1221,825,#10 1108,838,#10 1002,810,J 900,770,#10 760,830,D",
+      "760,470,B 760,650,P 760,830,D",
+    ],
+  },
+  {
+    id: 'e3', easter: 3, name: "Heart Trio", th: "หัวใจสามดวง", bg: 'bg_e3', img: [1536, 1090], ts: 64, size: 'กลาง',
+    districts: [
+      { name: "Sakura Heart", th: "หัวใจซากุระ", color: '#f48fb1', f: 1.0, label: [500, 250], shops: [["คาเฟ่หัวใจ", "cafe"], ["ร้านช็อกโกแลต", "bakery"], ["ร้านจดหมายรัก", "book"], ["ร้านดอกกุหลาบ", "mart"]] },
+      { name: "Castle Lawn", th: "สนามปราสาท", color: '#ffcc80', f: 0.9, label: [220, 230], shops: [["ร้านมงกุฎดอกไม้", "clothes"], ["ร้านชาบ่าย", "cafe"]] },
+      { name: "Lilac Shore", th: "ชายหาดไลแลค", color: '#b39ddb', f: 1.05, label: [260, 400], shops: [["ร้านเปลือกหอย", "mart"], ["ร้านขนมปังรูปหัวใจ", "bakery"]] },
+      { name: "Ice Heart", th: "หัวใจน้ำแข็ง", color: '#81d4fa', f: 1.15, label: [1010, 250], shops: [["ร้านคริสตัลหิมะ", "clothes"], ["ร้านโกโก้", "cafe"], ["ภัตตาคารเพนกวิน", "food"], ["ร้านถุงมือ", "mart"]] },
+      { name: "Frost Garden", th: "สวนน้ำค้างแข็ง", color: '#ffd54f', f: 1.1, label: [1320, 230], shops: [["ร้านไอศกรีม", "cafe"], ["ห้องสมุดหิมะ", "book"]] },
+      { name: "Aurora Bay", th: "อ่าวแสงเหนือ", color: '#ce93d8', f: 1.2, label: [1300, 410], shops: [["สปาออโรร่า", "onsen"], ["ร้านโคมไฟแสงเหนือ", "mall"]] },
+      { name: "Ribbon Way", th: "ทางริบบิ้น", color: '#f8bbd0', f: 1.25, label: [600, 680], shops: [["ร้านโบว์", "clothes"], ["ร้านลูกโป่ง", "mall"], ["ร้านขนมสายไหม", "food"]] },
+      { name: "Coin Lake", th: "ทะเลสาบเหรียญ", color: '#ff8a80', f: 1.35, label: [600, 860], shops: [["ร้านทองหัวใจ", "clothes"], ["ร้านกระปุก", "mart"]] },
+      { name: "Star Falls", th: "น้ำตกดวงดาว", color: '#e1bee7', f: 1.3, label: [930, 860], shops: [["โรงแรมน้ำตก", "onsen"], ["ภัตตาคารดาว", "food"]] },
+      { name: "Love Plaza", th: "ลานแห่งรัก", color: '#f06292', f: 1.45, label: [960, 670], shops: [["ห้างหัวใจ", "mall"], ["ร้านแหวนเพชร", "clothes"], ["คาเฟ่คู่รัก", "cafe"]] },
+    ],
+    paths: [
+      "770,380,B 610,320,#1 619,249,#1 562,186,? 471,167,#1 370,192,H 273,155,#2 173,166,#2 108,232,L 108,330,S 155,425,#3 255,470,#3 365,515,J 490,455,P 560,390,#1 610,320,#1",
+      "770,380,B 925,320,#4 923,251,#4 977,184,? 1071,168,#4 1170,192,E 1269,158,#5 1364,169,#5 1429,235,L 1432,335,C 1385,425,#6 1280,492,#6 1170,515,J 1040,455,P 975,390,#4 925,320,#4",
+      "490,455,P 545,525,P 589,587,#7 523,630,#7 472,690,? 470,785,K 557,872,#8 650,930,#8 775,962,D 895,931,#9 987,874,#9 1060,790,M 1073,690,J 1022,628,#10 955,581,#10 875,589,#10 770,612,J 667,589,#7 589,587,#7",
+      "1040,455,P 990,525,P 955,581,#10",
+      "770,380,B 770,500,P 770,612,?",
+    ],
+  },
+  {
+    id: 'e4', easter: 4, name: "Galaxy Trip", th: "กาแล็กซี่ทริป", bg: 'bg_e4', img: [1536, 1024], ts: 64, size: 'กลาง',
+    districts: [
+      { name: "Sakura Dome", th: "โดมซากุระ", color: '#ff8fb3', f: 0.95, label: [330, 200], shops: [["ร้านมาการองดาว", "bakery"], ["คาเฟ่โดมแก้ว", "cafe"], ["ร้านดอกซากุระ", "mart"]] },
+      { name: "Starfall Cliff", th: "หน้าผาดาวตก", color: '#ffd54f', f: 1.05, label: [470, 300], shops: [["ร้านลูกกวาดดาว", "food"], ["ร้านกล้องดูดาว", "book"], ["ร้านผ้าคลุมจรวด", "clothes"]] },
+      { name: "Crystal Meadow", th: "ทุ่งคริสตัล", color: '#f48fb1', f: 1.0, label: [320, 390], shops: [["ร้านคริสตัล", "clothes"], ["ร้านชาน้ำตก", "cafe"], ["คลินิกกาแล็กซี่", "clinic"]] },
+      { name: "Moon Igloo", th: "อิกลูดวงจันทร์", color: '#ffca28', f: 1.15, label: [1150, 190], shops: [["ร้านไอศกรีมดวงจันทร์", "cafe"], ["ร้านเสื้อกันหนาว", "clothes"], ["ภัตตาคารอิกลู", "food"]] },
+      { name: "Polar Station", th: "สถานีขั้วโลก", color: '#64b5f6', f: 1.25, label: [1350, 260], shops: [["ร้านจานดาวเทียม", "mart"], ["ห้องสมุดอวกาศ", "book"], ["ร้านเพนกวิน", "food"]] },
+      { name: "Comet Lane", th: "ถนนดาวหาง", color: '#b39ddb', f: 1.2, label: [1250, 400], shops: [["ร้านหางดาวหาง", "mall"], ["สปาน้ำแข็ง", "onsen"], ["ร้านหมวกนักบิน", "clothes"]] },
+      { name: "Rocket Port", th: "ท่าจรวด", color: '#ce93d8', f: 1.35, label: [1000, 280], shops: [["อู่จรวด", "mall"], ["ร้านเชื้อเพลิงดาว", "mart"], ["ร้านโมเดลจรวด", "book"]] },
+      { name: "Asteroid Market", th: "ตลาดดาวเคราะห์น้อย", color: '#ffb74d', f: 1.1, label: [940, 640], shops: [["ร้านหินดาว", "mart"], ["ร้านขนมอุกกาบาต", "bakery"], ["ร้านทองดาว", "clothes"]] },
+      { name: "Lucky Orbit", th: "วงโคจรนำโชค", color: '#ba68c8', f: 1.3, label: [950, 800], shops: [["โรงแรมวงแหวน", "onsen"], ["ร้านซูชิดาว", "food"], ["ร้านของขวัญอวกาศ", "mall"]] },
+      { name: "Casino Crater", th: "หลุมคาสิโน", color: '#f06292', f: 1.4, label: [600, 800], shops: [["ภัตตาคารคาสิโน", "food"], ["ร้านชิปทอง", "mall"], ["คาเฟ่หลุมดาว", "cafe"]] },
+    ],
+    paths: [
+      "110,165,L 182,127,#1 251,99,#1 330,92,H 415,99,#1 477,130,? 526,175,#2 546,233,#2 515,300,P 480,385,#2 420,439,#3 335,463,#3 237,461,#3 153,433,J 85,370,E 70,300,S 78,232,M >",
+      "1012,175,#4 1059,129,#4 1124,99,#4 1205,92,? 1285,100,#5 1352,128,#5 1406,168,L 1444,224,#5 1455,298,C 1442,373,J 1384,433,#6 1300,462,#6 1201,464,#6 1116,440,E 1050,390,#7 1015,300,P 991,233,#7 >",
+      "770,475,P 871,535,#8 944,562,#8 1003,602,? 1044,659,#8 1062,731,L 1041,812,#9 979,880,#9 885,919,#9 770,928,D 658,920,#10 562,881,#10 500,818,J 470,730,K 497,657,#10 541,601,M 605,559,#10 684,534,J >",
+      "515,300,P 620,330,P 770,300,B 920,330,P 1015,300,P",
+      "770,300,B 770,390,P 770,475,P",
+    ],
+  },
+];
+MAPS.push.apply(MAPS, EASTER_MAPS);
+// ---------- Easter event ----------
+var EASTER_CHARS = [
+  { name: 'ริลัคคุมะอีสเตอร์' }, { name: 'โคริกระต่ายดอกไม้' }, { name: 'คิอิโระไข่ดาว' }, { name: 'ชาอิโระตะกร้าไข่' },
+  { name: 'กระต่ายขาวริบบิ้น' }, { name: 'เพนกวินนักมายากล' }, { name: 'เพนกวินฟ้าไข่วิเศษ' }, { name: 'แกะน้อยดาวนำโชค' },
+];
+Object.assign(CHAR_SKILLS, {
+  e0: { name: 'ราชาไข่ทองคำ', fx: { eggLuck: 0.3, bankBonus: 250 }, desc: 'เก็บไข่: โอกาส 30% กลายเป็นไข่ทอง • ผ่าน/หยุดธนาคาร +250 G' },
+  e1: { name: 'ดอกไม้ไข่แฝด', fx: { eggBonus: 0.35, cardGold: 0.15 }, desc: 'เก็บไข่: โอกาส 35% ได้ไข่เพิ่มอีก 1 ฟอง • เปิดการ์ดได้เงิน +15%' },
+  e2: { name: 'ไข่ดาวเงินทอง', fx: { eggCash: 0.6, tileGold: 0.25 }, desc: 'รางวัลเงินจากไข่ +60% • เงินจากช่อง Lucky/เหตุการณ์ +25%' },
+  e3: { name: 'ตะกร้าปันผล', fx: { eggLuck: 0.15, divBonus: 0.3 }, desc: 'เก็บไข่: โอกาส 15% เป็นไข่ทอง • เงินปันผลหุ้น +30%' },
+  e4: { name: 'ริบบิ้นหลบภัย', fx: { rentDodge: 0.12, eggBonus: 0.25 }, desc: 'โอกาส 12% หลบค่าเช่าทั้งหมด • เก็บไข่: โอกาส 25% ได้ไข่เพิ่ม 1 ฟอง' },
+  e5: { name: 'มายากลเปลี่ยนการ์ด', fx: { cardLuck: 0.45, eggCash: 0.3 }, desc: 'เปิดการ์ด: โอกาส 45% เปลี่ยนการ์ดร้าย/ธรรมดาเป็นการ์ดได้เงิน • รางวัลเงินจากไข่ +30%' },
+  e6: { name: 'ไข่วิเศษนักลงทุน', fx: { eggStock: 1, stockDisc: 0.1 }, desc: 'รางวัลหุ้นจากไข่ได้ 2 เท่า • ซื้อหุ้นถูกลง 10%' },
+  e7: { name: 'ดาวนำโชคประจำทุ่ง', fx: { eggLuck: 0.2, salaryBonus: 0.2 }, desc: 'เก็บไข่: โอกาส 20% เป็นไข่ทอง • เงินเดือนตอนเลื่อนระดับ +20%' },
+});
+var EASTER = {
+  stages: EASTER_MAPS.map(function (m, i) { return { map: MAPS.indexOf(m), target: [26000, 28000, 30000, 32000][i], rounds: [22, 24, 26, 28][i] }; }),
+  bunnyStay: 10, bunnyCool: 4, golden: 0.12,
+  eggScore: 1000, goldenScore: 3000, missionBonus: 5000,
+  stageEggs: [4, 3, 2, 1], eggsPerReward: 3, finalEggs: [30, 10, 5, 0],
+  missions: [
+    { id: 'eggs', name: 'นักล่าไข่', desc: 'เก็บไข่ได้มากที่สุด' },
+    { id: 'shops', name: 'เจ้าพ่อร้านค้า', desc: 'มีร้านมากที่สุดตอนจบด่าน' },
+    { id: 'stock', name: 'เซียนหุ้นอีสเตอร์', desc: 'มูลค่าหุ้นรวมสูงสุดตอนจบด่าน' },
+    { id: 'cash', name: 'กระเป๋าตุง', desc: 'เงินสดมากที่สุดตอนจบด่าน' },
+    { id: 'levels', name: 'นักพัฒนาเมือง', desc: 'เลเวลร้านรวมสูงสุด' },
+    { id: 'suits', name: 'นักสะสมดอก', desc: 'เลื่อนระดับ (ครบ 4 ดอกแล้วผ่านธนาคาร) มากที่สุด' },
+    { id: 'golden', name: 'ไข่ทองคำ', desc: 'ทุกไข่ทองที่เก็บได้ = +3,000 แต้มพิเศษ', per: 3000 },
+    { id: 'cards', name: 'นักเปิดการ์ด', desc: 'เปิดการ์ดมากที่สุด' },
+  ],
+};
 // tournament: 6 worlds in order, 1st & 2nd go through. AI gets stronger every world.
 var TOUR_WORLDS = [
   { tour: 1, target: 22000, rounds: 30, ai: ['beginner', 'normal', 'normal'] },
@@ -610,4 +735,4 @@ var DICE_SKINS = [
 ];
 var DAILY_REWARDS = [{ gold: 500 }, { diamond: 5 }, { item: 'eq_move' }, { gold: 1000 }, { diamond: 10 }, { item: 'eq_lucky', n: 2 }, { gold: 2000, diamond: 10, item: 'SC_cash' }];
 
-if (typeof module !== 'undefined') module.exports = { BUFFS, CONFIG, PLAYER_COLORS, AI_LEVELS, AI_PERSONAS, TEAM_PAL, CHARACTERS, EXTRA_CHARS, JOB_CHARS, GOLD_CHARS, CHAR_SKILLS, BUSINESS, SPECIAL_BUILDINGS, MAPS, TOUR_MAPS, TOUR_WORLDS, TOUR_BOXES, TILE_INFO, SUITS, SUIT_GLYPH, SUIT_COLOR, CARD_DEFS, CARD_CATS, EQUIPMENT, SPECIAL_CARDS, PACKAGES, EXCHANGE, DECOS, DICE_SKINS, DAILY_REWARDS };
+if (typeof module !== 'undefined') module.exports = { BUFFS, CONFIG, PLAYER_COLORS, AI_LEVELS, AI_PERSONAS, TEAM_PAL, CHARACTERS, EXTRA_CHARS, JOB_CHARS, GOLD_CHARS, CHAR_SKILLS, BUSINESS, SPECIAL_BUILDINGS, MAPS, TOUR_MAPS, TOUR_WORLDS, TOUR_BOXES, EASTER_MAPS, EASTER_CHARS, EASTER, TILE_INFO, SUITS, SUIT_GLYPH, SUIT_COLOR, CARD_DEFS, CARD_CATS, EQUIPMENT, SPECIAL_CARDS, PACKAGES, EXCHANGE, DECOS, DICE_SKINS, DAILY_REWARDS };

@@ -7,7 +7,7 @@ var Online = (function () {
   var room = null;        // { code, role, players:[{peer,name,char,costume,loadout}], settings }
   var pending = {}, rpcSeq = 0, chain = Promise.resolve(), dirty = false, dirtyT = null;
   var DECIDE = ['preRoll', 'rollDice', 'planPath', 'chooseDir', 'confirmBuy', 'chooseInvest', 'confirmBuyout', 'bank', 'broker', 'pickCard', 'choose', 'chooseNumber', 'confirmUse', 'confirmDeal', 'auctionBid', 'casinoBet', 'chooseBuilding', 'chooseSpecialHouse', 'portalChoice', 'pickTile', 'debtSell', 'dragonBet'];
-  var DISPLAY = ['cardFx', 'wheel', 'turnStart', 'showDice', 'step', 'teleport', 'landed', 'rent', 'dividend', 'money', 'promotion', 'suit', 'built', 'showCard', 'lineBonus', 'casinoShow', 'notify', 'info', 'party', 'windmill', 'toll', 'dragonResult', 'windSteal'];
+  var DISPLAY = ['bunnyArrive', 'bunnyMove', 'eggLaid', 'bunnyLeave', 'egg', 'cardFx', 'wheel', 'turnStart', 'showDice', 'step', 'teleport', 'landed', 'rent', 'dividend', 'money', 'promotion', 'suit', 'built', 'showCard', 'lineBonus', 'casinoShow', 'notify', 'info', 'party', 'windmill', 'toll', 'dragonResult', 'windSteal'];
   var LOCAL_ONLY = { info: 1 };
 
   function code() { var c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', s = ''; for (var i = 0; i < 4; i++) s += c[Math.floor(Math.random() * c.length)]; return s; }
@@ -232,6 +232,7 @@ var Online = (function () {
     var c = code(), P = Meta.p, tour = opt && opt.tour, mc = P.color || 0;
     room = { code: c, role: 'host', started: false, players: [{ peer: null, name: P.name, char: P.equip.char, costume: P.equip.costume, dice: P.equip.dice, loadout: Meta.validLoadout(), color: mc }], settings: { map: 0, target: 40000, fillAI: true, tax: false, teams: !!tour, teamCol: [mc, mc === 1 ? 0 : 1], startCash: 10000, rounds: 100, aiLv: ['normal', 'normal', 'normal', 'normal'], teamOf: tour ? [0, 0, 1, 1] : [0, 1, 0, 1] } };
     if (tour) room.settings.tour = { world: 0 };
+    if (opt && opt.easter) { room.settings.easter = { stage: 0, totals: {}, mission: A.pickMission([]), used: [], aiLv: 'normal' }; room.settings.fillAI = true; }
     loadPeer().then(function (ok) {
       if (!ok && !localMode()) { done('โหลดระบบออนไลน์ไม่ได้ — ตรวจอินเทอร์เน็ตแล้วลองใหม่'); return; }
       net = makeNet(c, true, onHostMsg, function (pid) { lastSeen[pid] = Date.now(); }, onHostLeave, function () { startHeartbeat(true); done(null, room); }, function (err) { done(err); });
@@ -239,15 +240,18 @@ var Online = (function () {
   }
   function startHost() {
     var R = room.settings, players = room.players.map(function (x, i) { return { name: x.name, char: x.char, costume: x.costume, isAI: false, remote: x.peer || undefined, seat: x.peer ? x.token : null, loadout: x.loadout, team: R.teamOf[i], dice: x.dice || null }; });
-    var used = players.map(function (p) { return p.char; }), pool = A.allCharKeys().filter(function (k) { return used.indexOf(k) < 0; }).sort(function () { return Math.random() - 0.5; });
-    var TW = R.tour ? TOUR_WORLDS[R.tour.world] : null;
+    var used = players.map(function (p) { return p.char; }), pool = A.aiCharKeys().filter(function (k) { return used.indexOf(k) < 0; }).sort(function () { return Math.random() - 0.5; });
+    var TW = R.tour ? TOUR_WORLDS[R.tour.world] : null, ES = R.easter ? EASTER.stages[R.easter.stage] : null;
+    if (ES) { var keepAI = (R.easter.ai || []).filter(function (a) { return used.indexOf(a.char) < 0; }); while (players.length < 4 && keepAI.length) players.push(Object.assign({}, keepAI.shift())); while (players.length < 4) { var ch1 = pool.shift(); players.push({ name: Meta.charName(ch1) + ' AI', char: ch1, isAI: true, aiLevel: R.easter.aiLv || 'normal', persona: AI_PERSONAS[Math.floor(Math.random() * 5)], team: -1 }); } }
     if (TW && players.length < 2) { A.toast('🤝 ทัวร์นาเมนต์แบบทีมต้องมีเพื่อนเข้าห้องก่อน 1 คน (ส่งรหัสห้องให้เพื่อน)', 3500); return; }
     if (R.fillAI || R.teams) while (players.length < 4) { var ch = pool.shift(), sl = players.length; players.push({ name: Meta.charName(ch) + ' AI', char: ch, isAI: true, aiLevel: TW ? TW.ai[sl - 1] : (R.aiLv[sl] || 'normal'), persona: AI_PERSONAS[Math.floor(Math.random() * 5)], team: R.teamOf[sl] }); }
     if (!R.teams) { var cols = A.assignColors(room.players.map(function (x) { return typeof x.color === 'number' ? x.color : -1; }).concat(players.slice(room.players.length).map(function () { return -1; }))); players.forEach(function (q, k) { q.color = cols[k]; }); }
     if (players.length < 2) { A.toast('ต้องมีผู้เล่นอย่างน้อย 2 คน (เปิด “เติม AI” ได้)'); return; }
     if (R.teams) { var c0 = players.filter(function (q) { return q.team === 0; }).length; if (c0 !== 2) { A.toast('⚠️ โหมดทีมต้องแบ่ง ทีมชมพู 2 คน / ทีมฟ้า 2 คน — แตะป้ายทีมเพื่อสลับ', 3500); return; } }
-    var tc = R.teamCol || [0, 1], s = Game.create({ mapIdx: TW ? TW.map : R.map, players: players, teams: !!R.teams, teamInfo: [TEAM_PAL[tc[0]], TEAM_PAL[tc[1]]], target: TW ? TW.target * 2 : R.target, startCash: TW ? 10000 : (R.startCash || 10000), maxRounds: TW ? TW.rounds : (R.rounds > 0 ? R.rounds : 9999), rules: { tax: TW ? false : R.tax, endOnBankrupt: true }, seed: Math.floor(Math.random() * 1e9) });
+    var tot = (R.easter && R.easter.totals) || {};
+    var tc = R.teamCol || [0, 1], s = Game.create({ easter: ES ? { stage: R.easter.stage, kind: 'online', mission: R.easter.mission, prev: players.map(function (q) { return tot[q.name] || 0; }) } : undefined, mapIdx: ES ? ES.map : TW ? TW.map : R.map, players: players, teams: !!R.teams, teamInfo: [TEAM_PAL[tc[0]], TEAM_PAL[tc[1]]], target: ES ? ES.target : TW ? TW.target * 2 : R.target, startCash: (TW || ES) ? 10000 : (R.startCash || 10000), maxRounds: ES ? ES.rounds : TW ? TW.rounds : (R.rounds > 0 ? R.rounds : 9999), rules: { tax: (TW || ES) ? false : R.tax, endOnBankrupt: true }, seed: Math.floor(Math.random() * 1e9) });
     if (TW) { s.tour = { kind: 'team', world: R.tour.world }; s.lenName = 'World ' + (R.tour.world + 1); }
+    if (ES) { s.lenName = 'อีสเตอร์ ด่าน ' + (R.easter.stage + 1); R.easter.ai = s.players.filter(function (p) { return p.isAI; }).map(function (p) { return { name: p.name, char: p.char, isAI: true, aiLevel: p.ai.level, persona: p.ai.persona, team: -1 }; }); }
     s.players.forEach(function (p, i) { p.remote = players[i].remote || null; p.seat = players[i].seat || null; });
     s.ownerIdx = 0; s.dice = Meta.p.equip.dice; s.online = true;
     room.started = true; A.setOnline({ role: 'host', code: room.code, kind: net.kind });
@@ -255,7 +259,8 @@ var Online = (function () {
     A.closeModal(); A.startGame(s, true);
   }
   // tournament: the team goes on together unless it was knocked out or this was the last world
-  function tourGoesOn(s) { return !!(s.tour && s.tour.kind === 'team' && s.winTeam === 0 && s.tour.world < TOUR_WORLDS.length - 1); }
+  function tourGoesOn(s) { return !!(s.tour && s.tour.kind === 'team' && s.winTeam === 0 && s.tour.world < TOUR_WORLDS.length - 1) || !!(s.easter && s.easter.kind === 'online' && s.easter.stage < EASTER.stages.length - 1); }
+  function nextStage() { if (!room || room.role !== 'host' || !room.settings.easter) return; var g = A.game(), E = room.settings.easter; if (g && g.s.easter) { var sc = g.easterScores(); E.totals = {}; sc.forEach(function (x) { E.totals[x.name] = x.total; }); E.stage = g.s.easter.stage + 1; E.used = (E.used || []).concat([g.s.easter.mission]); } E.mission = A.pickMission(E.used || []); room.players = room.players.filter(function (x, i) { return i === 0 || x.peer; }); startHost(); }
   function end(g) { try { localStorage.removeItem('rfs_online_host'); } catch (e) { } if (net) net.all({ t: 'end', s: snap(g.s, true) }); if (!tourGoesOn(g.s)) setTimeout(function () { if (room && room.started && A.game() === g) leave(); }, 60000); }
   function nextWorld() { if (!room || room.role !== 'host' || !room.settings.tour) return; var g = A.game(); room.settings.tour.world = (g && g.s.tour ? g.s.tour.world : room.settings.tour.world) + 1; room.players = room.players.filter(function (x, i) { return i === 0 || x.peer; }); startHost(); }
   function savedHost() { try { var x = JSON.parse(localStorage.getItem('rfs_online_host') || 'null'); return x && x.s && !x.s.over && Date.now() - x.t < 3 * 3600e3 ? x : null; } catch (e) { return null; } }
@@ -397,7 +402,7 @@ var Online = (function () {
 
   return {
     init: function (api) { A = api; },
-    host: host, nextWorld: nextWorld, join: join, rejoin: rejoin, savedSeat: savedSeat, savedHost: savedHost, resumeHost: resumeHost, startHost: startHost, hostIO: hostIO, end: end, leave: leave, instrumentGuest: instrumentGuest,
+    host: host, nextWorld: nextWorld, nextStage: nextStage, join: join, rejoin: rejoin, savedSeat: savedSeat, savedHost: savedHost, resumeHost: resumeHost, startHost: startHost, hostIO: hostIO, end: end, leave: leave, instrumentGuest: instrumentGuest,
     get room() { return room; }, get kind() { return net && net.kind; },
     setSetting: function (k, v) { if (room && room.role === 'host') { room.settings[k] = v; lobbyBroadcast(); } },
   };

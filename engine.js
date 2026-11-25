@@ -101,6 +101,7 @@
         };
       }),
       cur: 0, round: 1, turnNo: 0, deck: [], grid: [], taxPool: 0, effects: [], log: [], tx: 0, over: false, winner: null,
+      easter: opts.easter ? { stage: opts.easter.stage || 0, kind: opts.easter.kind || 'solo', mission: opts.easter.mission || 'eggs', prev: opts.easter.prev || [], eggs: {}, laid: 0, bunny: { pos: -1, prev: null, left: 0, cool: 1 } } : undefined,
       seed: opts.seed || (Date.now() & 0xffffff), rngCalls: 0, cardHistory: [], phase: 'idle', forcedDice: null,
     };
     var g = new Game(s, null);
@@ -339,6 +340,7 @@
     s.effects = s.effects.filter(function (e) { return e.until > r; });
     s.players.forEach(function (p) { if (p.flags.upgDiscUntil && p.flags.upgDiscUntil <= r) { p.flags.upgDisc = 0; } });
     s.players.forEach(function (p) { p.hist.push(self.netWorth(p)); });
+    if (s.easter && !s.over) await this.bunnyTurn();
     s.round++;
     if (s.round > s.settings.maxRounds) {
       this.finish(this.bestPlayer(), 'ครบ ' + s.settings.maxRounds + ' รอบ — ' + (s.teams ? 'ทีมที่มีทรัพย์สินรวมสูงสุด' : 'ทรัพย์สินสูงสุด'));
@@ -405,6 +407,77 @@
   };
 
   // ---------- Path helpers ----------
+
+  // =====================================================================
+  // EASTER EVENT — the bunny hops around after every round and lays eggs
+  // =====================================================================
+  P.bunnyTurn = async function () {
+    var s = this.s, E = s.easter, b = E.bunny, io = this.io, self = this;
+    if (b.left <= 0) {
+      if (--b.cool > 0) return;
+      var spots = s.tiles.filter(function (t) { return t.type !== 'bank' && !E.eggs[t.id]; });
+      b.pos = spots[Math.floor(this.r() * spots.length)].id; b.prev = null; b.left = D.EASTER.bunnyStay; b.visits = (b.visits || 0) + 1;
+      this.log('🐰 กระต่ายอีสเตอร์มาแล้ว! จะอยู่ ' + b.left + ' รอบ', 'gain');
+      if (io.bunnyArrive) await io.bunnyArrive(b.pos);
+      await this.layEgg(b.pos);
+      return;
+    }
+    var roll = 1 + Math.floor(this.r() * 6), path = [];
+    for (var k = 0; k < roll; k++) { var o = this.nextOptions(b.pos, b.prev), nx = o[Math.floor(this.r() * o.length)]; b.prev = b.pos; b.pos = nx; path.push(nx); }
+    if (io.bunnyMove) await io.bunnyMove(roll, path);
+    await this.layEgg(b.pos);
+    b.left--;
+    if (b.left <= 0) { b.cool = D.EASTER.bunnyCool + 1; this.log('🐰 กระต่ายอีสเตอร์กลับบ้านไปก่อน... จะกลับมาอีกใน ' + D.EASTER.bunnyCool + ' รอบ'); if (io.bunnyLeave) await io.bunnyLeave(b.pos); b.pos = -1; }
+  };
+  P.layEgg = async function (pos) {
+    var s = this.s, E = s.easter, t = this.tile(pos);
+    if (t.type === 'bank' || E.eggs[pos]) { var o = t.n.filter(function (x) { return !E.eggs[x] && s.tiles[x].type !== 'bank'; }); if (!o.length) return; pos = o[0]; }
+    E.eggs[pos] = this.r() < D.EASTER.golden ? 'g' : 'n'; E.laid = (E.laid || 0) + 1;
+    if (this.io.eggLaid) await this.io.eggLaid(pos, E.eggs[pos]);
+  };
+  P.eggCheck = async function (p, t) {
+    var s = this.s, E = s.easter; if (!E || !E.eggs[t.id]) return;
+    var kind = E.eggs[t.id]; delete E.eggs[t.id];
+    var golden = kind === 'g' || this.r() < this.cs(p, 'eggLuck'), cnt = golden ? 3 : 1;
+    if (this.r() < this.cs(p, 'eggBonus')) cnt++;
+    var rw = { golden: golden, cnt: cnt }, roll = this.r() * 100, self = this;
+    if (roll < 40) { rw.kind = 'cash'; rw.amt = Math.round((golden ? 1500 + this.r() * 1500 : 300 + this.r() * 700) * (1 + this.cs(p, 'eggCash')) / 10) * 10; }
+    else if (roll < 62) { rw.kind = 'stock'; rw.d = t.district >= 0 ? t.district : Math.floor(this.r() * s.districts.length); rw.n = (golden ? 10 : 5) * (1 + this.cs(p, 'eggStock')); }
+    else if (roll < 78) { var miss = D.SUITS.filter(function (k) { return !p.suits[k]; }); if (miss.length) { rw.kind = 'suit'; rw.suit = miss[Math.floor(this.r() * miss.length)]; } else { rw.kind = 'cash'; rw.amt = golden ? 2000 : 600; } }
+    else if (roll < 90) { rw.kind = 'more'; rw.extra = golden ? 3 : 2; cnt += rw.extra; rw.cnt = cnt; }
+    else { var mine = s.tiles.filter(function (x) { return x.type === 'shop' && x.owner === p.id; }); if (mine.length) { rw.kind = 'boost'; var sh = mine[Math.floor(this.r() * mine.length)]; sh.bonusPct = (sh.bonusPct || 0) + (golden ? 0.2 : 0.1); rw.tile = sh.id; } else { rw.kind = 'cash'; rw.amt = golden ? 2000 : 500; } }
+    p.eggs = (p.eggs || 0) + cnt; if (golden) p.geggs = (p.geggs || 0) + 1;
+    if (rw.kind === 'stock') p.shares[rw.d] += rw.n;
+    if (rw.kind === 'suit') p.suits[rw.suit] = true;
+    this.log('🥚 ' + p.name + ' เก็บ' + (golden ? 'ไข่ทอง' : 'ไข่อีสเตอร์') + ' +' + cnt + ' ฟอง', 'gain');
+    if (this.io.egg) await this.io.egg(p, rw, t.id);
+    if (rw.kind === 'cash') await this.gain(p, rw.amt, golden ? 'ไข่ทองอีสเตอร์' : 'ไข่อีสเตอร์', false);
+  };
+  // stage score: net worth + eggs + mission bonus (same on every machine)
+  P.easterMetric = function (p, id) {
+    var self = this, s = this.s;
+    switch (id) {
+      case 'eggs': return p.eggs || 0;
+      case 'shops': return this.shopsOf(p).length;
+      case 'stock': return this.stockValue(p);
+      case 'cash': return p.cash;
+      case 'levels': return this.shopsOf(p).reduce(function (a, t) { return a + (t.level || 0); }, 0);
+      case 'suits': return p.promotions || 0;
+      case 'golden': return p.geggs || 0;
+      case 'cards': return p.cardsOpened || 0;
+    }
+    return 0;
+  };
+  P.easterScores = function () {
+    var s = this.s, E = s.easter, self = this, M = D.EASTER.missions.find(function (m) { return m.id === E.mission; }) || D.EASTER.missions[0];
+    var vals = s.players.map(function (p) { return self.easterMetric(p, M.id); }), best = Math.max.apply(null, vals);
+    return s.players.map(function (p, i) {
+      var nw = p.bankrupt ? 0 : self.netWorth(p), eggs = p.eggs || 0;
+      var bonus = M.per ? (p.geggs || 0) * M.per : (best > 0 && vals[i] === best ? D.EASTER.missionBonus : 0);
+      var stage = nw + eggs * D.EASTER.eggScore + bonus, prev = (E.prev && E.prev[i]) || 0;
+      return { id: p.id, name: p.name, nw: nw, eggs: eggs, geggs: p.geggs || 0, metric: vals[i], bonus: bonus, stage: stage, total: prev + stage };
+    });
+  };
   P.nextOptions = function (pos, prev) { var t = this.tile(pos); var o = t.n.filter(function (x) { return x !== prev; }); return o.length ? o : t.n.slice(); };
   P.dist = function (from, to) { // BFS distance ignoring direction
     if (from === to) return 0; var seen = {}, q = [[from, 0]]; seen[from] = 1;
@@ -493,6 +566,7 @@
     for (var k = steps; k > 0; k--) { var opts = this.nextOptions(p.pos, null), back = p.prev !== null && opts.indexOf(p.prev) >= 0 ? p.prev : opts[0]; p.prev = p.pos; p.pos = back; if (this.io.step) await this.io.step(p, back, k - 1); }
   };
   P.onPass = async function (p, t, final) {
+    if (this.s.easter && this.s.easter.eggs[t.id]) await this.eggCheck(p, t);
     if (t.type === 'bank') { await this.arriveBank(p, final); return; }
     if (t.type === 'suit' && !p.suits[t.suit]) { p.suits[t.suit] = true; this.log('🃏 ' + p.name + ' เก็บสัญลักษณ์ ' + D.SUIT_GLYPH[t.suit]); if (this.io.suit) await this.io.suit(p, t.suit); }
     if (t.special === 'sp_toll' && t.spOwner >= 0) {
@@ -862,6 +936,7 @@
   P.drawChance = async function (p) {
     var s = this.s;
     if (s.grid.every(Boolean)) { this.newDeck(); this.log('🔄 สับกองการ์ดใหม่'); }
+    p.cardsOpened = (p.cardsOpened || 0) + 1;
     var cell = await this.io.pickCard(p, s.grid.slice());
     if (s.grid[cell]) cell = s.grid.indexOf(false);
     s.grid[cell] = true; if (!s.gridOwner) s.gridOwner = s.grid.map(function () { return -1; }); s.gridOwner[cell] = p.id;

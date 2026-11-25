@@ -101,6 +101,7 @@
     h += '<div class="hudnum" style="left:637px;top:22px;width:82px;height:34px">' + fmt(P.diamond) + '</div>';
     h += '<div class="hudnum" style="left:836px;top:22px;width:78px;height:34px">20/20</div>';
     h += '<div class="hudnum" style="left:172px;top:22px;width:84px;height:34px;background:#5a2a14">Lv. ' + P.level + '</div>';
+    h += '<div class="hot eventbtn" data-act="easter"><img src="assets/easter_banner.webp" draggable="false"><span>🐰 อีเวนต์อีสเตอร์' + (P.eeggs > 0 ? ' • 🥚×' + P.eeggs : '') + '</span></div>';
     if (P.boxes > 0) h += '<div class="hot giftbtn" data-act="boxes" style="left:120px;top:150px;width:150px;height:130px"><img src="assets/box.webp" draggable="false"><span>เปิดกล่อง ×' + P.boxes + '</span></div>';
     if (ls.canClaim) h += '<div class="badge" style="left:70px;top:140px">!</div><div class="badge" style="left:1176px;top:8px">!</div>';
     $('#menuHot').innerHTML = h; $('#menuHot').style.cssText = 'position:absolute;left:0;top:69px;width:1280px;height:721px';
@@ -115,6 +116,7 @@
     else if (act === 'tourOld') alertBox('🏆 ทัวร์นาเมนต์', 'จะเปิดหลังระบบออนไลน์พร้อม — ระหว่างนี้ลองเล่น “Long Match” กับ AI ระดับ Advanced ได้เลย!');
     else if (act === 'shop') openShop('rec');
     else if (act === 'boxes') boxModal().then(renderMenu);
+    else if (act === 'easter') Easter.open();
     else if (act === 'login') dailyLogin();
     else if (act === 'rank') rankingModal();
     else if (act === 'trophy') achievements();
@@ -294,7 +296,8 @@
   // PRE-MATCH LOADOUT (Character • Costume • Equipment x2 • Special Card x1 • Inventory • Map Preview • Ready)
   // =====================================================================
   var LO = { slot: 0 };
-  function allCharKeys() { var k = []; CHARACTERS.forEach(function (c, i) { k.push('b' + i); }); EXTRA_CHARS.forEach(function (c, i) { k.push('x' + i); }); JOB_CHARS.forEach(function (c, i) { k.push('j' + i); }); GOLD_CHARS.forEach(function (c, i) { k.push('g' + i); }); return k; }
+  function allCharKeys() { var k = []; CHARACTERS.forEach(function (c, i) { k.push('b' + i); }); EXTRA_CHARS.forEach(function (c, i) { k.push('x' + i); }); JOB_CHARS.forEach(function (c, i) { k.push('j' + i); }); GOLD_CHARS.forEach(function (c, i) { k.push('g' + i); }); EASTER_CHARS.forEach(function (c, i) { k.push('e' + i); }); return k; }
+  function aiCharKeys() { return allCharKeys().filter(function (k) { return k[0] !== 'e'; }); }
   function skillChip(k, big) { var s = Meta.charSkill(k); if (!s) return ''; return '<div class="skillchip' + (k[0] === 'g' ? ' gold' : '') + (big ? ' big' : '') + '"><b>⭐ ' + esc(s.name) + '</b><span>' + esc(s.desc) + '</span></div>'; }
   U.skillChip = skillChip;
   function openLoadout() { var e = Meta.p.equip, v = Meta.validLoadout(); e.eq = v.eq; e.sc = v.sc; renderLoadout(); show('loadout'); }
@@ -326,7 +329,7 @@
       '<div class="panel" style="padding:10px;font-weight:800;font-size:14px"><b>5) ตรวจสอบความพร้อม</b><div>ตัวละคร: ' + Meta.charName(e.char) + '</div><div>อุปกรณ์: ' + (e.eq.map(function (id) { return Meta.item(id).name; }).join(', ') || '-') + ' (' + e.eq.length + '/2)</div><div>การ์ดพิเศษ: ' + (e.sc ? Meta.item(e.sc).name : '-') + ' (' + (e.sc ? 1 : 0) + '/1)</div><div>โหมด: ' + LENGTHS[U.sel.len].n + '</div></div></div></div>';
     $('#loadoutBody').innerHTML = html;
     var B = $('#loadoutBody');
-    B.querySelectorAll('[data-c]').forEach(function (x) { x.onclick = function () { if (x.classList.contains('lock')) { LO.info = x.dataset.c; renderLoadout(); toast(Meta.p.chars[x.dataset.c] ? 'ตัวละครนี้ถูกเลือกแล้ว' : '🔒 ปลดล็อกตัวละครนี้ได้ที่ร้านค้า'); return; } e.char = x.dataset.c; LO.info = x.dataset.c; Meta.save(); renderLoadout(); }; });
+    B.querySelectorAll('[data-c]').forEach(function (x) { x.onclick = function () { if (x.classList.contains('lock')) { LO.info = x.dataset.c; renderLoadout(); toast(Meta.p.chars[x.dataset.c] ? 'ตัวละครนี้ถูกเลือกแล้ว' : x.dataset.c[0] === 'e' ? '🥚 ตัวละครอีสเตอร์ได้จากไข่อีสเตอร์สุ่มเท่านั้น' : '🔒 ปลดล็อกตัวละครนี้ได้ที่ร้านค้า'); return; } e.char = x.dataset.c; LO.info = x.dataset.c; Meta.save(); renderLoadout(); }; });
     B.querySelectorAll('[data-slot]').forEach(function (x) { x.onclick = function () { var s = x.dataset.slot === 'sc' ? 'sc' : +x.dataset.slot; if (LO.slot === s) { if (s === 'sc') e.sc = null; else e.eq.splice(s, 1); Meta.save(); } LO.slot = s; renderLoadout(); }; });
     B.querySelectorAll('[data-it]').forEach(function (x) {
       x.onclick = function () {
@@ -349,7 +352,7 @@
     if (!P.chars[e.char]) { toast('ต้องเลือกตัวละครที่ปลดล็อกแล้ว'); return; }
     var R = U.rules, slots = U.sel.slots;
     var usedChars = [e.char]; slots.slice(1).forEach(function (s) { if (s.char) usedChars.push(s.char); });
-    var pool = allCharKeys().filter(function (k) { return usedChars.indexOf(k) < 0; });
+    var pool = aiCharKeys().filter(function (k) { return usedChars.indexOf(k) < 0; });
     var players = [], hn = 1;
     slots.forEach(function (s, i) {
       if (s.type === 'off') return;
@@ -400,7 +403,7 @@
       }
     })();
   }
-  function saveKey(s) { return s && s.tour && s.tour.kind === 'solo' ? 'rfs_save_tour' : 'rfs_save_auto'; }
+  function saveKey(s) { return s && s.easter && s.easter.kind === 'solo' ? 'rfs_save_easter' : s && s.tour && s.tour.kind === 'solo' ? 'rfs_save_tour' : 'rfs_save_auto'; }
   U.saveKey = saveKey;
   // ---------- 3D dice (faces from the project's dice art) ----------
   var FACE_ROT = { 1: [0, 0], 6: [0, 180], 2: [0, -90], 5: [0, 90], 3: [-90, 0], 4: [90, 0] };
@@ -498,7 +501,9 @@
     s.tiles.forEach(function (t) { h += '<div class="ptile" id="t' + t.id + '" data-t="' + t.id + '"></div>'; });
     M.districts.forEach(function (d, i) { h += '<div class="dlabel" id="dl' + i + '" style="left:' + d.label[0] * SC + 'px;top:' + (d.label[1] * SC - 10) + 'px;border-color:' + d.color + ';font-size:' + Math.max(9, Math.min(12, BT * 0.24)) + 'px"></div>'; });
     s.players.forEach(function (p) { h += '<div class="piece" id="pc' + p.id + '" style="--pc:' + p.color + '"><div class="pin">P' + (p.id + 1) + '</div><div class="ring"></div>' + spr(charSpec(p), BT * 1.05, BT * 1.15) + '</div>'; });
+    if (s.easter) h += '<div id="eggLayer"></div><div id="bunny" class="bunny"><img src="assets/bunny.webp" draggable="false"><span class="bdice" id="bDice"></span></div>';
     B.innerHTML = h;
+    var ep = document.getElementById('eventPill'); if (s.easter && !ep) { ep = document.createElement('div'); ep.id = 'eventPill'; $('#boardWrap').appendChild(ep); } if (ep) ep.style.display = s.easter ? '' : 'none';
     B.onclick = function (e) { if (U.dragMoved) return; if (U.tapRoll && e.target.closest('.piece.tapme')) { U.tapRoll(); return; } var t = e.target.closest('[data-t]'); if (t && U.planTap && !modalOpen && U.planTap(+t.dataset.t)) return; if (t && !modalOpen && !U.choosingDir) tileInfo(+t.dataset.t); };
     CAM.z = 1; fitCam(false);
   }
@@ -625,7 +630,7 @@
   function refresh() {
     if (!U.g) return;
     var g = U.g, s = g.s;
-    refreshTiles(); refreshLabels(); placePieces(); renderPlayers(); renderStocks(); renderItems();
+    refreshTiles(); refreshLabels(); placePieces(); renderPlayers(); renderStocks(); renderItems(); refreshEaster();
     $('#roundPill').innerHTML = spr(['items', 19], 36, 36) + 'รอบ ' + Math.min(s.round, s.settings.maxRounds) + ' / ' + (s.settings.maxRounds >= 9999 ? '♾️' : s.settings.maxRounds);
     if (!$('#btnGameMenu').innerHTML) $('#btnGameMenu').innerHTML = spr(['ui', 'settings'], 70, 54);
     $('#spdBtn').textContent = 'ความเร็ว: ' + speedLabel();
@@ -641,7 +646,7 @@
         '<div class="pchar">' + spr(charSpec(p), 84, 92) + (Meta.charSkill(p.char) ? '<span class="pskill' + (p.char[0] === 'g' ? ' gold' : '') + '" title="' + esc(Meta.charSkill(p.char).name + ': ' + Meta.charSkill(p.char).desc) + '">⭐</span>' : '') + '</div>' +
         '<div class="ptop"><span class="pno"' + (s.teams && p.team >= 0 ? ' style="background:' + TI(s, p.team).c + ';color:#fff" title="ทีม' + TI(s, p.team).n + '"' : '') + '>' + (s.teams && p.team >= 0 ? TI(s, p.team).e : '') + 'P' + (p.id + 1) + '</span><span class="nm">' + esc(p.name) + '</span></div>' +
         '<div class="cash coin">' + fmt(p.cash) + '</div>' +
-        '<span class="nwpill">ทรัพย์สิน ' + fmt(g.netWorth(p)) + '</span>' + (s.teams && p.team >= 0 ? '<span class="teamsum" style="background:' + TI(s, p.team).c + '">' + TI(s, p.team).e + ' ทีมรวม ' + fmt(g.teamWorth(p)) + '</span>' : '') +
+        '<span class="nwpill">ทรัพย์สิน ' + fmt(g.netWorth(p)) + '</span>' + (s.easter ? '<span class="eggpill">🥚 ' + (p.eggs || 0) + '</span>' : '') + (s.teams && p.team >= 0 ? '<span class="teamsum" style="background:' + TI(s, p.team).c + '">' + TI(s, p.team).e + ' ทีมรวม ' + fmt(g.teamWorth(p)) + '</span>' : '') +
         '<div class="lvl">' + (p.seat && !p.remote ? '<span style="color:#d0342c">📴 หลุด</span> • ' : '') + 'Lv' + p.level + (p.isAI ? ' • AI ' + { beginner: 'ง่าย', master: 'เก่งโคตร', normal: 'ปานกลาง', advanced: 'เก่ง' }[p.ai.level] : '') + '</div>' +
         '<div class="suits">' + SUITS.map(function (k) { return '<span class="' + (p.suits[k] ? 'on' : '') + '" style="' + (p.suits[k] ? 'color:' + SUIT_COLOR[k] : '') + '">' + SUIT_GLYPH[k] + '</span>'; }).join('') + '</div>' +
         (function () { var b = g.activeBuffs(p); return b.length ? '<div class="buffrow" data-bf="' + p.id + '" title="สกิลที่มีอยู่">' + b.map(function (x) { return '<span>' + x[1] + '</span>'; }).join('') + '</div>' : ''; })() +
@@ -1213,6 +1218,39 @@
         if (p.isAI) return aiWait(400).then(function () { var r = A.portalChoice(g, p, owner, t, big, small); toast('🌀 ' + esc(p.name) + (r ? ' จ่าย ' + fmt(big) + ' G แล้ววาร์ป!' : ' จ่าย ' + fmt(small) + ' G (ไม่วาร์ป)')); return r; });
         return modal({ title: '🌀 ประตูทะลุมิติของ ' + esc(owner.name), width: 680, close: false, body: '<div class="row" style="gap:16px;align-items:center">' + spr(['sph', 0], 160, 160) + '<div style="font-weight:700;font-size:17px;line-height:1.7">วาร์ปไปช่องไหนก็ได้ในแผนที่!<br>• วาร์ป: จ่าย <b style="color:#d0342c">' + fmt(big) + ' G</b> (10% ของทรัพย์สิน)<br>• ไม่วาร์ป: จ่าย <b style="color:#d0342c">' + fmt(small) + ' G</b> (5%)</div></div>', buttons: [{ t: '🌀 วาร์ป (' + fmt(big) + ' G)', v: true, cls: 'purple' }, { t: 'ไม่วาร์ป (' + fmt(small) + ' G)', v: false }] });
       },
+      bunnyArrive: async function (pos) {
+        refresh(); sfx('win'); var b = document.getElementById('bunny'); if (b) { b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
+        centerOnTile(pos, true); toast('🐰 กระต่ายอีสเตอร์โผล่มาแล้ว! จะอยู่ ' + EASTER.bunnyStay + ' รอบ คอยวางไข่ทั่วแผนที่', 2800);
+        await wait(1300);
+      },
+      bunnyMove: async function (roll, path) {
+        var s = g.s, b = document.getElementById('bunny'), d = document.getElementById('bDice'), T = BT;
+        if (d) { d.textContent = '🎲 ' + roll; d.classList.add('on'); }
+        sfx('dice'); await wait(500);
+        for (var i = 0; i < path.length; i++) {
+          var t = s.tiles[path[i]]; if (b) { b.style.display = 'block'; b.style.left = (t.x * SC - T * 1.45) + 'px'; b.style.top = (t.y * SC - T * 1.45) + 'px'; b.classList.remove('hop'); void b.offsetWidth; b.classList.add('hop'); }
+          sfx('step'); await wait(230);
+        }
+        if (d) d.classList.remove('on');
+      },
+      eggLaid: async function (pos, kind) {
+        refresh(); var e = document.getElementById('egg' + pos); if (e) e.classList.add('new');
+        sfx('coin'); await wait(450);
+      },
+      bunnyLeave: async function () {
+        var b = document.getElementById('bunny'); if (b) b.classList.add('bye');
+        toast('🐰 กระต่ายอีสเตอร์กลับบ้านแล้ว — จะกลับมาอีกใน ' + EASTER.bunnyCool + ' รอบ', 2500);
+        await wait(900); if (b) b.classList.remove('bye'); refresh();
+      },
+      egg: async function (p, rw, tid) {
+        var s = g.s, txt = rw.kind === 'cash' ? '💰 +' + fmt(rw.amt) + ' G' : rw.kind === 'stock' ? '📈 หุ้นฟรี ' + esc(s.districts[rw.d].th) + ' ' + rw.n + ' หุ้น' : rw.kind === 'suit' ? '🃏 ได้ดอก ' + SUIT_GLYPH[rw.suit] : rw.kind === 'more' ? '🥚 ไข่แถมอีก ' + rw.extra + ' ฟอง!' : '🏠 ' + esc(s.tiles[rw.tile].name) + ' มูลค่า +' + (rw.golden ? 20 : 10) + '%';
+        var pop = document.createElement('div'); pop.className = 'eggpop' + (rw.golden ? ' gold' : '');
+        pop.innerHTML = spr(['eggs', rw.golden ? 1 : 0], 70, 76) + '<div><b>' + esc(p.name) + ' เก็บ' + (rw.golden ? 'ไข่ทอง' : 'ไข่อีสเตอร์') + ' +' + rw.cnt + ' ฟอง</b><br>' + txt + '<br><small>รวม 🥚 ' + (p.eggs || 0) + ' ฟอง</small></div>';
+        $('#game').appendChild(pop); sfx(rw.golden ? 'win' : 'coin'); refresh();
+        if (rw.kind === 'boost') { var el = document.getElementById('t' + rw.tile); if (el) { el.classList.add('cfx'); setTimeout(function () { el.classList.remove('cfx'); }, 3000); } }
+        setTimeout(function () { pop.remove(); }, 2300 / Math.max(1, U.speed));
+        await wait(p.isAI ? 900 : 1400);
+      },
       cardFx: async function (p, tiles, dists) {
         var s = g.s, ids = tiles.slice();
         dists.forEach(function (i) { (s.districts[i].tiles || []).forEach(function (id) { if (ids.indexOf(id) < 0) ids.push(id); }); });
@@ -1336,7 +1374,7 @@
   }
 
   // ---------- RESULT ----------
-  function showResult(g) { U.flushModals(); victoryScene(g).then(function () { if (g.s.tour) Tour.afterWorld(g); else showResultPage(g); }); }
+  function showResult(g) { U.flushModals(); if (g.s.easter) { setTimeout(function () { Easter.afterStage(g); }, 600); return; } victoryScene(g).then(function () { if (g.s.tour) Tour.afterWorld(g); else showResultPage(g); }); }
   U.victoryScene = function (g) { return victoryScene(g); };
   function victoryScene(g) {
     return new Promise(function (resolve) {
@@ -1376,6 +1414,143 @@
     });
   }
   // =====================================================================
+  // EASTER EVENT — 4 stages, bunny lays eggs, score = net worth + eggs + mission
+  // =====================================================================
+  function pickMission(used) {
+    var pool = EASTER.missions.filter(function (m) { return (used || []).indexOf(m.id) < 0; });
+    if (!pool.length) pool = EASTER.missions.slice();
+    return pool[Math.floor(Math.random() * pool.length)].id;
+  }
+  U.pickMission = pickMission;
+  function missionDef(id) { return EASTER.missions.find(function (m) { return m.id === id; }) || EASTER.missions[0]; }
+  function missionText(id) { var m = missionDef(id); return '🎯 ' + m.name + ': ' + m.desc + (m.per ? '' : ' → +' + fmt(EASTER.missionBonus) + ' แต้ม'); }
+  var Easter = (function () {
+    var KEY = 'rfs_easter';
+    function load() { try { var t = JSON.parse(localStorage.getItem(KEY) || 'null'); return t && !t.done ? t : null; } catch (e) { return null; } }
+    function save(t) { try { localStorage.setItem(KEY, JSON.stringify(t)); } catch (e) { } }
+    function savedStage(t) { try { var s = JSON.parse(localStorage.getItem('rfs_save_easter') || 'null'); return s && !s.over && s.easter && t && s.easter.stage === t.stage ? s : null; } catch (e) { return null; } }
+    function rivals(lv) {
+      var pool = aiCharKeys().filter(function (k) { return k !== Meta.p.equip.char; }), out = [];
+      for (var i = 0; i < 3; i++) { var ch = pool.splice(Math.floor(Math.random() * pool.length), 1)[0]; out.push({ name: Meta.charName(ch) + ' AI', char: ch, isAI: true, aiLevel: lv, persona: AI_PERSONAS[Math.floor(Math.random() * AI_PERSONAS.length)] }); }
+      return out;
+    }
+    function newEvent(lv) { var t = { stage: 0, aiLv: lv || 'normal', rivals: rivals(lv || 'normal'), totals: {}, used: [], hist: [] }; t.mission = pickMission([]); save(t); return t; }
+    function rules() {
+      return modal({ title: '📜 กติกาอีเวนต์อีสเตอร์', width: 900, body: '<div class="erules">' +
+        '<p>🐰 <b>กระต่ายอีสเตอร์</b> จะโผล่มาในแผนที่ ทอยลูกเต๋าและเดินหลังจบแต่ละรอบ หยุดตรงไหนจะ<b>วางไข่</b>ไว้ อยู่ประมาณ ' + EASTER.bunnyStay + ' รอบแล้วกลับบ้าน และจะกลับมาอีกหลังผ่านไป ' + EASTER.bunnyCool + ' รอบ</p>' +
+        '<p>🥚 <b>ใครเดินผ่านหรือหยุดบนไข่ได้ไข่ไป</b> พร้อมรางวัลสุ่มในเกม: เงิน • หุ้นฟรี • ดอก(สัญลักษณ์) • ไข่เพิ่ม • เพิ่มมูลค่าร้าน — <b>ไข่ทอง</b> (มีมงกุฎ) นับเป็น 3 ฟองและรางวัลใหญ่ขึ้น</p>' +
+        '<p>🏁 <b>คะแนนด่าน</b> = ทรัพย์สินตอนจบ + ไข่ × ' + fmt(EASTER.eggScore) + ' + แต้มภารกิจพิเศษ (สุ่มเปลี่ยนทุกด่าน ทุกครั้งที่เล่น)</p>' +
+        '<p>🗺️ แข่งต่อเนื่อง <b>4 ด่าน</b>: ' + EASTER_MAPS.map(function (m, i) { return (i + 1) + '. ' + m.th; }).join(' → ') + ' — คะแนนสะสมรวมทุกด่าน</p>' +
+        '<p>🎁 <b>รางวัลทุกด่าน</b>: ไข่อีสเตอร์สุ่มตามอันดับในด่าน ' + EASTER.stageEggs.join(' / ') + ' ฟอง + โบนัส 1 ฟองทุก ๆ ' + EASTER.eggsPerReward + ' ไข่ที่เก็บได้ในแผนที่</p>' +
+        '<p>🏆 <b>จบ 4 ด่าน</b> อันดับรวม: ที่ 1 ได้ <b>' + EASTER.finalEggs[0] + '</b> ฟอง • ที่ 2 ได้ ' + EASTER.finalEggs[1] + ' • ที่ 3 ได้ ' + EASTER.finalEggs[2] + ' • ที่ 4 ได้ ' + EASTER.finalEggs[3] + '</p>' +
+        '<p>✨ <b>ตัวละครอีสเตอร์ 8 ตัว (หายาก)</b> ได้จากการเปิดไข่อีสเตอร์สุ่มเท่านั้น — ดูสกิลได้ที่หน้าตัวละคร/หน้าอีเวนต์</p>' +
+        '<p>👫 เล่นกับเพื่อนออนไลน์ได้ (แข่งเดี่ยวทุกคน) — โฮสต์สร้างห้องจากหน้าอีเวนต์ เพื่อนเข้าด้วยรหัสห้อง</p></div>', buttons: [{ t: 'เข้าใจแล้ว', v: 1, cls: 'green' }] });
+    }
+    function charStrip() {
+      var P = Meta.p;
+      return EASTER_CHARS.map(function (c, i) { var k = 'e' + i, own = P.chars[k]; return '<div class="echar' + (own ? ' own' : '') + '" data-ech="' + k + '">' + spr(['easter', i], 74, 80) + '<span>' + (own ? '✅' : '🔒') + '</span></div>'; }).join('');
+    }
+    function hub() {
+      var t = load(), P = Meta.p, sv = t && savedStage(t), st = t ? t.stage : 0;
+      var cards = EASTER_MAPS.map(function (m, i) {
+        var state = !t ? (i === 0 ? 'cur' : 'lock') : i < st ? 'done' : i === st ? 'cur' : 'lock', h = t && t.hist[i];
+        return '<div class="twcard ' + state + '"><div class="twimg" style="background-image:url(assets/' + m.bg + '.webp)"></div><div class="twnm">ด่าน ' + (i + 1) + '<br><b>' + m.th + '</b></div><div class="twst">' + (state === 'done' ? '✅ อันดับ ' + h.rank : state === 'cur' ? '▶ ด่านนี้' : '🔒') + '</div></div>';
+      }).join('<div class="twarrow">➜</div>');
+      var stand = '';
+      if (t) {
+        var names = [P.name].concat(t.rivals.map(function (r) { return r.name; })), rows = names.map(function (n, i) { return { n: n, v: t.totals[n] || 0, me: i === 0, ch: i === 0 ? P.equip.char : t.rivals[i - 1].char }; }).sort(function (a, b) { return b.v - a.v; });
+        stand = '<table class="ttable"><tr><th>อันดับรวม</th><th></th><th>ผู้เล่น</th><th>คะแนนสะสม</th></tr>' + rows.map(function (r, i) { return '<tr' + (r.me ? ' style="background:#fff0f6"' : '') + '><td><b>' + (i + 1) + '</b></td><td>' + spr(Meta.charSprite(r.ch), 40, 44) + '</td><td>' + esc(r.n) + '</td><td><b>' + fmt(r.v) + '</b></td></tr>'; }).join('') + '</table>';
+      }
+      var lv = (t && t.aiLv) || U.easterLv || 'normal';
+      $('#easter').innerHTML = '<div class="scrhead"><div class="uibtn backbtn" id="eBack">' + spr(['ui', 'prev'], 70, 70) + '</div><div class="title"><span class="ttl">🐰 อีเวนต์อีสเตอร์</span></div><button class="small" id="eRules" style="margin-left:auto">📜 กติกา</button></div>' +
+        '<div class="scrbody"><div class="ebanner"><img src="assets/easter_banner.webp" draggable="false"><div class="ebtag">แข่ง 4 ด่าน • เก็บไข่ • ลุ้นตัวละครหายาก 8 ตัว</div></div>' +
+        '<div class="twrow" style="margin-top:10px">' + cards + '</div>' +
+        '<div class="row" style="gap:14px;align-items:stretch;margin-top:12px">' +
+        '<div class="panel grow" style="padding:12px"><b style="font-size:18px">ด่าน ' + (st + 1) + ' — ' + EASTER_MAPS[st].th + '</b>' +
+        '<div class="emission">' + (t ? missionText(t.mission) : '🎯 ภารกิจพิเศษจะสุ่มตอนเริ่มอีเวนต์ (เปลี่ยนทุกด่าน)') + '</div>' +
+        '<div class="muted" style="font-weight:700;font-size:13px">เป้าหมาย ' + fmt(EASTER.stages[st].target) + ' G • สูงสุด ' + EASTER.stages[st].rounds + ' รอบ • เงินเริ่มต้น 10,000 G • ใช้ตัวละคร/ไอเทมที่ติดตั้งไว้</div>' +
+        (t ? '' : '<div class="row" style="gap:4px;margin-top:8px;align-items:center;flex-wrap:wrap"><b>ระดับ AI:</b>' + AI_LEVELS.map(function (l) { return '<button class="small rbtn' + (lv === l.id ? ' on' : '') + '" data-elv="' + l.id + '">' + l.name + '</button>'; }).join('') + '</div>') +
+        '<div class="row" style="gap:4px;margin-top:6px;align-items:center"><b>สีของคุณ:</b>' + colorDots(P.color || 0, 'ecol') + '</div>' +
+        '<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap">' + (sv ? '<button class="green" id="eResume" style="font-size:20px">▶ เล่นต่อ ด่าน ' + (st + 1) + ' (รอบ ' + sv.round + ')</button>' : '<button class="pink" id="eGo" style="font-size:20px">▶ ' + (t ? 'เล่นด่าน ' + (st + 1) : 'เริ่มอีเวนต์ (เล่นกับ AI)') + '</button>') +
+        '<button id="eOnline">👫 เล่นกับเพื่อน (ออนไลน์)</button>' + (t ? '<button class="small gray" id="eReset">🔄 เริ่มอีเวนต์ใหม่</button>' : '') + '</div>' + (stand ? '<div style="margin-top:10px">' + stand + '</div>' : '') + '</div>' +
+        '<div class="panel" style="padding:12px;width:430px"><div class="row" style="gap:10px;align-items:center">' + spr(['eggs', 2], 70, 76) + '<div><b style="font-size:20px">ไข่อีสเตอร์สุ่ม × ' + (P.eeggs || 0) + '</b><div class="muted" style="font-size:12px;font-weight:700">เปิดได้: ตัวละครหายาก • เพชร • Gold • อุปกรณ์ • การ์ด</div></div></div>' +
+        '<button class="pink" id="eOpen" style="width:100%;margin-top:8px"' + (P.eeggs > 0 ? '' : ' disabled') + '>🥚 เปิดไข่อีสเตอร์</button>' +
+        '<div style="margin-top:10px;font-weight:900">✨ ตัวละครอีสเตอร์ (หายาก)</div><div class="echars">' + charStrip() + '</div><div id="eInfo">' + itemInfoBox(null) + '</div>' +
+        '<div class="muted" style="font-size:12px;font-weight:700;margin-top:6px">🎁 ด่าน: ' + EASTER.stageEggs.join('/') + ' ฟองตามอันดับ + 1 ฟอง/' + EASTER.eggsPerReward + ' ไข่ที่เก็บ • จบ 4 ด่าน: ' + EASTER.finalEggs.join('/') + '</div></div></div></div>';
+      show('easter');
+      $('#eBack').onclick = function () { show('menu'); };
+      $('#eRules').onclick = function () { rules(); };
+      $('#easter').querySelectorAll('[data-elv]').forEach(function (e) { e.onclick = function () { U.easterLv = e.dataset.elv; hub(); }; });
+      $('#easter').querySelectorAll('[data-ecol]').forEach(function (e) { e.onclick = function () { P.color = +e.dataset.ecol; Meta.save(); hub(); }; });
+      $('#easter').querySelectorAll('[data-ech]').forEach(function (e) { e.onclick = function () { $('#eInfo').innerHTML = itemInfoBox(e.dataset.ech); }; });
+      $('#eOpen').onclick = function () { boxModal('easter').then(hub); };
+      $('#eOnline').onclick = function () { Online.host({ easter: true }); };
+      if (sv) $('#eResume').onclick = function () { startGame(sv, false); };
+      var go = $('#eGo'); if (go) go.onclick = function () { if (!load()) { newEvent(lv); rules().then(startStage); } else startStage(); };
+      var rs = $('#eReset'); if (rs) rs.onclick = function () { modal({ title: 'เริ่มอีเวนต์ใหม่?', body: '<div style="text-align:center;font-weight:700">คะแนนสะสมที่เล่นมาจะหายไป (ไข่ที่ได้แล้วยังอยู่)</div>', buttons: [{ t: 'เริ่มใหม่', v: 1, cls: 'pink' }, { t: 'ยกเลิก', v: 0 }] }).then(function (v) { if (v) { try { localStorage.removeItem(KEY); localStorage.removeItem('rfs_save_easter'); } catch (e) { } hub(); } }); };
+    }
+    function startStage() {
+      var t = load(); if (!t) return;
+      try { localStorage.removeItem('rfs_save_easter'); } catch (e) { }
+      var P = Meta.p, v = Meta.validLoadout(), ES = EASTER.stages[t.stage];
+      var players = [{ name: P.name, char: P.equip.char, isAI: false, loadout: { eq: v.eq, sc: v.sc }, dice: P.equip.dice }].concat(t.rivals.map(function (r) { return Object.assign({}, r); }));
+      var cols = assignColors(players.map(function (q, k) { return k === 0 ? (P.color || 0) : -1; })); players.forEach(function (q, k) { q.color = cols[k]; });
+      var s = Game.create({ mapIdx: ES.map, players: players, target: ES.target, startCash: 10000, maxRounds: ES.rounds, rules: { tax: false, endOnBankrupt: true }, seed: Math.floor(Math.random() * 1e9), easter: { stage: t.stage, kind: 'solo', mission: t.mission, prev: players.map(function (q) { return t.totals[q.name] || 0; }) } });
+      s.ownerIdx = 0; s.dice = P.equip.dice; s.lenName = 'อีสเตอร์ ด่าน ' + (t.stage + 1);
+      startGame(s, true);
+    }
+    function afterStage(g) {
+      U.flushModals();
+      var s = g.s, E = s.easter, sc = g.easterScores(), me = s.ownerIdx || 0, last = E.stage >= EASTER.stages.length - 1;
+      var byStage = sc.slice().sort(function (a, b) { return b.stage - a.stage; }), byTotal = sc.slice().sort(function (a, b) { return b.total - a.total; });
+      var myS = byStage.findIndex(function (x) { return x.id === me; }), myT = byTotal.findIndex(function (x) { return x.id === me; }), mine = sc[me];
+      var eggs = EASTER.stageEggs[myS] + Math.floor(mine.eggs / EASTER.eggsPerReward), fin = last ? EASTER.finalEggs[myT] || 0 : 0;
+      Meta.matchReward(myS, myS === 0, mine.nw, true); Meta.addEggs(eggs + fin);
+      var online = E.kind === 'online';
+      if (!online) {
+        var t = load();
+        if (t && t.stage === E.stage) {
+          sc.forEach(function (x) { t.totals[x.name] = x.total; });
+          t.hist[E.stage] = { rank: myS + 1, score: mine.stage };
+          t.used.push(E.mission);
+          if (last) { t.done = true; t.final = myT + 1; } else { t.stage++; t.mission = pickMission(t.used); }
+          save(t); try { localStorage.removeItem('rfs_save_easter'); } catch (e) { }
+        }
+      }
+      var M = missionDef(E.mission), rows = byTotal.map(function (x, i) {
+        var p = s.players[x.id], sr = byStage.indexOf(x) + 1;
+        return '<tr' + (x.id === me ? ' style="background:#fff0f6"' : '') + '><td><b>' + (i + 1) + '</b></td><td>' + spr(charSpec(p), 42, 46) + '</td><td style="color:' + p.color + ';font-weight:900">' + esc(p.name) + '</td><td>' + fmt(x.nw) + '</td><td>🥚 ' + x.eggs + (x.geggs ? ' <span style="color:#d4a000">(ทอง ' + x.geggs + ')</span>' : '') + '<br><small>+' + fmt(x.eggs * EASTER.eggScore) + '</small></td><td>' + (x.bonus ? '🎯 +' + fmt(x.bonus) : '-') + '</td><td><b>' + fmt(x.stage) + '</b><br><small>อันดับด่าน ' + sr + '</small></td><td><b style="font-size:18px">' + fmt(x.total) + '</b></td></tr>';
+      }).join('');
+      var host = !online || (U.online && U.online.role === 'host');
+      var btns = last ? '<button class="pink" id="eFin" style="font-size:20px">🥚 เปิดไข่อีสเตอร์ (' + (Meta.p.eeggs || 0) + ')</button>'
+        : online ? (host ? '<button class="pink" id="eNext" style="font-size:20px">▶ ไปด่าน ' + (E.stage + 2) + ' กับเพื่อน</button>' : '<div class="chip" style="font-size:16px">⏳ รอโฮสต์เริ่มด่าน ' + (E.stage + 2) + '...</div>') + '<button id="eOpenNow">🥚 เปิดไข่ (' + (Meta.p.eeggs || 0) + ')</button>'
+        : '<button class="pink" id="eNext" style="font-size:20px">▶ ไปด่าน ' + (E.stage + 2) + '</button><button id="eOpenNow">🥚 เปิดไข่ (' + (Meta.p.eeggs || 0) + ')</button>';
+      $('#easter').innerHTML = '<div class="scrhead"><div class="title"><span class="ttl">🐰 ผลด่าน ' + (E.stage + 1) + ' — ' + MAPS[s.mapIdx].th + '</span></div></div><div class="scrbody">' +
+        (last ? '<div class="tbanner ' + (myT === 0 ? 'champ' : 'pass') + '">' + (myT === 0 ? '👑 แชมป์อีเวนต์อีสเตอร์!' : '🏁 จบอีเวนต์ — อันดับรวมที่ ' + (myT + 1)) + '</div>' : '<div class="tbanner pass">🥚 จบด่าน ' + (E.stage + 1) + ' — อันดับในด่าน ' + (myS + 1) + '</div>') +
+        '<div class="panel" style="padding:12px;margin-top:10px"><div class="emission" style="margin-top:0">ภารกิจด่านนี้ — ' + missionText(E.mission) + '</div>' +
+        '<table class="ttable"><tr><th>อันดับรวม</th><th></th><th>ผู้เล่น</th><th>ทรัพย์สิน</th><th>ไข่</th><th>ภารกิจ</th><th>คะแนนด่าน</th><th>คะแนนสะสม</th></tr>' + rows + '</table></div>' +
+        '<div class="row" style="justify-content:center;gap:12px;margin-top:10px;align-items:center;font-weight:900;font-size:18px">' + spr(['eggs', 2], 46, 50) + 'ได้ไข่อีสเตอร์สุ่ม ' + EASTER.stageEggs[myS] + ' (อันดับด่าน) + ' + Math.floor(mine.eggs / EASTER.eggsPerReward) + ' (เก็บไข่ ' + mine.eggs + ' ฟอง)' + (last ? ' + ' + fin + ' (อันดับรวม)' : '') + ' = <span style="color:#ff5d8f;font-size:24px">' + (eggs + fin) + ' ฟอง</span></div>' +
+        '<div class="row" style="justify-content:center;gap:12px;margin-top:12px">' + btns + '</div></div>';
+      show('easter'); sfx(myS === 0 ? 'win' : 'coin');
+      var fn = $('#eFin'); if (fn) fn.onclick = function () { if (U.online) Online.leave(); show('menu'); boxModal('easter').then(function () { hub(); }); };
+      var nx = $('#eNext'); if (nx) nx.onclick = function () { if (online) Online.nextStage(); else startStage(); };
+      var on = $('#eOpenNow'); if (on) on.onclick = function () { boxModal('easter').then(function () { on.textContent = '🥚 เปิดไข่ (' + (Meta.p.eeggs || 0) + ')'; }); };
+    }
+    return { open: hub, hub: hub, load: load, savedStage: savedStage, afterStage: afterStage, rules: rules };
+  })();
+  U.Easter = Easter;
+  // ---------- board: eggs + bunny ----------
+  function refreshEaster() {
+    var s = U.g.s, E = s.easter, L = document.getElementById('eggLayer'); if (!E || !L) return;
+    var T = BT;
+    L.innerHTML = Object.keys(E.eggs).map(function (id) { var t = s.tiles[id], g = E.eggs[id] === 'g'; return '<div class="begg' + (g ? ' gold' : '') + '" id="egg' + id + '" style="left:' + (t.x * SC + T * 0.08) + 'px;top:' + (t.y * SC - T * 0.85) + 'px">' + spr(['eggs', g ? 1 : 0], T * 0.72, T * 0.78) + '</div>'; }).join('');
+    var b = document.getElementById('bunny');
+    if (E.bunny.pos < 0) b.style.display = 'none';
+    else { var t = s.tiles[E.bunny.pos]; b.style.display = 'block'; b.style.width = T * 1.6 + 'px'; b.style.height = T * 1.63 + 'px'; b.style.left = (t.x * SC - T * 1.45) + 'px'; b.style.top = (t.y * SC - T * 1.45) + 'px'; }
+    var pill = document.getElementById('eventPill');
+    if (pill) pill.innerHTML = '🐰 อีสเตอร์ ด่าน ' + (E.stage + 1) + '/4 • ' + esc(missionDef(E.mission).name) + ' • ' + (E.bunny.pos >= 0 ? 'กระต่ายอยู่อีก ' + E.bunny.left + ' รอบ' : 'กระต่ายมาอีกใน ' + Math.max(0, E.bunny.cool - 1) + ' รอบ') + ' • 🥚 บนแผนที่ ' + Object.keys(E.eggs).length;
+  }
+  // =====================================================================
   // TOURNAMENT — 6 worlds, 1st & 2nd go through, boxes by how far you get
   // =====================================================================
   var Tour = (function () {
@@ -1384,7 +1559,7 @@
     function save(t) { try { localStorage.setItem(KEY, JSON.stringify(t)); } catch (e) { } }
     function clear() { try { localStorage.removeItem(KEY); } catch (e) { } }
     function newRivals(n, lv, avoid) {
-      var pool = allCharKeys().filter(function (k) { return avoid.indexOf(k) < 0; }), out = [];
+      var pool = aiCharKeys().filter(function (k) { return avoid.indexOf(k) < 0; }), out = [];
       for (var i = 0; i < n; i++) { var ch = pool.splice(Math.floor(Math.random() * pool.length), 1)[0]; out.push({ name: Meta.charName(ch) + ' AI', char: ch, isAI: true, aiLevel: lv[i] || 'normal', persona: AI_PERSONAS[Math.floor(Math.random() * AI_PERSONAS.length)] }); }
       return out;
     }
@@ -1524,20 +1699,21 @@
   })();
   U.Tour = Tour;
   // ---------- mystery boxes ----------
-  function boxModal() {
-    var P = Meta.p, n = P.boxes || 0; if (!n) return Promise.resolve();
-    return modal({ title: '🎁 กล่องสุ่มของรางวัล', width: 1060, close: false, bgClose: false, body: '<div id="bxB"></div>', buttons: [], mount: function (box, close) {
+  function boxModal(kind) {
+    var EG = kind === 'easter', P = Meta.p, n = (EG ? P.eeggs : P.boxes) || 0; if (!n) return Promise.resolve();
+    var opener = EG ? Meta.openEgg : Meta.openBox, img = EG ? 'assets/easter_egg.webp' : 'assets/box.webp';
+    return modal({ title: EG ? '🥚 ไข่อีสเตอร์สุ่ม' : '🎁 กล่องสุ่มของรางวัล', width: 1060, close: false, bgClose: false, body: '<div id="bxB"></div>', buttons: [], mount: function (box, close) {
       var B = box.querySelector('#bxB'), cells = [];
       for (var i = 0; i < n; i++) cells.push(null);
       function cellHTML(c, i) {
-        if (!c) return '<div class="bxcell" data-bx="' + i + '"><img class="bximg" src="assets/box.webp" draggable="false"><div class="bxtap">แตะเพื่อเปิด!</div></div>';
+        if (!c) return '<div class="bxcell" data-bx="' + i + '"><img class="bximg" src="' + img + '" draggable="false"><div class="bxtap">แตะเพื่อเปิด!</div></div>';
         var main = c.items[0], rest = c.items.slice(1);
         var ic = main.spr ? spr(main.spr, 120, 104) : '<div style="font-size:80px;line-height:104px">' + main.ic + '</div>';
         return '<div class="bxcell open ' + (main.big ? 'big' : '') + '"><div class="bxburst"></div>' + ic + (main.tag ? '<div class="bxtag">✨ ' + esc(main.tag) + ' ใหม่!</div>' : '') + '<div class="bxname">' + esc(main.name) + '</div>' + rest.map(function (r) { return '<div class="bxsub">' + esc(r.name) + '</div>'; }).join('') + '</div>';
       }
       function draw() {
         var left = cells.filter(function (c) { return !c; }).length;
-        B.innerHTML = '<div style="text-align:center;font-weight:800;font-size:17px;margin-bottom:8px">' + (left ? 'มีกล่องสุ่มรอเปิด <b style="color:#ff5d8f;font-size:24px">' + left + '</b> กล่อง • แตะกล่องเพื่อเปิด!' : '🎉 เปิดครบแล้ว! ของรางวัลเข้ากระเป๋าแล้ว') + '</div>' +
+        B.innerHTML = '<div style="text-align:center;font-weight:800;font-size:17px;margin-bottom:8px">' + (left ? (EG ? 'มีไข่อีสเตอร์รอเปิด ' : 'มีกล่องสุ่มรอเปิด ') + '<b style="color:#ff5d8f;font-size:24px">' + left + '</b> ' + (EG ? 'ฟอง' : 'กล่อง') + ' • แตะกล่องเพื่อเปิด!' : '🎉 เปิดครบแล้ว! ของรางวัลเข้ากระเป๋าแล้ว') + '</div>' +
           '<div class="bxgrid">' + cells.map(cellHTML).join('') + '</div>' +
           '<div class="row" style="justify-content:center;gap:10px;margin-top:12px">' + (left ? '<button class="pink" id="bxAll">🎁 เปิดทั้งหมด</button><button class="gray" id="bxLater">เก็บไว้เปิดทีหลัง</button>' : '<button class="green" id="bxOk">เยี่ยมเลย!</button>') + '</div>';
         B.querySelectorAll('[data-bx]').forEach(function (e) { e.onclick = function () { openOne(+e.dataset.bx); }; });
@@ -1548,7 +1724,7 @@
       function openOne(i) {
         if (cells[i]) return; var el = B.querySelector('[data-bx="' + i + '"]'); if (!el || el.classList.contains('shake')) return;
         el.classList.add('shake'); sfx('tap');
-        setTimeout(function () { var r = Meta.openBox(); if (!r) return; cells[i] = r; sfx(r.items[0].big ? 'win' : 'coin'); draw(); try { renderMenu(); } catch (e) { } }, 520);
+        setTimeout(function () { var r = opener(); if (!r) return; cells[i] = r; sfx(r.items[0].big ? 'win' : 'coin'); draw(); try { renderMenu(); } catch (e) { } }, 520);
       }
       draw();
     } });
@@ -1624,7 +1800,7 @@
         if (srt === 'notown') list = list.filter(function (i) { return !Meta.owned(i.id); });
         if (srt === 'popular') list.sort(function (a, b) { return (Meta.tags(b.id).indexOf('hot') >= 0) - (Meta.tags(a.id).indexOf('hot') >= 0); });
         body += '<div class="tabs" style="margin-bottom:10px">' + [['popular', '🔥 ยอดนิยม'], ['new', '🆕 ใหม่'], ['sale', '💸 ลดราคา'], ['limited', '⏰ จำกัดเวลา'], ['notown', '🎒 ที่ยังไม่มี']].map(function (x) { return '<div class="tab ' + (SH.sort === x[0] ? 'on' : '') + '" data-srt="' + x[0] + '" style="font-size:13px;padding:5px 10px">' + x[1] + '</div>'; }).join('') + '</div>';
-      } else list = Meta.all().filter(function (i) { return i.cat === SH.cat; }).sort(function (a, b) { return (b.type === 'Dice Skins' ? 1 : 0) - (a.type === 'Dice Skins' ? 1 : 0); });
+      } else list = Meta.all().filter(function (i) { return i.cat === SH.cat && !i.eggOnly; }).sort(function (a, b) { return (b.type === 'Dice Skins' ? 1 : 0) - (a.type === 'Dice Skins' ? 1 : 0); });
       body += '<div class="shopgrid">' + list.map(function (it) {
         var q = Meta.owned(it.id), tg = Meta.tags(it.id), price = Meta.priceOf(it), own = it.uniq && q;
         return '<div class="sitem">' + (tg.length ? '<span class="tag">' + tg.map(function (x) { return { hot: 'HOT', new: 'NEW', sale: '-20%', limited: 'LIMITED' }[x]; }).join(' ') + '</span>' : '') + (q ? '<span class="own">' + (it.uniq ? 'มีแล้ว' : 'x' + q) + '</span>' : '') + '<div style="height:110px;display:flex;align-items:center">' + spr(it.spr, 130, 105) + '</div><div class="nm">' + it.name + '</div><div class="ds">' + it.desc + '</div><button class="small ' + (it.cur === 'gold' ? '' : 'blue') + '" data-buy="' + it.id + '" ' + (own ? 'disabled' : '') + '>' + (own ? 'มีแล้ว' : (it.cur === 'gold' ? '<span class="coin"></span>' : '💎 ') + fmt(price) + (price !== it.price ? ' <s style="font-size:11px">' + fmt(it.price) + '</s>' : '')) + '</button></div>';
@@ -1655,14 +1831,14 @@
   var EQS = { slot: 0, info: null };
   function itemInfoBox(id) {
     if (!id) return '<div class="iinfo muted">👆 แตะไอเทมหรือตัวละครเพื่อดูสรรพคุณ</div>';
-    if (/^[bxjg]\d+$/.test(id)) { var sk = Meta.charSkill(id); return '<div class="iinfo">' + spr(Meta.charSprite(id), 46, 50) + '<div><b>' + esc(Meta.charName(id)) + '</b><br>' + (sk ? '⭐ <b>' + esc(sk.name) + '</b>: ' + esc(sk.desc) : 'ไม่มีสกิลพิเศษ') + '</div></div>'; }
+    if (/^[bxjge]\d+$/.test(id)) { var sk = Meta.charSkill(id); return '<div class="iinfo">' + spr(Meta.charSprite(id), 46, 50) + '<div><b>' + esc(Meta.charName(id)) + '</b><br>' + (sk ? '⭐ <b>' + esc(sk.name) + '</b>: ' + esc(sk.desc) : 'ไม่มีสกิลพิเศษ') + '</div></div>'; }
     var it = Meta.item(id); if (!it) return ''; return '<div class="iinfo">' + spr(it.spr, 46, 44) + '<div><b>' + esc(it.name) + '</b> <span class="chip" style="font-size:11px">' + (/^SC_/.test(id) ? 'การ์ดพิเศษ' : /^dice/.test(id) ? 'สกินลูกเต๋า' : 'อุปกรณ์') + ' • มี ' + (Meta.owned(id) || (Meta.p.dice[id] ? 1 : 0)) + '</span><br>' + esc(it.desc || it.th || '') + '</div></div>';
   }
   function renderEquipTab(box) {
     var P = Meta.p, e = P.equip, v = Meta.validLoadout(); e.eq = v.eq; e.sc = v.sc;
     var chars = allCharKeys().filter(function (k) { return P.chars[k]; }).map(function (k) {
       return '<div class="charbtn ' + (e.char === k ? 'sel ' : '') + (k[0] === 'g' ? 'goldc' : '') + '" data-ec="' + k + '" title="' + esc(Meta.charName(k)) + '" style="height:80px">' + spr(Meta.charSprite(k), 52, 68) + '</div>';
-    }).join('');
+    }).join('') + EASTER_CHARS.map(function (c, i) { var k = 'e' + i; return P.chars[k] ? '' : '<div class="charbtn lock" data-elock="' + k + '" title="' + esc(c.name) + ' — ได้จากไข่อีสเตอร์" style="height:80px">' + spr(['easter', i], 52, 68) + '</div>'; }).join('');
     var dice = DICE_SKINS.filter(function (d) { return P.dice[d.id]; }).map(function (d) {
       return '<div class="invitem ' + (e.dice === d.id ? 'eqd' : '') + '" data-ed="' + d.id + '" style="padding:4px">' + spr(d.spr, 60, 56) + '<div style="font-size:11px">' + d.name + '</div></div>';
     }).join('');
@@ -1684,6 +1860,7 @@
       '<div class="panel" style="padding:10px"><b>ไอเทมที่มี — แตะเพื่อใส่ช่องที่เลือก</b><div class="invgrid" style="grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:6px;margin-top:6px;max-height:200px;overflow:auto">' + items + '</div>' + itemInfoBox(EQS.info) + '</div></div></div>';
     var re = function () { Meta.save(); renderEquipTab(box); };
     box.querySelectorAll('[data-ec]').forEach(function (x) { x.onclick = function () { e.char = x.dataset.ec; EQS.info = x.dataset.ec; sfx('tap'); re(); }; });
+    box.querySelectorAll('[data-elock]').forEach(function (x) { x.onclick = function () { EQS.info = x.dataset.elock; re(); toast('🥚 ตัวละครอีสเตอร์ (หายาก) ได้จากไข่อีสเตอร์สุ่มเท่านั้น', 2500); }; });
     box.querySelectorAll('[data-ed]').forEach(function (x) { x.onclick = function () { e.dice = x.dataset.ed; EQS.info = x.dataset.ed; sfx('tap'); re(); }; });
     box.querySelectorAll('[data-es]').forEach(function (x) { x.onclick = function () { var k = x.dataset.es === 'sc' ? 'sc' : +x.dataset.es; var sid = k === 'sc' ? e.sc : e.eq[k]; if (sid) EQS.info = sid; if (EQS.slot === k) { if (k === 'sc') e.sc = null; else e.eq.splice(k, 1); } EQS.slot = k; re(); }; });
     box.querySelectorAll('[data-ei]').forEach(function (x) {
@@ -1847,6 +2024,7 @@
     var B = document.getElementById('lobbyB'), R = Online.room; if (!B || !R) return;
     var host = R.role === 'host', S = R.settings || {}, ps = R.players || [], fill = S.fillAI || S.teams;
     if (S.tour) { renderTourLobby(B, R, host, S, ps); return; }
+    if (S.easter) { renderEasterLobby(B, R, host, S, ps); return; }
     var teamOf = S.teamOf || [0, 1, 0, 1], aiLv = S.aiLv || ['normal', 'normal', 'normal', 'normal'];
     var tcol = S.teamCol || [0, 1], TC = [TEAM_PAL[tcol[0]].c, TEAM_PAL[tcol[1]].c], TN = ['ทีม' + TEAM_PAL[tcol[0]].n, 'ทีม' + TEAM_PAL[tcol[1]].n];
     var slots = [0, 1, 2, 3].map(function (i) {
@@ -1886,6 +2064,19 @@
     clampIn('lobTg', 'target', 10000, 9999999); clampIn('lobCash', 'startCash', 1000, 999999); clampIn('lobRd', 'rounds', 5, 9999);
     B.querySelector('#lobStart').onclick = function () { Online.startHost(); };
   }
+  function renderEasterLobby(B, R, host, S, ps) {
+    var E = S.easter, ES = EASTER.stages[E.stage], tot = E.totals || {};
+    var slots = [0, 1, 2, 3].map(function (i) { var x = ps[i]; return x ? '<div><div class="teamchip" style="background:#ff8fb3">P' + (i + 1) + '</div>' + spr(Meta.charSprite(x.char), 80, 90) + '<div>' + esc(x.name) + '</div><div style="font-size:12px;color:#2c9a2c">' + (i === 0 ? '👑 โฮสต์' : '✅ พร้อม') + (tot[x.name] ? ' • ' + fmt(tot[x.name]) : '') + '</div></div>' : '<div style="border-style:dashed"><div style="font-size:40px;margin-top:10px">🤖</div><div>AI ' + esc(AILV[E.aiLv] || 'ปานกลาง') + '</div><div style="font-size:12px;opacity:.7">ว่าง — เพื่อนเข้าแทนได้</div></div>'; }).join('');
+    B.innerHTML = '<div class="row" style="justify-content:center;gap:16px"><span style="font-weight:700">🐰 อีเวนต์อีสเตอร์ • รหัสห้อง</span><span class="roomcode">' + R.code + '</span><span class="chip">' + (Online.kind === 'p2p' ? '🌐 ออนไลน์ P2P' : '📱 โหมดทดสอบเครื่องเดียว') + '</span></div>' +
+      '<div style="text-align:center;font-weight:700;margin:6px 0">' + (host ? 'ส่งรหัสให้เพื่อน (สูงสุด 4 คน) — แข่งเดี่ยวทุกคน ที่ว่างเติม AI' : 'เข้าห้องแล้ว! รอโฮสต์เริ่มด่าน...') + '</div>' +
+      '<div class="lobbyP">' + slots + '</div>' +
+      '<div style="text-align:center;font-weight:700;margin-top:10px;line-height:1.7">ด่าน ' + (E.stage + 1) + '/4 — ' + EASTER_MAPS[E.stage].th + ' • เป้าหมาย ' + fmt(ES.target) + ' G • ' + ES.rounds + ' รอบ<br><span class="emission" style="display:inline-block">' + missionText(E.mission) + '</span></div>' +
+      (host ? '<div class="row" style="gap:4px;align-items:center;justify-content:center;margin-top:8px"><b>ระดับ AI:</b>' + AI_LEVELS.map(function (l) { return '<button class="small rbtn' + (E.aiLv === l.id ? ' on' : '') + '" data-eal="' + l.id + '">' + l.name + '</button>'; }).join('') + '<b style="margin-left:10px">สีของคุณ:</b>' + colorDots(ps[0] && typeof ps[0].color === 'number' ? ps[0].color : (Meta.p.color || 0), 'myc') + '</div><div style="text-align:center;margin-top:12px"><button class="pink" id="lobStart" style="font-size:22px">▶ เริ่มด่าน ' + (E.stage + 1) + '</button></div>' : '');
+    if (!host) return;
+    B.querySelectorAll('[data-eal]').forEach(function (e) { e.onclick = function () { E.aiLv = e.dataset.eal; Online.setSetting('easter', E); renderLobby(); }; });
+    B.querySelectorAll('[data-myc]').forEach(function (e) { e.onclick = function () { Meta.p.color = +e.dataset.myc; Meta.save(); if (Online.room.players[0]) Online.room.players[0].color = Meta.p.color; Online.setSetting('_c', Date.now()); renderLobby(); }; });
+    B.querySelector('#lobStart').onclick = function () { Online.startHost(); };
+  }
   function renderTourLobby(B, R, host, S, ps) {
     var w = S.tour.world, W = TOUR_WORLDS[w], tcol = S.teamCol || [0, 1], C0 = TEAM_PAL[tcol[0]], C1 = TEAM_PAL[tcol[1]];
     var hum = [0, 1].map(function (i) { var x = ps[i]; return x ? '<div style="border-color:' + C0.c + '"><div class="teamchip" style="background:' + C0.c + '">ทีม' + C0.n + '</div>' + spr(Meta.charSprite(x.char), 80, 90) + '<div>' + esc(x.name) + '</div><div style="font-size:12px;color:#2c9a2c">' + (i === 0 ? '👑 โฮสต์' : '✅ พร้อม') + '</div></div>' : '<div style="border-color:' + C0.c + ';border-style:dashed"><div class="teamchip" style="background:' + C0.c + '">ทีม' + C0.n + '</div><div style="padding-top:30px;opacity:.6">รอเพื่อน...</div></div>'; }).join('');
@@ -1921,7 +2112,7 @@
     setWaiting: function (p, off) { setTurn(p, false); setAct(off ? '<div style="font-size:16px">📴 ' + esc(p.name) + ' หลุดการเชื่อมต่อ<br>รอกลับเข้ามา...</div>' : '<div style="font-size:17px">⏳ รอ ' + esc(p.name) + '<br>ตัดสินใจ...</div>'); },
     netStatus: function (msg) { var o = document.getElementById('netOverlay'); if (!msg) { if (o) o.remove(); return; } if (!o) { o = document.createElement('div'); o.id = 'netOverlay'; document.getElementById('stage').appendChild(o); } o.innerHTML = '<div>' + msg + '<br><span style="font-size:14px">เกมยังอยู่ ไม่ต้องปิดหน้านี้</span></div>'; },
     setTurnLabel: function (p, mine) { setTurn(p, mine); },
-    renderLobby: renderLobby, lobbyModal: lobbyModal, allCharKeys: allCharKeys, assignColors: assignColors, closeModal: function () { if (U._closeModal) U._closeModal(); },
+    renderLobby: renderLobby, lobbyModal: lobbyModal, allCharKeys: allCharKeys, aiCharKeys: aiCharKeys, pickMission: pickMission, assignColors: assignColors, closeModal: function () { if (U._closeModal) U._closeModal(); },
     startGame: startGame, startGuest: startGuest, setOnline: setOnline, consumeUsed: consumeUsed, addLog: addLog,
     showResult: function (g) { showResult(g); }, toMenu: function () { U.token++; U.g = null; show('menu'); },
   });
@@ -1934,15 +2125,16 @@
   // ---------- boot ----------
   renderMenu();
   (function resumePrompt() {
-    var t = Tour.load(), sv = t && Tour.savedWorld(t), hs = Online.savedHost(), seat = Online.savedSeat();
-    if (!sv && !hs && !seat) { if (Meta.loginState().canClaim) setTimeout(dailyLogin, 600); return; }
-    var opts = (sv ? '<div class="opt bigopt pmA" data-rs="tour" style="width:100%"><span style="font-size:38px">🏆</span><div class="col" style="gap:0"><span style="font-size:20px">เล่นทัวร์นาเมนต์ต่อ — World ' + (t.world + 1) + ' รอบ ' + sv.round + '</span><span style="font-size:13px">กลับไปเล่นต่อจากจุดที่บันทึกไว้</span></div></div>' : '') +
+    var t = Tour.load(), sv = t && Tour.savedWorld(t), hs = Online.savedHost(), seat = Online.savedSeat(), et = Easter.load(), esv = et && Easter.savedStage(et);
+    if (!sv && !hs && !seat && !esv) { if (Meta.loginState().canClaim) setTimeout(dailyLogin, 600); return; }
+    var opts = (esv ? '<div class="opt bigopt pmB" data-rs="easter" style="width:100%"><span style="font-size:38px">🐰</span><div class="col" style="gap:0"><span style="font-size:20px">เล่นอีเวนต์อีสเตอร์ต่อ — ด่าน ' + (et.stage + 1) + ' รอบ ' + esv.round + '</span><span style="font-size:13px">กลับไปเล่นต่อจากจุดที่บันทึกไว้</span></div></div>' : '') + (sv ? '<div class="opt bigopt pmA" data-rs="tour" style="width:100%"><span style="font-size:38px">🏆</span><div class="col" style="gap:0"><span style="font-size:20px">เล่นทัวร์นาเมนต์ต่อ — World ' + (t.world + 1) + ' รอบ ' + sv.round + '</span><span style="font-size:13px">กลับไปเล่นต่อจากจุดที่บันทึกไว้</span></div></div>' : '') +
       (hs ? '<div class="opt bigopt pmD" data-rs="host" style="width:100%"><span style="font-size:38px">🏠</span><div class="col" style="gap:0"><span style="font-size:20px">เปิดห้องออนไลน์ ' + hs.code + ' ต่อ (รอบ ' + hs.s.round + ')</span><span style="font-size:13px">คุณเป็นโฮสต์ — เพื่อนจะกลับเข้ามาที่นั่งเดิมเอง</span></div></div>' : '') +
       (seat && !hs ? '<div class="opt bigopt pmD" data-rs="seat" style="width:100%"><span style="font-size:38px">🔄</span><div class="col" style="gap:0"><span style="font-size:20px">กลับเข้าห้องออนไลน์ ' + seat.code + '</span><span style="font-size:13px">กลับไปนั่งที่เดิมในเกมที่หลุดออกมา</span></div></div>' : '');
     setTimeout(function () {
       modal({ title: '⏯️ มีเกมที่ค้างไว้', width: 640, body: '<div class="col" style="gap:12px">' + opts + '</div>', buttons: [{ t: 'ไว้ทีหลัง', v: 0 }], mount: function (box, close) { box.querySelectorAll('[data-rs]').forEach(function (e) { e.onclick = function () { close(e.dataset.rs); }; }); } })
         .then(function (v) {
           if (v === 'tour') startGame(sv, false);
+          else if (v === 'easter') startGame(esv, false);
           else if (v === 'host') { toast('⏳ กำลังเปิดห้องเดิม...'); Online.resumeHost(function (err) { if (err) toast('⚠️ ' + err, 3500); }); }
           else if (v === 'seat') { toast('⏳ กำลังกลับเข้าห้อง...'); Online.rejoin(function (err) { if (err) toast('⚠️ ' + err, 3500); }); }
           else if (Meta.loginState().canClaim) dailyLogin();

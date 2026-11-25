@@ -558,6 +558,38 @@ button.pink{background:linear-gradient(#fff0f5,#ffb0c8 60%,#ff8fb3)} button.gree
 #pickPanel .pkopt.on{border-color:#22c55e;background:#eaffea;box-shadow:0 0 0 3px #bbf7d0}
 #pickPanel .sw{width:18px;height:18px;border-radius:5px;border:2px solid #6b4226;flex:none}
 #pickPanel .pksel{background:#fff3c4;border-radius:12px;padding:6px;text-align:center;font-size:14px}
+#easter{background:linear-gradient(#f3e8ff,#ffe2ee)}
+.ebanner{position:relative;height:190px;border-radius:20px;overflow:hidden;border:4px solid #6b4226}
+.ebanner img{width:100%;height:100%;object-fit:cover;object-position:center 40%}
+.ebtag{position:absolute;left:12px;bottom:10px;background:rgba(255,255,255,.9);border:3px solid #b07ce0;border-radius:14px;padding:4px 12px;font-weight:900;color:#7b3fbf}
+.emission{margin:6px 0;padding:6px 10px;background:#fff3c4;border:2px dashed #e0a96d;border-radius:12px;font-weight:800}
+.echars{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px}
+.echar{position:relative;background:#f6efff;border:3px solid #d7c2f5;border-radius:14px;display:flex;justify-content:center;cursor:pointer;filter:grayscale(.7) brightness(.95)}
+.echar.own{filter:none;border-color:#b07ce0;background:linear-gradient(#fff,#f3e5ff)}
+.echar span{position:absolute;right:3px;bottom:1px;font-size:13px}
+.erules p{margin:8px 0;font-weight:700;line-height:1.55}
+.hot.eventbtn{left:24px!important;top:300px;width:250px;height:150px;border-radius:18px;overflow:hidden;border:4px solid #fff;box-shadow:0 6px 18px rgba(123,63,191,.45);animation:wob 2.4s infinite ease-in-out;cursor:pointer}
+.hot.eventbtn img{width:100%;height:100%;object-fit:cover}
+.hot.eventbtn span{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,rgba(123,63,191,.92));color:#fff;font-weight:900;text-align:center;padding:14px 4px 6px;font-size:16px}
+#eventPill{position:absolute;left:34px;bottom:8px;max-width:600px;overflow:hidden;text-overflow:ellipsis;z-index:30;background:rgba(255,255,255,.95);border:3px solid #b07ce0;border-radius:16px;padding:4px 14px;font-weight:900;font-size:13px;color:#6b3fa0;white-space:nowrap;pointer-events:none}
+.bunny{position:absolute;z-index:26;transition:left .22s ease,top .22s ease;pointer-events:none;filter:drop-shadow(0 4px 4px rgba(0,0,0,.3))}
+.bunny img{width:100%;height:100%;object-fit:contain}
+.bunny.hop img{animation:bhop .22s ease}
+@keyframes bhop{50%{transform:translateY(-28%)}}
+.bunny.pop{animation:bpop .8s cubic-bezier(.2,1.6,.4,1)}
+@keyframes bpop{from{transform:scale(0) rotate(-30deg)}to{transform:scale(1)}}
+.bunny.bye{animation:bbye .9s ease forwards}
+@keyframes bbye{to{transform:translateY(-120%) scale(.3);opacity:0}}
+.bdice{position:absolute;left:50%;top:-30%;transform:translateX(-50%) scale(0);background:#fff;border:3px solid #b07ce0;border-radius:10px;padding:0 6px;font-weight:900;font-size:14px;white-space:nowrap;transition:transform .2s}
+.bdice.on{transform:translateX(-50%) scale(1)}
+.begg{position:absolute;z-index:15;pointer-events:none;filter:drop-shadow(0 2px 2px rgba(0,0,0,.35));animation:eggbob 1.6s infinite ease-in-out}
+.begg.gold{filter:drop-shadow(0 0 6px #ffd54f)}
+.begg.new{animation:eggdrop .5s cubic-bezier(.2,1.6,.4,1)}
+@keyframes eggbob{50%{transform:translateY(-10%)}}
+@keyframes eggdrop{from{transform:translateY(-120%) scale(.4);opacity:0}}
+.eggpill{display:inline-block;margin-left:4px;background:#f3e5ff;border:2px solid #b07ce0;border-radius:10px;padding:0 6px;font-size:12px;font-weight:900;color:#6b3fa0}
+.eggpop{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);z-index:80;display:flex;gap:10px;align-items:center;background:#fffaf0;border:4px solid #b07ce0;border-radius:20px;padding:10px 18px;font-weight:800;font-size:16px;box-shadow:0 10px 30px rgba(0,0,0,.3);animation:bpop .45s cubic-bezier(.2,1.6,.4,1);pointer-events:none}
+.eggpop.gold{border-color:#ffb300;background:linear-gradient(#fffbe6,#ffe9a8)}
 /* dragon */
 .dragonpot{font-weight:900;font-size:40px;color:#d48a00;text-shadow:0 2px 0 #fff,0 0 12px rgba(255,200,0,.6);margin:4px 0}
 .ptile.dragon .lbl{background:#fff0f0;color:#c62828;font-weight:900}
@@ -651,6 +683,7 @@ button.pink{background:linear-gradient(#fff0f5,#ffb0c8 60%,#ff8fb3)} button.gree
   <!-- RESULT -->
   <div id="result" class="screen"></div>
   <div id="tour" class="screen"></div>
+  <div id="easter" class="screen"></div>
   <!-- SHOP -->
   <div id="shop" class="screen"></div>
   <!-- INVENTORY -->

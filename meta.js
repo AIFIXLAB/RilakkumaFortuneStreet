@@ -35,6 +35,7 @@ var Meta = (function () {
     JOB_CHARS.forEach(function (c, i) { out.push({ id: 'j' + i, cat: 'chars', type: 'Characters', name: c.name, desc: skillDesc('j' + i), price: c.price, cur: 'gold', spr: ['jobs', i], uniq: true }); });
     GOLD_CHARS.forEach(function (c, i) { out.push({ id: 'g' + i, cat: 'chars', type: 'Characters', name: c.name, desc: skillDesc('g' + i), price: c.d, cur: 'diamond', spr: ['gold', i], uniq: true, gold: true }); });
     EXTRA_CHARS.forEach(function (c, i) { out.push({ id: 'x' + i, cat: 'chars', type: 'Characters', name: c.name, desc: skillDesc('x' + i), price: c.d, cur: 'diamond', spr: ['extra', i], uniq: true }); });
+    EASTER_CHARS.forEach(function (c, i) { out.push({ id: 'e' + i, cat: 'chars', type: 'Characters', name: c.name, desc: '🥚 หายาก — ได้จากไข่อีสเตอร์สุ่มเท่านั้น • ' + skillDesc('e' + i), price: 0, cur: 'egg', spr: ['easter', i], uniq: true, eggOnly: true }); });
     DICE_SKINS.forEach(function (d) { if (d.price) out.push({ id: d.id, cat: 'equip', type: 'Dice Skins', name: d.name, desc: d.desc ? '✨ ' + d.desc : 'สกินลูกเต๋า (Cosmetic)', price: d.price, cur: d.cur, spr: d.spr, uniq: true }); });
     return out;
   }
@@ -121,7 +122,7 @@ var Meta = (function () {
   function openBox() {
     if (!(P.boxes > 0)) return null;
     P.boxes--;
-    var rare = all().filter(function (x) { return x.uniq && !owned(x.id); }), kind = P.jackpotNext && rare.length ? 'rare' : pickW([[30, 'gold'], [18, 'diamond'], [24, 'equip'], [18, 'card'], [10, 'rare']]);
+    var rare = all().filter(function (x) { return x.uniq && !x.eggOnly && !owned(x.id); }), kind = P.jackpotNext && rare.length ? 'rare' : pickW([[30, 'gold'], [18, 'diamond'], [24, 'equip'], [18, 'card'], [10, 'rare']]);
     P.jackpotNext = 0;
     var out = [];
     if (kind === 'rare' && !rare.length) kind = 'gold';
@@ -138,9 +139,26 @@ var Meta = (function () {
     save(); return { kind: kind, items: out };
   }
   function fmtN(n) { return Math.round(n).toLocaleString('en-US'); }
-  var SHEET = { b: 'chars', x: 'extra', j: 'jobs', g: 'gold' }, NAMES = { b: CHARACTERS, x: EXTRA_CHARS, j: JOB_CHARS, g: GOLD_CHARS };
+  var SHEET = { b: 'chars', x: 'extra', j: 'jobs', g: 'gold', e: 'easter' }, NAMES = { b: CHARACTERS, x: EXTRA_CHARS, j: JOB_CHARS, g: GOLD_CHARS, e: EASTER_CHARS };
+  // ---- Easter mystery eggs (event reward; the only source of the 8 Easter characters) ----
+  function addEggs(n) { P.eeggs = (P.eeggs || 0) + n; save(); }
+  function openEgg() {
+    if (!(P.eeggs > 0)) return null;
+    P.eeggs--;
+    var locked = EASTER_CHARS.map(function (c, i) { return 'e' + i; }).filter(function (k) { return !P.chars[k]; });
+    var kind = pickW([[8, 'char'], [17, 'diamond'], [35, 'gold'], [22, 'equip'], [18, 'card']]), out = [];
+    if (kind === 'char') {
+      if (locked.length) { var k = rnd(locked); P.chars[k] = 1; out.push({ spr: ['easter', +k.slice(1)], name: charName(k), big: true, tag: 'ตัวละครหายาก' }); }
+      else { P.diamond += 40; out.push({ ic: '💎', name: '40 Diamond (มีตัวละครอีสเตอร์ครบแล้ว)', big: true }); }
+    }
+    if (kind === 'diamond') { var d = rnd([10, 12, 15, 20, 25]); P.diamond += d; out.push({ ic: '💎', name: d + ' Diamond', big: d >= 20 }); }
+    if (kind === 'gold') { var g = rnd([800, 1200, 1500, 2000, 3000]); P.gold += g; out.push({ ic: '🪙', name: fmtN(g) + ' Gold', big: g >= 3000 }); }
+    if (kind === 'equip' || kind === 'card') { var pool = all().filter(function (x) { return x.cat === (kind === 'equip' ? 'equip' : 'cards') && !x.uniq; }), it = rnd(pool), n = 2 + Math.floor(Math.random() * 2); addItem(it.id, n); out.push({ spr: it.spr, name: it.name + ' ×' + n }); }
+    P.hist.unshift({ tx: txid(), t: Date.now(), kind: 'box', name: 'ไข่อีสเตอร์: ' + out.map(function (o) { return o.name; }).join(', '), cur: '-', amt: 0 });
+    save(); return { kind: kind, items: out };
+  }
   function charSprite(key) { key = key || 'b0'; return [SHEET[key[0]] || 'chars', +key.slice(1) || 0]; }
   function charName(key) { key = key || 'b0'; var L = NAMES[key[0]] || CHARACTERS, c = L[+key.slice(1)]; return c ? c.name : ''; }
   function charSkill(key) { return CHAR_SKILLS[key] || null; }
-  return { load: load, save: save, reset: reset, get p() { return P; }, all: all, item: item, tags: tags, priceOf: priceOf, owned: owned, buy: buy, exchange: exchange, consume: consume, validLoadout: validLoadout, loginState: loginState, claimLogin: claimLogin, matchReward: matchReward, addBoxes: addBoxes, charSkill: charSkill, skillDesc: skillDesc, openBox: openBox, BOX_BY_RANK: BOX_BY_RANK, charSprite: charSprite, charName: charName, addItem: addItem };
+  return { addEggs: addEggs, openEgg: openEgg, load: load, save: save, reset: reset, get p() { return P; }, all: all, item: item, tags: tags, priceOf: priceOf, owned: owned, buy: buy, exchange: exchange, consume: consume, validLoadout: validLoadout, loginState: loginState, claimLogin: claimLogin, matchReward: matchReward, addBoxes: addBoxes, charSkill: charSkill, skillDesc: skillDesc, openBox: openBox, BOX_BY_RANK: BOX_BY_RANK, charSprite: charSprite, charName: charName, addItem: addItem };
 })();

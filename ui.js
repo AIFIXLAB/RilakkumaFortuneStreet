@@ -1614,7 +1614,7 @@
         '<p>🚂 <b>ทุก ๆ ' + TRAIN.every + ' รอบ</b> จะเป็น “รอบขับรถไฟ” — ทุกคนได้ขับรถไฟคนละ 1 ตา ทอย <b>ลูกเต๋า 2 ลูก</b> ขับครบ 4 คนแล้วกลับมาเล่นปกติ</p>' +
         '<p>💥 ขับผ่านใคร = <b>ชน!</b> คนโดนชนจะสุ่มเสีย 1 อย่าง: เงินหล่น ' + Math.round(TRAIN.crashCashPct * 100) + '% (ตกกองภาษีเมือง) • ดอก(สัญลักษณ์) 1 ดอก • การ์ด/ไอเทมติดตัว 1 อย่าง • สกิลตัวละครใช้ไม่ได้ ' + TRAIN.noSkillRounds + ' รอบ — แล้ว<b>กระเด็นกลับสถานี</b> (ธนาคาร)</p>' +
         '<p>🚉 <b>ชานชาลา</b>: หยุดแล้วนั่งรถไฟไปชานชาลาอื่นได้ฟรี • 🎁 <b>กล่องแกล้ง</b>: สุ่มแกล้ง — สลับตำแหน่ง / ส่งกลับสถานี / แอบหยิบเงิน 5% • 🔄 ช่องสลับทิศ</p>' +
-        '<p>🎫 เปิดการ์ดทุกใบมีโอกาส 1% ได้ <b>ตั๋วรถไฟทอง</b> • <b>ชนะอันดับ 1 รับ ' + TRAIN.winTickets + ' ใบ</b> • ตั๋วใช้แลก <b>ตัวละครชุดรอยัลทอง</b> 8 ตัว (20–50 ใบ/ตัว)</p>' +
+        '<p>🎫 เปิดการ์ดทุกใบมีโอกาส 1% ได้ <b>ตั๋วรถไฟทอง</b> • <b>อันดับ 1/2/3/4 รับ ' + TRAIN.winTickets.join('/') + ' ใบ • กล่องสุ่ม ' + TRAIN.rankBoxes.join('/') + ' กล่อง</b> • ตั๋วใช้แลก <b>ตัวละครชุดรอยัลทอง</b> 8 ตัว (20–50 ใบ/ตัว)</p>' +
         '<p>👫 สร้างห้องออนไลน์ชวนเพื่อนได้ (แข่งเดี่ยว) • AI สุ่มตัวละครและสุ่มความเก่ง</p></div>', buttons: [{ t: 'เข้าใจแล้ว', v: 1, cls: 'green' }] });
     }
     function royalGrid() {
@@ -1631,7 +1631,7 @@
         '<div class="row" style="gap:4px;margin-top:6px;align-items:center"><b>สีของคุณ:</b>' + colorDots(P.color || 0, 'tvcol') + '</div>' +
         '<div class="muted" style="font-size:12px;font-weight:700;margin-top:4px">AI 3 ตัว สุ่มตัวละครและสุ่มความเก่ง • ใช้ตัวละคร/ไอเทมที่ติดตั้งไว้</div>' +
         '<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap">' + (sv ? '<button class="green" id="tvResume" style="font-size:19px">▶ เล่นต่อ (รอบ ' + sv.round + ')</button><button class="small" id="tvGo">🔄 เริ่มเกมใหม่</button>' : '<button class="pink" id="tvGo" style="font-size:20px">▶ เล่นกับ AI</button>') + '<button id="tvOnline">👫 สร้างห้องเล่นกับเพื่อน</button></div></div>' +
-        '<div class="panel grow" style="padding:12px"><div class="row" style="gap:10px;align-items:center"><img src="assets/ticket.webp" style="height:64px" draggable="false"><div><b style="font-size:22px">ตั๋วรถไฟทอง × ' + (P.tickets || 0) + '</b><div class="muted" style="font-size:12px;font-weight:700">ได้จากเปิดการ์ดในสนามนี้ (1%) • ชนะอันดับ 1 รับ ' + TRAIN.winTickets + ' ใบ</div></div></div>' +
+        '<div class="panel grow" style="padding:12px"><div class="row" style="gap:10px;align-items:center"><img src="assets/ticket.webp" style="height:64px" draggable="false"><div><b style="font-size:22px">ตั๋วรถไฟทอง × ' + (P.tickets || 0) + '</b><div class="muted" style="font-size:12px;font-weight:700">ได้จากเปิดการ์ดในสนามนี้ (1%) • อันดับ 1–4 รับ ' + TRAIN.winTickets.join('/') + ' ใบ • กล่องสุ่ม ' + TRAIN.rankBoxes.join('/') + '</div></div></div>' +
         '<div style="margin-top:8px;font-weight:900">👑 แลกตัวละครชุดรอยัลทอง (หายาก)</div><div class="rgrid">' + royalGrid() + '</div><div id="tvInfo">' + itemInfoBox(null) + '</div>' +
         '<div class="muted" style="font-size:12px;font-weight:700;margin-top:4px">🚂 ชุดรถจักรไอน้ำ 8 ตัว (สกิลเกี่ยวกับรถไฟ) ซื้อได้ที่ร้านค้า → Characters</div></div></div></div>';
       show('trainev');
@@ -1661,11 +1661,11 @@
     // tickets earned this game + 3 for the winner — shown before the normal result page
     function award(g) {
       var s = g.s, me = s.players[s.ownerIdx || 0]; if (g._tk) return Promise.resolve(); g._tk = 1;
-      var rk = s.ranking || [], first = rk.length && rk[0].id === me.id, n = (me.tickets || 0) + (first ? TRAIN.winTickets : 0);
+      var rk = s.ranking || [], myR = Math.max(0, rk.findIndex(function (r) { return r.id === me.id; })), bonus = TRAIN.winTickets[myR] || 0, first = bonus > 0, n = (me.tickets || 0) + bonus;
       if (s.train.kind === 'solo') { try { localStorage.removeItem('rfs_save_train'); } catch (e) { } }
       if (!n) return Promise.resolve();
       Meta.addTickets(n);
-      return modal({ title: '🎫 ตั๋วรถไฟทอง', width: 560, body: '<div style="text-align:center"><img src="assets/ticket.webp" class="tkpop" draggable="false"><div style="font-size:28px;font-weight:900;color:#c48a00">+' + n + ' ใบ</div><div style="font-weight:800;margin-top:6px">' + ((me.tickets || 0) ? 'จากการเปิดการ์ด ' + me.tickets + ' ใบ' : '') + (first ? ((me.tickets || 0) ? ' • ' : '') + '👑 ชนะอันดับ 1 รับ ' + TRAIN.winTickets + ' ใบ' : '') + '</div><div class="muted" style="font-weight:700;margin-top:4px">รวมมีตั๋ว ' + (Meta.p.tickets || 0) + ' ใบ — แลกตัวละครรอยัลได้ที่หน้าอีเวนต์</div></div>', buttons: [{ t: 'เยี่ยมเลย!', v: 1, cls: 'green' }] });
+      return modal({ title: '🎫 ตั๋วรถไฟทอง', width: 560, body: '<div style="text-align:center"><img src="assets/ticket.webp" class="tkpop" draggable="false"><div style="font-size:28px;font-weight:900;color:#c48a00">+' + n + ' ใบ</div><div style="font-weight:800;margin-top:6px">' + ((me.tickets || 0) ? 'จากการเปิดการ์ด ' + me.tickets + ' ใบ' : '') + (first ? ((me.tickets || 0) ? ' • ' : '') + (myR === 0 ? '👑 ' : '🏅 ') + 'อันดับ ' + (myR + 1) + ' รับ ' + bonus + ' ใบ' : '') + '</div><div class="muted" style="font-weight:700;margin-top:4px">รวมมีตั๋ว ' + (Meta.p.tickets || 0) + ' ใบ — แลกตัวละครรอยัลได้ที่หน้าอีเวนต์</div></div>', buttons: [{ t: 'เยี่ยมเลย!', v: 1, cls: 'green' }] });
     }
     return { open: hub, hub: hub, saved: saved, award: award, rules: rules, mapIdx: mapIdx };
   })();
@@ -1881,7 +1881,8 @@
     var rk = s.ranking || s.players.map(function (p) { return { id: p.id, nw: g.netWorth(p) }; }).sort(function (a, b) { return b.nw - a.nw; });
     var myRank = rk.findIndex(function (r) { return r.id === owner.id; });
     if (s.teams && s.winTeam >= 0) myRank = owner.team === s.winTeam ? Math.min(myRank, 1) : Math.max(myRank, 2);
-    var reward = !owner.isAI ? Meta.matchReward(myRank, s.winner === owner.id || (s.teams && s.winTeam >= 0 && owner.team === s.winTeam), g.netWorth(owner)) : null;
+    var reward = !owner.isAI ? Meta.matchReward(myRank, s.winner === owner.id || (s.teams && s.winTeam >= 0 && owner.team === s.winTeam), g.netWorth(owner), !!s.train) : null;
+    if (reward && s.train) { reward.boxes = TRAIN.rankBoxes[myRank] || 0; Meta.addBoxes(reward.boxes); }
     try { var L = JSON.parse(localStorage.getItem('rfs_results') || '[]'); L.unshift({ map: MAPS[s.mapIdx].th, rank: myRank + 1, nw: g.netWorth(owner), date: new Date().toLocaleDateString('th-TH') }); localStorage.setItem('rfs_results', JSON.stringify(L.slice(0, 20))); } catch (e) { }
     var W = 560, H = 220, mx = Math.max.apply(null, s.players.map(function (p) { return Math.max.apply(null, p.hist.concat([g.netWorth(p), 1])); }));
     var lines = s.players.map(function (p) { var h = p.hist.concat([g.netWorth(p)]); if (h.length < 2) h = [h[0], h[0]]; return '<polyline fill="none" stroke="' + p.color + '" stroke-width="4" points="' + h.map(function (v, i) { return (i / (h.length - 1) * W).toFixed(1) + ',' + (H - v / mx * (H - 10)).toFixed(1); }).join(' ') + '"/>'; }).join('');
@@ -2190,7 +2191,7 @@
     B.innerHTML = '<div class="row" style="justify-content:center;gap:16px"><span style="font-weight:700">🚂 อีเวนต์รถจักรไอน้ำ • รหัสห้อง</span><span class="roomcode">' + R.code + '</span><span class="chip">' + (Online.kind === 'p2p' ? '🌐 ออนไลน์ P2P' : '📱 โหมดทดสอบเครื่องเดียว') + '</span></div>' +
       '<div style="text-align:center;font-weight:700;margin:6px 0">' + (host ? 'ส่งรหัสให้เพื่อน (สูงสุด 4 คน) — แข่งเดี่ยวทุกคน ที่ว่างเติม AI' : 'เข้าห้องแล้ว! รอโฮสต์เริ่มเกม...') + '</div>' +
       '<div class="lobbyP">' + slots + '</div>' +
-      '<div style="text-align:center;font-weight:700;margin-top:10px;line-height:1.7">🗺️ สถานีรถจักรไอน้ำ • ' + TRAIN.rounds + ' รอบ • เริ่ม ' + fmt(TRAIN.startCash) + ' G • เป้าหมาย ' + fmt(TRAIN.target) + ' G<br>🚂 ทุก ' + TRAIN.every + ' รอบทุกคนขับรถไฟ • 🎫 อันดับ 1 รับตั๋วรถไฟทอง ' + TRAIN.winTickets + ' ใบ</div>' +
+      '<div style="text-align:center;font-weight:700;margin-top:10px;line-height:1.7">🗺️ สถานีรถจักรไอน้ำ • ' + TRAIN.rounds + ' รอบ • เริ่ม ' + fmt(TRAIN.startCash) + ' G • เป้าหมาย ' + fmt(TRAIN.target) + ' G<br>🚂 ทุก ' + TRAIN.every + ' รอบทุกคนขับรถไฟ • 🎫 ตั๋วทอง ' + TRAIN.winTickets.join('/') + ' ใบ • 🎁 กล่องสุ่ม ' + TRAIN.rankBoxes.join('/') + ' ตามอันดับ</div>' +
       (host ? '<div class="row" style="gap:4px;align-items:center;justify-content:center;margin-top:8px"><b>สีของคุณ:</b>' + colorDots(ps[0] && typeof ps[0].color === 'number' ? ps[0].color : (Meta.p.color || 0), 'myc') + '</div><div style="text-align:center;margin-top:12px"><button class="pink" id="lobStart" style="font-size:22px">▶ เริ่มเกม</button></div>' : '');
     if (!host) return;
     B.querySelectorAll('[data-myc]').forEach(function (e) { e.onclick = function () { Meta.p.color = +e.dataset.myc; Meta.save(); if (Online.room.players[0]) Online.room.players[0].color = Meta.p.color; Online.setSetting('_c', Date.now()); renderLobby(); }; });

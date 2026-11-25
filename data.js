@@ -539,6 +539,54 @@ Object.assign(CHAR_SKILLS, {
   e7: { name: 'ดาวนำโชคประจำทุ่ง', fx: { salaryBonus: 0.3, bankBonus: 300, taxDisc: 0.5, eggLuck: 0.25, eggPts: 300 }, desc: 'เงินเดือนตอนเลื่อนระดับ +30% • ผ่าน/หยุดธนาคาร +300 G • ภาษีลด 50%',
     ename: 'ดาวนำทางไข่', edesc: 'โอกาส 25% เป็นไข่ทอง • ไข่ทุกฟองได้แต้มอีเวนต์ +300' },
 });
+// Steam Train event board
+var TRAIN_MAP = {
+    id: 'train', train: true, name: 'Steam Train Station', th: 'สถานีรถจักรไอน้ำ', bg: 'bg_train', img: [1672, 941], ts: 60, size: 'ใหญ่',
+    districts: [
+      { name: "Station Square", th: "ลานสถานี", color: '#f48fb1', f: 0.95, label: [640, 760], shops: [["ร้านกระเป๋าเดินทาง", "clothes"], ["คาเฟ่ชานชาลา", "cafe"], ["ร้านตั๋วที่ระลึก", "mart"]] },
+      { name: "Lantern Lane", th: "ถนนตะเกียง", color: '#ffd54f', f: 1.0, label: [300, 660], shops: [["ร้านตะเกียงทองเหลือง", "mart"], ["ร้านขนมปังไอน้ำ", "bakery"]] },
+      { name: "Caf\u00e9 Bridge", th: "สะพานคาเฟ่", color: '#ce93d8', f: 1.05, label: [200, 400], shops: [["คาเฟ่สะพานหิน", "cafe"], ["ร้านดอกซากุระ", "mart"], ["ร้านชาบ่าย", "food"]] },
+      { name: "Viaduct Hill", th: "เนินสะพานโค้ง", color: '#81d4fa', f: 1.1, label: [400, 250], shops: [["ร้านแผนที่", "book"], ["ร้านหมวกนายสถานี", "clothes"], ["ภัตตาคารสะพาน", "food"]] },
+      { name: "Clock Tower", th: "หอนาฬิกา", color: '#a5d6a7', f: 1.2, label: [620, 480], shops: [["ร้านนาฬิกาพก", "clothes"], ["ห้องสมุดเกียร์", "book"], ["ร้านเฟืองทอง", "mall"]] },
+      { name: "Ferris Plaza", th: "ลานชิงช้าสวรรค์", color: '#ffab91', f: 1.25, label: [1050, 490], shops: [["ร้านป๊อปคอร์น", "food"], ["ร้านตุ๊กตา", "mall"], ["ร้านไอศกรีมไอน้ำ", "cafe"]] },
+      { name: "Tunnel Peak", th: "ยอดอุโมงค์", color: '#b39ddb', f: 1.3, label: [1200, 250], shops: [["ร้านแว่นนักบิน", "clothes"], ["ร้านหินแร่", "mart"], ["สปาน้ำตก", "onsen"]] },
+      { name: "Hotel Row", th: "ย่านโรงแรม", color: '#f8bbd0', f: 1.35, label: [1500, 420], shops: [["โรงแรมหัวรถจักร", "onsen"], ["ร้านสเต๊กไอน้ำ", "food"], ["ห้างสถานีทอง", "mall"]] },
+      { name: "Steam Works", th: "โรงหัวรถจักร", color: '#ffcc80', f: 1.4, label: [1180, 760], shops: [["โรงซ่อมหัวรถจักร", "mall"], ["ร้านถ่านหิน", "mart"], ["ภัตตาคารรถเสบียง", "food"]] },
+    ],
+    paths: [
+      "845,855,R 735,815,#1 735,765,L 705,705,#1 636,686,? 556,673,#1 468,660,= 381,632,#2 310,603,O 238,583,% 175,555,#2 150,505,X 177,458,#3 244,434,#3 305,405,#3 320,355,= 285,315,#3 250,275,S 262,228,#4 310,192,#4 375,183,#4 455,182,H 525,195,#4 575,220,#4 598,258,L 570,300,#5 505,330,M 455,370,? 468,421,#5 530,437,#5 618,437,= 700,430,% 765,428,#5 845,428,B 900,430,#6 965,435,#6 1040,440,? 1110,440,#6 1175,420,#6 1208,380,L 1168,335,X 1110,302,#6 1068,262,? 1080,212,E 1140,195,#7 1208,185,#7 1278,185,U 1340,200,#7 1385,245,#7 1405,290,C 1355,345,#7 1351,416,= 1417,445,#8 1480,470,#8 1520,515,L 1528,565,#8 1495,605,% 1440,632,#8 1381,650,? 1300,668,#9 1227,684,#9 1135,680,D 1045,685,#9 968,707,#9 941,760,#9 950,812,? >",
+      "845,428,B 845,640,K 845,855,R",
+    ],
+};
+MAPS.push(TRAIN_MAP);
+// ---------- Steam Train event ----------
+var ROYAL_CHARS = [
+  { name: 'ราชาริลัคคุมะรอยัล', t: 8 }, { name: 'ราชินีโคริรอยัล', t: 8 }, { name: 'ท่านดยุคคิอิโระ', t: 6 }, { name: 'อัศวินชาอิโระ', t: 6 },
+  { name: 'มหาเสนาบดีเพนกวินฟ้า', t: 6 }, { name: 'เจ้าหญิงกระต่ายรอยัล', t: 6 }, { name: 'เคานต์เพนกวินดำ', t: 6 }, { name: 'ดัชเชสแกะทองคำ', t: 6 },
+];
+var STEAM_CHARS = [
+  { name: 'นายสถานีริลัคคุมะ', d: 60 }, { name: 'โคริร่มลูกไม้', d: 60 }, { name: 'คิอิโระพนักงานรถไฟ', d: 60 }, { name: 'ชาอิโระนักสำรวจราง', d: 60 },
+  { name: 'เพนกวินฟ้านักวิชาการ', d: 60 }, { name: 'กระต่ายไกด์ทัวร์', d: 60 }, { name: 'เพนกวินโฆษกสถานี', d: 60 }, { name: 'แกะช่างเครื่อง', d: 60 },
+];
+Object.assign(CHAR_SKILLS, {
+  r0: { name: '👑 พระราชอำนาจ', fx: { rentBonus: 0.25, salaryBonus: 0.3, bankBonus: 500, crashGuard: 0.5 }, desc: 'โบนัสค่าเช่า +25% • เงินเดือน +30% • ผ่าน/หยุดธนาคาร +500 G • โอกาส 50% รอดจากรถไฟชน' },
+  r1: { name: '👑 ราชินีแห่งตลาด', fx: { buyDisc: 0.25, investDisc: 0.3, rentDisc: 0.25, tollDisc: 0.5 }, desc: 'ซื้อร้านว่างถูกลง 25% • อัปเกรดถูกลง 30% • จ่ายค่าเช่าลด 25% • ค่าผ่านทางลด 50%' },
+  r2: { name: '👑 ดยุคแห่งโชคลาภ', fx: { tileGold: 0.4, cardGold: 0.35, casinoLuck: 0.4, ticketLuck: 0.01 }, desc: 'เงินจากช่อง Lucky/เหตุการณ์ +40% • เปิดการ์ดได้เงิน +35% • คาสิโน +40% • โอกาสได้ตั๋วทอง ×2' },
+  r3: { name: '👑 ดาบอัศวินราง', fx: { crashLoot: 0.6, trainDice: 2, rentDodge: 0.15, negShield: 0.4 }, desc: 'ขับรถไฟชนได้เงินที่อีกฝ่ายทำหล่น 60% • ขับรถไฟเดินเพิ่ม +2 • หลบค่าเช่า 15% • กันการ์ดร้าย 40%' },
+  r4: { name: '👑 คัมภีร์นักลงทุน', fx: { stockDisc: 0.3, divBonus: 0.5, sellBonus: 0.25, buyoutDisc: 0.2 }, desc: 'ซื้อหุ้นถูกลง 30% • ปันผล +50% • ขายร้านได้เพิ่ม 25% • ซื้อร้านต่อถูกลง 20%' },
+  r5: { name: '👑 คทาเวทมนตร์', fx: { cardLuck: 0.55, negShield: 0.6, crashGuard: 0.4, cardGold: 0.2 }, desc: 'โอกาส 55% เปลี่ยนการ์ดร้าย/ธรรมดาเป็นการ์ดได้เงิน • กันการ์ดร้าย 60% • รอดรถไฟชน 40% • เงินจากการ์ด +20%' },
+  r6: { name: '👑 ถ้วยทองแห่งชัยชนะ', fx: { rentBonus: 0.2, crashLoot: 0.5, divBonus: 0.3, taxDisc: 0.6 }, desc: 'โบนัสค่าเช่า +20% • ขับรถไฟชนได้เงินที่หล่น 50% • ปันผล +30% • ภาษีลด 60%' },
+  r7: { name: '👑 ลูกแก้วมงคล', fx: { salaryBonus: 0.35, bankBonus: 400, rentDodge: 0.15, crashGuard: 0.35 }, desc: 'เงินเดือน +35% • ผ่าน/หยุดธนาคาร +400 G • หลบค่าเช่า 15% • รอดรถไฟชน 35%' },
+  s0: { name: 'นายสถานีใจดี', fx: { bankBonus: 300, crashGuard: 0.3 }, desc: 'ผ่าน/หยุดธนาคาร +300 G • โอกาส 30% รอดจากรถไฟชน' },
+  s1: { name: 'ร่มกันชน', fx: { crashGuard: 0.5 }, desc: 'โอกาส 50% กางร่มรอดจากรถไฟชน' },
+  s2: { name: 'พนักงานขยัน', fx: { trainDice: 2, salaryBonus: 0.1 }, desc: 'ขับรถไฟเดินเพิ่ม +2 ช่อง • เงินเดือน +10%' },
+  s3: { name: 'แผนที่ลับ', fx: { crashLoot: 0.4, tileGold: 0.15 }, desc: 'ขับรถไฟชนได้เงินที่อีกฝ่ายทำหล่น 40% • เงินจากช่อง Lucky +15%' },
+  s4: { name: 'ตำรารถไฟ', fx: { stockDisc: 0.1, divBonus: 0.2 }, desc: 'ซื้อหุ้นถูกลง 10% • ปันผล +20%' },
+  s5: { name: 'ไกด์นำเที่ยว', fx: { tollDisc: 0.6, rentDisc: 0.1 }, desc: 'ค่าผ่านทาง/ชานชาลาลด 60% • จ่ายค่าเช่าลด 10%' },
+  s6: { name: 'โทรโข่งเตือนภัย', fx: { crashLoot: 0.3, crashGuard: 0.25 }, desc: 'ขับรถไฟชนได้เงินที่หล่น 30% • รอดรถไฟชน 25%' },
+  s7: { name: 'ช่างซ่อมหัวรถจักร', fx: { trainDice: 1, investDisc: 0.15 }, desc: 'ขับรถไฟเดินเพิ่ม +1 • อัปเกรดร้านถูกลง 15%' },
+});
+var TRAIN = { rounds: 200, startCash: 12000, target: 180000, every: 5, ticket: 0.01, winTickets: 3, crashCashPct: 0.12, crashCashMin: 300, crashCashMax: 4000, noSkillRounds: 10 };
 var EASTER = {
   stages: EASTER_MAPS.map(function (m, i) { return { map: MAPS.indexOf(m), target: [26000, 28000, 30000, 32000][i], rounds: [22, 24, 26, 28][i] }; }),
   bunnyStay: 10, bunnyCool: 4, golden: 0.12,
@@ -596,6 +644,8 @@ var TILE_INFO = {
   Y: { type: 'whirl', name: 'วังวนมิติ', icon: null, color: '#9575cd' },
   N: { type: 'wheel', name: 'วงล้อเสี่ยงโชค', icon: null, color: '#ffb74d' },
   G: { type: 'gate', name: 'ประตูล็อก', icon: null, color: '#90a4ae' },
+  '=': { type: 'platform', name: 'ชานชาลา', icon: null, color: '#90caf9' },
+  '%': { type: 'prank', name: 'กล่องแกล้ง', icon: null, color: '#ff8a80' },
   O: { type: 'rollon', name: 'ทอยอีกครั้ง', icon: ['ui', 'd6'], color: '#fff59d' },
 };
 // one-time skills from chance cards (same kind replaces the old one)
@@ -744,4 +794,4 @@ var DICE_SKINS = [
 ];
 var DAILY_REWARDS = [{ gold: 500 }, { diamond: 5 }, { item: 'eq_move' }, { gold: 1000 }, { diamond: 10 }, { item: 'eq_lucky', n: 2 }, { gold: 2000, diamond: 10, item: 'SC_cash' }];
 
-if (typeof module !== 'undefined') module.exports = { BUFFS, CONFIG, PLAYER_COLORS, AI_LEVELS, AI_PERSONAS, TEAM_PAL, CHARACTERS, EXTRA_CHARS, JOB_CHARS, GOLD_CHARS, CHAR_SKILLS, BUSINESS, SPECIAL_BUILDINGS, MAPS, TOUR_MAPS, TOUR_WORLDS, TOUR_BOXES, EASTER_MAPS, EASTER_CHARS, EASTER, TILE_INFO, SUITS, SUIT_GLYPH, SUIT_COLOR, CARD_DEFS, CARD_CATS, EQUIPMENT, SPECIAL_CARDS, PACKAGES, EXCHANGE, DECOS, DICE_SKINS, DAILY_REWARDS };
+if (typeof module !== 'undefined') module.exports = { BUFFS, CONFIG, PLAYER_COLORS, AI_LEVELS, AI_PERSONAS, TEAM_PAL, CHARACTERS, EXTRA_CHARS, JOB_CHARS, GOLD_CHARS, CHAR_SKILLS, BUSINESS, SPECIAL_BUILDINGS, MAPS, TOUR_MAPS, TOUR_WORLDS, TOUR_BOXES, EASTER_MAPS, EASTER_CHARS, EASTER, ROYAL_CHARS, STEAM_CHARS, TRAIN, TRAIN_MAP, TILE_INFO, SUITS, SUIT_GLYPH, SUIT_COLOR, CARD_DEFS, CARD_CATS, EQUIPMENT, SPECIAL_CARDS, PACKAGES, EXCHANGE, DECOS, DICE_SKINS, DAILY_REWARDS };

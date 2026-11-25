@@ -101,6 +101,7 @@
         };
       }),
       cur: 0, round: 1, turnNo: 0, deck: [], grid: [], taxPool: 0, effects: [], log: [], tx: 0, over: false, winner: null,
+      train: opts.train ? { normal: 0, phase: false, count: 0 } : undefined,
       easter: opts.easter ? { stage: opts.easter.stage || 0, kind: opts.easter.kind || 'solo', mission: opts.easter.mission || 'eggs', prev: opts.easter.prev || [], eggs: {}, laid: 0, bunny: { pos: -1, prev: null, left: 0, cool: 1 } } : undefined,
       seed: opts.seed || (Date.now() & 0xffffff), rngCalls: 0, cardHistory: [], phase: 'idle', forcedDice: null,
     };
@@ -119,7 +120,7 @@
 
   var P = Game.prototype;
   // character passive skill: value of effect k for player p (0 if none)
-  P.cs = function (p, k) { var sk = D.CHAR_SKILLS && D.CHAR_SKILLS[p.char]; return (sk && sk.fx[k]) || 0; };
+  P.cs = function (p, k) { if (p.flags && p.flags.noSkillUntil && this.s.round <= p.flags.noSkillUntil) return 0; var sk = D.CHAR_SKILLS && D.CHAR_SKILLS[p.char]; return (sk && sk.fx[k]) || 0; };
   P.r = function () { this.s.rngCalls++; return this.rng(); };
   P.rand = function (a, b) { return a + Math.floor(this.r() * (b - a + 1)); };
   P.dice = function () { return this.rand(1, 6); };
@@ -341,6 +342,10 @@
     s.players.forEach(function (p) { if (p.flags.upgDiscUntil && p.flags.upgDiscUntil <= r) { p.flags.upgDisc = 0; } });
     s.players.forEach(function (p) { p.hist.push(self.netWorth(p)); });
     if (s.easter && !s.over) await this.bunnyTurn();
+    if (s.train && !s.over) {
+      if (s.train.phase) { s.train.phase = false; s.train.normal = 0; if (this.io.trainPhase) await this.io.trainPhase(false); }
+      else if (++s.train.normal >= D.TRAIN.every && s.round < s.settings.maxRounds) { s.train.phase = true; s.train.count = (s.train.count || 0) + 1; this.log('🚂 ครบ ' + D.TRAIN.every + ' รอบ! รอบนี้ทุกคนได้ขับรถไฟ (ลูกเต๋า 2 ลูก)', 'gain'); if (this.io.trainPhase) await this.io.trainPhase(true); }
+    }
     s.round++;
     if (s.round > s.settings.maxRounds) {
       this.finish(this.bestPlayer(), 'ครบ ' + s.settings.maxRounds + ' รอบ — ' + (s.teams ? 'ทีมที่มีทรัพย์สินรวมสูงสุด' : 'ทรัพย์สินสูงสุด'));
@@ -411,6 +416,62 @@
   // =====================================================================
   // EASTER EVENT — the bunny hops around after every round and lays eggs
   // =====================================================================
+
+  // =====================================================================
+  // STEAM TRAIN — every 5 rounds everybody drives the train (2 dice) and rams whoever is on the way
+  // =====================================================================
+  P.crash = async function (p, q) {
+    var s = this.s, io = this.io, T = D.TRAIN, self = this;
+    if (this.r() < this.cs(q, 'crashGuard')) { this.log('🛡️ ' + q.name + ' หลบรถไฟของ ' + p.name + ' ได้ทัน!'); if (io.trainCrash) await io.trainCrash(p, q, { kind: 'dodge' }); return; }
+    var kinds = [];
+    if (q.cash > 0) kinds.push('cash', 'cash');
+    if (D.SUITS.some(function (k) { return q.suits[k]; })) kinds.push('suit');
+    var slots = this.loadoutSlots(q).filter(function (sl) { return !sl.used; }), buffs = this.activeBuffs ? this.activeBuffs(q) : [];
+    if (slots.length || buffs.length) kinds.push('card');
+    var sk = D.CHAR_SKILLS[q.char]; if (sk && !(q.flags.noSkillUntil >= s.round)) kinds.push('skill');
+    var kind = kinds.length ? kinds[Math.floor(this.r() * kinds.length)] : 'none', info = { kind: kind };
+    if (kind === 'cash') {
+      var amt = Math.min(q.cash, Math.max(T.crashCashMin, Math.min(T.crashCashMax, Math.round(q.cash * T.crashCashPct / 10) * 10)));
+      q.cash -= amt; var loot = Math.round(amt * this.cs(p, 'crashLoot') / 10) * 10; p.cash += loot; s.taxPool += amt - loot;
+      info.amt = amt; info.loot = loot;
+      this.log('🚂💥 ' + q.name + ' โดนรถไฟชน! เงินหล่น ' + fmt(amt) + ' G' + (loot ? ' (' + p.name + ' เก็บได้ ' + fmt(loot) + ')' : ' (ตกลงกองภาษีเมือง)'), 'lose');
+    } else if (kind === 'suit') {
+      var own = D.SUITS.filter(function (k) { return q.suits[k]; }), su = own[Math.floor(this.r() * own.length)]; q.suits[su] = false; info.suit = su;
+      this.log('🚂💥 ' + q.name + ' โดนรถไฟชน! ดอก ' + D.SUIT_GLYPH[su] + ' กระเด็นหาย', 'lose');
+    } else if (kind === 'card') {
+      var pick = Math.floor(this.r() * (slots.length + buffs.length));
+      if (pick < slots.length) { slots[pick].used = true; slots[pick].lost = true; var def = this.itemDef(slots[pick].id); info.item = def ? def.name : slots[pick].id; }
+      else { var b = buffs[pick - slots.length]; q.flags[b[0]] = 0; info.item = b[2]; }
+      this.log('🚂💥 ' + q.name + ' โดนรถไฟชน! การ์ด/ไอเทม “' + info.item + '” หล่นหาย', 'lose');
+    } else if (kind === 'skill') {
+      q.flags.noSkillUntil = s.round + T.noSkillRounds; info.skill = sk.name; info.until = q.flags.noSkillUntil;
+      this.log('🚂💥 ' + q.name + ' โดนรถไฟชน! สกิล “' + sk.name + '” ใช้ไม่ได้ ' + T.noSkillRounds + ' รอบ', 'lose');
+    }
+    if (io.trainCrash) await io.trainCrash(p, q, info);
+    var from = q.pos; q.pos = this.bankId(); q.prev = null;
+    if (io.teleport) await io.teleport(q, from, q.pos);
+  };
+  P.landPlatform = async function (p, t) {
+    var s = this.s, self = this, others = s.tiles.filter(function (x) { return x.type === 'platform' && x.id !== t.id; });
+    if (!others.length) return;
+    var opts = others.map(function (x) { return { value: x.id, label: '🚉 ชานชาลา ' + (x.name2 || ('#' + x.id)), sub: s.districts[self.nearDistrict(x)] ? 'ใกล้' + s.districts[self.nearDistrict(x)].th : '' }; });
+    opts.push({ value: -1, label: '🚶 ไม่ขึ้นรถไฟ อยู่ที่เดิม' });
+    var to = await this.choose(p, { title: '🚉 ขึ้นรถไฟฟรี! ไปลงชานชาลาไหน?', kind: 'tile', options: opts, ai: 'random' });
+    if (to === null || to === undefined || to < 0) return;
+    var from = p.pos; p.pos = to; p.prev = null; this.log('🚉 ' + p.name + ' นั่งรถไฟไปอีกชานชาลา');
+    if (this.io.teleport) await this.io.teleport(p, from, to);
+  };
+  P.nearDistrict = function (t) { var best = -1, bd = 1e9; this.s.tiles.forEach(function (x) { if (x.type === 'shop' && x.district >= 0) { var d = Math.abs(x.x - t.x) + Math.abs(x.y - t.y); if (d < bd) { bd = d; best = x.district; } } }); return best; };
+  P.landPrank = async function (p, t) {
+    var s = this.s, io = this.io, kinds = ['swap', 'back', 'steal'], kind = kinds[Math.floor(this.r() * 3)];
+    var title = { swap: '🎁 กล่องแกล้ง: สลับตำแหน่งกับใคร?', back: '🎁 กล่องแกล้ง: ส่งใครกลับสถานี?', steal: '🎁 กล่องแกล้ง: แอบหยิบเงิน 5% จากใคร?' }[kind];
+    if (io.prankRoll) await io.prankRoll(p, kind);
+    var q = await this.pickPlayer(p, title); if (!q) return;
+    if (this.r() < this.cs(q, 'crashGuard') / 2) { this.log('🛡️ ' + q.name + ' รู้ทันกล่องแกล้ง!'); if (io.toast) io.toast('🛡️ ' + q.name + ' รู้ทันกล่องแกล้ง!'); return; }
+    if (kind === 'swap') { var a = p.pos, b = q.pos; p.pos = b; q.pos = a; p.prev = null; q.prev = null; this.log('🎁 ' + p.name + ' สลับตำแหน่งกับ ' + q.name + '!'); if (io.teleport) { await io.teleport(p, a, b); await io.teleport(q, b, a); } }
+    else if (kind === 'back') { var f = q.pos; q.pos = this.bankId(); q.prev = null; this.log('🎁 ' + p.name + ' ส่ง ' + q.name + ' กลับสถานี!'); if (io.teleport) await io.teleport(q, f, q.pos); }
+    else { var amt = Math.min(q.cash, Math.min(2500, Math.round(q.cash * 0.05 / 10) * 10)); q.cash -= amt; p.cash += amt; this.log('🎁 ' + p.name + ' แอบหยิบเงิน ' + q.name + ' ' + fmt(amt) + ' G'); if (io.toast) io.toast('🎁 ' + p.name + ' แอบหยิบเงิน ' + q.name + ' ' + fmt(amt) + ' G'); }
+  };
   P.bunnyTurn = async function () {
     var s = this.s, E = s.easter, b = E.bunny, io = this.io, self = this;
     if (b.left <= 0) {
@@ -507,8 +568,10 @@
       await this.arriveBank(p, true);
     } else {
       s.phase = 'roll';
-      var roll = s.forcedDice || (io.rollDice && !p.isAI ? await io.rollDice(p) : this.dice()); var forced = !!s.forcedDice; s.forcedDice = null;
-      if (io.showDice && (p.isAI || forced || !io.rollDice)) await io.showDice(p, roll);
+      var driving = !!(s.train && s.train.phase), roll, forced;
+      if (driving) { var dd = io.rollTwo ? await io.rollTwo(p, [this.dice(), this.dice()]) : [this.dice(), this.dice()]; roll = dd[0] + dd[1] + Math.round(this.cs(p, 'trainDice')); forced = false; s.forcedDice = null; p.flags.train = 1; this.log('🚂 ' + p.name + ' ขับรถไฟ ทอยได้ ' + dd[0] + '+' + dd[1]); }
+      else { roll = s.forcedDice || (io.rollDice && !p.isAI ? await io.rollDice(p) : this.dice()); forced = !!s.forcedDice; s.forcedDice = null;
+      if (io.showDice && (p.isAI || forced || !io.rollDice)) await io.showDice(p, roll); }
       s.phase = 'postRoll';
       for (var guard = 0; guard < 4; guard++) {
         var u = await this.offerReactive(p, 'postRoll', { roll: roll });
@@ -520,6 +583,7 @@
       s.phase = 'move';
       this.log('🎲 ' + p.name + ' ทอยได้ ' + roll + ' แต้ม');
       await this.move(p, roll);
+      p.flags.train = 0;
       if (!s.over && !p.bankrupt) await this.land(p);
     }
     if (s.over) return;
@@ -567,6 +631,7 @@
     for (var k = steps; k > 0; k--) { var opts = this.nextOptions(p.pos, null), back = p.prev !== null && opts.indexOf(p.prev) >= 0 ? p.prev : opts[0]; p.prev = p.pos; p.pos = back; if (this.io.step) await this.io.step(p, back, k - 1); }
   };
   P.onPass = async function (p, t, final) {
+    if (p.flags.train) { var hit = this.s.players.filter(function (q) { return q !== p && !q.bankrupt && q.pos === t.id; }); for (var hi = 0; hi < hit.length; hi++) await this.crash(p, hit[hi]); }
     if (this.s.easter && this.s.easter.eggs[t.id]) await this.eggCheck(p, t);
     if (t.type === 'bank') { await this.arriveBank(p, final); return; }
     if (t.type === 'suit' && !p.suits[t.suit]) { p.suits[t.suit] = true; this.log('🃏 ' + p.name + ' เก็บสัญลักษณ์ ' + D.SUIT_GLYPH[t.suit]); if (this.io.suit) await this.io.suit(p, t.suit); }
@@ -658,6 +723,8 @@
       case 'vacant': await this.landVacant(p, t); break;
       case 'warp': { var from = p.pos; p.pos = t.warpTo; p.prev = null; this.log('🌀 ' + p.name + ' วาร์ปไปอีกเกาะ'); if (io.teleport) await io.teleport(p, from, p.pos); break; }
       case 'rest': await this.gain(p, C.restBonus, 'พักผ่อน'); break;
+      case 'platform': await this.landPlatform(p, t); break;
+      case 'prank': await this.landPrank(p, t); break;
       case 'switch': {
         // reverse direction: next turn walks back the way we came
         var self2 = this, fwd = t.n.filter(function (n) { return n !== p.prev && self2.tile(n).type !== 'road' && self2.tile(n).type !== 'bank'; })[0];
@@ -938,6 +1005,7 @@
     var s = this.s;
     if (s.grid.every(Boolean)) { this.newDeck(); this.log('🔄 สับกองการ์ดใหม่'); }
     p.cardsOpened = (p.cardsOpened || 0) + 1;
+    if (s.train && this.r() < D.TRAIN.ticket + this.cs(p, 'ticketLuck')) { p.tickets = (p.tickets || 0) + 1; this.log('🎫 ' + p.name + ' ได้ตั๋วรถไฟทอง!', 'gain'); if (this.io.ticket) await this.io.ticket(p); }
     var cell = await this.io.pickCard(p, s.grid.slice());
     if (s.grid[cell]) cell = s.grid.indexOf(false);
     s.grid[cell] = true; if (!s.gridOwner) s.gridOwner = s.grid.map(function () { return -1; }); s.gridOwner[cell] = p.id;

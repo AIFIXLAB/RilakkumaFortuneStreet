@@ -591,6 +591,29 @@ button.pink{background:linear-gradient(#fff0f5,#ffb0c8 60%,#ff8fb3)} button.gree
 .eggpop{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);z-index:80;display:flex;gap:10px;align-items:center;background:#fffaf0;border:4px solid #b07ce0;border-radius:20px;padding:10px 18px;font-weight:800;font-size:16px;box-shadow:0 10px 30px rgba(0,0,0,.3);animation:bpop .45s cubic-bezier(.2,1.6,.4,1);pointer-events:none}
 .eggpop.gold{border-color:#ffb300;background:linear-gradient(#fffbe6,#ffe9a8)}
 .skillchip.easter{background:linear-gradient(#fbf3ff,#f1e1ff);border-color:#b07ce0}
+#trainev{background:linear-gradient(#fff3d6,#ffe0d0)}
+.hot.eventbtn.trainbtn{top:470px!important;box-shadow:0 6px 18px rgba(198,40,40,.45)}
+.hot.eventbtn.trainbtn span{background:linear-gradient(transparent,rgba(160,30,30,.92))}
+.tvmap{height:230px;border-radius:16px;border:4px solid #6b4226;background-size:cover;background-position:center;position:relative;cursor:pointer}
+.tvmap span{position:absolute;right:8px;bottom:8px;background:#fff;border-radius:10px;padding:2px 8px;font-weight:800;font-size:13px}
+.rgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px}
+.rcard{background:linear-gradient(#fffbe6,#ffe9a8);border:3px solid #d4a000;border-radius:14px;display:flex;flex-direction:column;align-items:center;padding:4px;cursor:pointer}
+.rcard.own{background:linear-gradient(#fff,#e8ffe8);border-color:#43a047}
+.rcard .rnm{font-size:11px;font-weight:800;text-align:center;min-height:28px}
+.rcard .rown{font-size:12px;font-weight:900;color:#2e7d32}
+.skillchip.royal{background:linear-gradient(#fff8d0,#ffd54f);border:2px solid #b8860b}
+.piece .trainimg{display:none}
+.piece.driving .trainimg{display:block;position:absolute;left:-110%;bottom:-10%;width:320%;max-width:none;filter:drop-shadow(0 4px 4px rgba(0,0,0,.35))}
+.piece.driving > .spr{opacity:0}.piece.driving .pin{z-index:3;position:relative}
+.piece.crashed{animation:crashspin .9s ease}
+@keyframes crashspin{30%{transform:translateY(-60%) rotate(200deg) scale(1.2)}100%{transform:none}}
+#boardWrap.shake{animation:bshake .4s}
+@keyframes bshake{20%{transform:translate(-6px,3px)}40%{transform:translate(6px,-3px)}60%{transform:translate(-4px,2px)}80%{transform:translate(3px,-1px)}}
+.crashpop{border-color:#e53935!important;background:linear-gradient(#fff,#ffe5e5)!important}
+#diceLayer .two{display:flex;gap:30px;justify-content:center}
+.trainintro{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%);z-index:85;display:flex;gap:16px;align-items:center;background:linear-gradient(#fff8e1,#ffe0b2);border:5px solid #c62828;border-radius:24px;padding:14px 26px;font-weight:800;font-size:18px;box-shadow:0 12px 34px rgba(0,0,0,.35);animation:bpop .5s cubic-bezier(.2,1.6,.4,1);pointer-events:none}
+.trainintro img{height:130px}.trainintro b{font-size:28px;color:#c62828}
+.tkpop{height:150px;animation:bpop .6s cubic-bezier(.2,1.6,.4,1)}
 /* dragon */
 .dragonpot{font-weight:900;font-size:40px;color:#d48a00;text-shadow:0 2px 0 #fff,0 0 12px rgba(255,200,0,.6);margin:4px 0}
 .ptile.dragon .lbl{background:#fff0f0;color:#c62828;font-weight:900}
@@ -685,6 +708,7 @@ button.pink{background:linear-gradient(#fff0f5,#ffb0c8 60%,#ff8fb3)} button.gree
   <div id="result" class="screen"></div>
   <div id="tour" class="screen"></div>
   <div id="easter" class="screen"></div>
+  <div id="trainev" class="screen"></div>
   <!-- SHOP -->
   <div id="shop" class="screen"></div>
   <!-- INVENTORY -->

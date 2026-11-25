@@ -36,6 +36,8 @@ var Meta = (function () {
     GOLD_CHARS.forEach(function (c, i) { out.push({ id: 'g' + i, cat: 'chars', type: 'Characters', name: c.name, desc: skillDesc('g' + i), price: c.d, cur: 'diamond', spr: ['gold', i], uniq: true, gold: true }); });
     EXTRA_CHARS.forEach(function (c, i) { out.push({ id: 'x' + i, cat: 'chars', type: 'Characters', name: c.name, desc: skillDesc('x' + i), price: c.d, cur: 'diamond', spr: ['extra', i], uniq: true }); });
     EASTER_CHARS.forEach(function (c, i) { out.push({ id: 'e' + i, cat: 'chars', type: 'Characters', name: c.name, desc: '🥚 หายาก — ได้จากไข่อีสเตอร์สุ่มเท่านั้น • ' + skillDesc('e' + i), price: 0, cur: 'egg', spr: ['easter', i], uniq: true, eggOnly: true }); });
+    STEAM_CHARS.forEach(function (c, i) { out.push({ id: 's' + i, cat: 'chars', type: 'Characters', name: c.name, desc: '🚂 ชุดรถจักรไอน้ำ • ' + skillDesc('s' + i), price: c.d, cur: 'diamond', spr: ['steam', i], uniq: true }); });
+    ROYAL_CHARS.forEach(function (c, i) { out.push({ id: 'r' + i, cat: 'chars', type: 'Characters', name: c.name, desc: '🎫 ชุดรอยัลทอง — แลกด้วยตั๋วรถไฟทอง ' + c.t + ' ใบเท่านั้น • ' + skillDesc('r' + i), price: c.t, cur: 'ticket', spr: ['royal', i], uniq: true, eggOnly: true, gold: true }); });
     DICE_SKINS.forEach(function (d) { if (d.price) out.push({ id: d.id, cat: 'equip', type: 'Dice Skins', name: d.name, desc: d.desc ? '✨ ' + d.desc : 'สกินลูกเต๋า (Cosmetic)', price: d.price, cur: d.cur, spr: d.spr, uniq: true }); });
     return out;
   }
@@ -139,7 +141,9 @@ var Meta = (function () {
     save(); return { kind: kind, items: out };
   }
   function fmtN(n) { return Math.round(n).toLocaleString('en-US'); }
-  var SHEET = { b: 'chars', x: 'extra', j: 'jobs', g: 'gold', e: 'easter' }, NAMES = { b: CHARACTERS, x: EXTRA_CHARS, j: JOB_CHARS, g: GOLD_CHARS, e: EASTER_CHARS };
+  var SHEET = { b: 'chars', x: 'extra', j: 'jobs', g: 'gold', e: 'easter', r: 'royal', s: 'steam' }, NAMES = { b: CHARACTERS, x: EXTRA_CHARS, j: JOB_CHARS, g: GOLD_CHARS, e: EASTER_CHARS, r: ROYAL_CHARS, s: STEAM_CHARS };
+  function addTickets(n) { P.tickets = (P.tickets || 0) + n; save(); }
+  function redeemRoyal(k) { var c = ROYAL_CHARS[+k.slice(1)]; if (!c) return { ok: false, msg: 'ไม่พบตัวละคร' }; if (P.chars[k]) return { ok: false, msg: 'มีตัวละครนี้แล้ว' }; if ((P.tickets || 0) < c.t) return { ok: false, msg: 'ตั๋วรถไฟทองไม่พอ (ต้องใช้ ' + c.t + ' ใบ)' }; P.tickets -= c.t; P.chars[k] = 1; P.hist.unshift({ tx: txid(), t: Date.now(), kind: 'buy', id: k, name: c.name + ' (แลกตั๋วทอง ' + c.t + ' ใบ)', cur: '-', amt: 0 }); save(); return { ok: true, msg: '👑 ได้ ' + c.name + ' แล้ว!' }; }
   // ---- Easter mystery eggs (event reward; the only source of the 8 Easter characters) ----
   function addEggs(n) { P.eeggs = (P.eeggs || 0) + n; save(); }
   function openEgg() {
@@ -160,5 +164,5 @@ var Meta = (function () {
   function charSprite(key) { key = key || 'b0'; return [SHEET[key[0]] || 'chars', +key.slice(1) || 0]; }
   function charName(key) { key = key || 'b0'; var L = NAMES[key[0]] || CHARACTERS, c = L[+key.slice(1)]; return c ? c.name : ''; }
   function charSkill(key) { return CHAR_SKILLS[key] || null; }
-  return { addEggs: addEggs, openEgg: openEgg, load: load, save: save, reset: reset, get p() { return P; }, all: all, item: item, tags: tags, priceOf: priceOf, owned: owned, buy: buy, exchange: exchange, consume: consume, validLoadout: validLoadout, loginState: loginState, claimLogin: claimLogin, matchReward: matchReward, addBoxes: addBoxes, charSkill: charSkill, skillDesc: skillDesc, openBox: openBox, BOX_BY_RANK: BOX_BY_RANK, charSprite: charSprite, charName: charName, addItem: addItem };
+  return { addTickets: addTickets, redeemRoyal: redeemRoyal, addEggs: addEggs, openEgg: openEgg, load: load, save: save, reset: reset, get p() { return P; }, all: all, item: item, tags: tags, priceOf: priceOf, owned: owned, buy: buy, exchange: exchange, consume: consume, validLoadout: validLoadout, loginState: loginState, claimLogin: claimLogin, matchReward: matchReward, addBoxes: addBoxes, charSkill: charSkill, skillDesc: skillDesc, openBox: openBox, BOX_BY_RANK: BOX_BY_RANK, charSprite: charSprite, charName: charName, addItem: addItem };
 })();

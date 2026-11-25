@@ -101,6 +101,7 @@
     h += '<div class="hudnum" style="left:637px;top:22px;width:82px;height:34px">' + fmt(P.diamond) + '</div>';
     h += '<div class="hudnum" style="left:836px;top:22px;width:78px;height:34px">20/20</div>';
     h += '<div class="hudnum" style="left:172px;top:22px;width:84px;height:34px;background:#5a2a14">Lv. ' + P.level + '</div>';
+    h += '<div class="hot eventbtn trainbtn" data-act="trainev"><img src="assets/train_banner.webp" draggable="false"><span>🚂 อีเวนต์รถจักรไอน้ำ' + (P.tickets > 0 ? ' • 🎫×' + P.tickets : '') + '</span></div>';
     h += '<div class="hot eventbtn" data-act="easter"><img src="assets/easter_banner.webp" draggable="false"><span>🐰 อีเวนต์อีสเตอร์' + (P.eeggs > 0 ? ' • 🥚×' + P.eeggs : '') + '</span></div>';
     if (P.boxes > 0) h += '<div class="hot giftbtn" data-act="boxes" style="left:120px;top:150px;width:150px;height:130px"><img src="assets/box.webp" draggable="false"><span>เปิดกล่อง ×' + P.boxes + '</span></div>';
     if (ls.canClaim) h += '<div class="badge" style="left:70px;top:140px">!</div><div class="badge" style="left:1176px;top:8px">!</div>';
@@ -117,6 +118,7 @@
     else if (act === 'shop') openShop('rec');
     else if (act === 'boxes') boxModal().then(renderMenu);
     else if (act === 'easter') Easter.open();
+    else if (act === 'trainev') Train.open();
     else if (act === 'login') dailyLogin();
     else if (act === 'rank') rankingModal();
     else if (act === 'trophy') achievements();
@@ -298,7 +300,7 @@
   var LO = { slot: 0 };
   function allCharKeys() { var k = []; CHARACTERS.forEach(function (c, i) { k.push('b' + i); }); EXTRA_CHARS.forEach(function (c, i) { k.push('x' + i); }); JOB_CHARS.forEach(function (c, i) { k.push('j' + i); }); GOLD_CHARS.forEach(function (c, i) { k.push('g' + i); }); EASTER_CHARS.forEach(function (c, i) { k.push('e' + i); }); return k; }
   function aiCharKeys() { return allCharKeys().filter(function (k) { return k[0] !== 'e'; }); }
-  function skillChip(k, big) { var s = Meta.charSkill(k); if (!s) return ''; return '<div class="skillchip' + (k[0] === 'g' ? ' gold' : k[0] === 'e' ? ' easter' : '') + (big ? ' big' : '') + '"><b>⭐ ' + esc(s.name) + '</b><span>' + esc(s.desc) + '</span>' + (s.ename ? '<b style="margin-top:3px">🥚 ' + esc(s.ename) + ' <small>(อีเวนต์อีสเตอร์)</small></b><span>' + esc(s.edesc) + '</span>' : '') + '</div>'; }
+  function skillChip(k, big) { var s = Meta.charSkill(k); if (!s) return ''; return '<div class="skillchip' + (k[0] === 'g' ? ' gold' : k[0] === 'e' ? ' easter' : k[0] === 'r' ? ' royal' : '') + (big ? ' big' : '') + '"><b>⭐ ' + esc(s.name) + '</b><span>' + esc(s.desc) + '</span>' + (s.ename ? '<b style="margin-top:3px">🥚 ' + esc(s.ename) + ' <small>(อีเวนต์อีสเตอร์)</small></b><span>' + esc(s.edesc) + '</span>' : '') + '</div>'; }
   U.skillChip = skillChip;
   function openLoadout() { var e = Meta.p.equip, v = Meta.validLoadout(); e.eq = v.eq; e.sc = v.sc; renderLoadout(); show('loadout'); }
   function renderLoadout() {
@@ -403,7 +405,7 @@
       }
     })();
   }
-  function saveKey(s) { return s && s.easter && s.easter.kind === 'solo' ? 'rfs_save_easter' : s && s.tour && s.tour.kind === 'solo' ? 'rfs_save_tour' : 'rfs_save_auto'; }
+  function saveKey(s) { return s && s.train && s.train.kind === 'solo' ? 'rfs_save_train' : s && s.easter && s.easter.kind === 'solo' ? 'rfs_save_easter' : s && s.tour && s.tour.kind === 'solo' ? 'rfs_save_tour' : 'rfs_save_auto'; }
   U.saveKey = saveKey;
   // ---------- 3D dice (faces from the project's dice art) ----------
   var FACE_ROT = { 1: [0, 0], 6: [0, 180], 2: [0, -90], 5: [0, 90], 3: [-90, 0], 4: [90, 0] };
@@ -500,7 +502,7 @@
     M.districts.forEach(function (d, i) { if (d.lot) h += '<div class="lot" id="lot' + i + '" style="left:' + d.lot[0] * SC + 'px;top:' + d.lot[1] * SC + 'px;width:' + (d.lot[2] - d.lot[0]) * SC + 'px;height:' + (d.lot[3] - d.lot[1]) * SC + 'px"></div>'; });
     s.tiles.forEach(function (t) { h += '<div class="ptile" id="t' + t.id + '" data-t="' + t.id + '"></div>'; });
     M.districts.forEach(function (d, i) { h += '<div class="dlabel" id="dl' + i + '" style="left:' + d.label[0] * SC + 'px;top:' + (d.label[1] * SC - 10) + 'px;border-color:' + d.color + ';font-size:' + Math.max(9, Math.min(12, BT * 0.24)) + 'px"></div>'; });
-    s.players.forEach(function (p) { h += '<div class="piece" id="pc' + p.id + '" style="--pc:' + p.color + '"><div class="pin">P' + (p.id + 1) + '</div><div class="ring"></div>' + spr(charSpec(p), BT * 1.05, BT * 1.15) + '</div>'; });
+    s.players.forEach(function (p) { h += '<div class="piece" id="pc' + p.id + '" style="--pc:' + p.color + '"><div class="pin">P' + (p.id + 1) + '</div><div class="ring"></div>' + spr(charSpec(p), BT * 1.05, BT * 1.15) + (s.train ? '<img class="trainimg" src="assets/train.webp" draggable="false">' : '') + '</div>'; });
     if (s.easter) h += '<div id="eggLayer"></div><div id="bunny" class="bunny"><img src="assets/bunny.webp" draggable="false"><span class="bdice" id="bDice"></span></div>';
     B.innerHTML = h;
     var ep = document.getElementById('eventPill'); if (s.easter && !ep) { ep = document.createElement('div'); ep.id = 'eventPill'; $('#boardWrap').appendChild(ep); } if (ep) ep.style.display = s.easter ? '' : 'none';
@@ -543,7 +545,7 @@
       else if (k === 'follow') { CAM.follow = !CAM.follow; b.classList.toggle('on', CAM.follow); toast(CAM.follow ? '🎯 กล้องติดตามตัวละคร (เมื่อซูม)' : 'ปิดการติดตาม'); }
     });
   })();
-  var TOUR_ICON = { chance: '🃏', lucky: '⭐', superlucky: '🌟', tax: '🧾', casino: '🎰', broker: '📈', rest: '♨️', festival: '🎉', event: '❗', boost: '⏩', ice: '⛸️', whirl: '🌀', wheel: '🎡', gate: '🔐', switch: '🔄', warp: '🌀' };
+  var TOUR_ICON = { platform: '🚉', prank: '🎁', chance: '🃏', lucky: '⭐', superlucky: '🌟', tax: '🧾', casino: '🎰', broker: '📈', rest: '♨️', festival: '🎉', event: '❗', boost: '⏩', ice: '⛸️', whirl: '🌀', wheel: '🎡', gate: '🔐', switch: '🔄', warp: '🌀' };
   function tileHTML(t) {
     var g = U.g, s = g.s, T = BT, html = '', style = '', cls = 'ptile', fs = Math.max(8.5, T * 0.21);
     var lbl = function (txt, col) { return '<div class="lbl" style="font-size:' + fs + 'px;line-height:' + (fs * 1.35) + 'px;' + (col ? 'border-color:' + col : '') + '">' + txt + '</div>'; };
@@ -572,8 +574,8 @@
       var b = SPECIAL_BUILDINGS.find(function (x) { return x.id === t.special; }), ow = s.players[t.spOwner];
       style += ow ? 'border:' + Math.max(3, T * 0.09) + 'px solid ' + ow.color + ';background:' + hexA(ow.color, .3) + ';' : '';
       html = '<div class="bld">' + spr(b.spr, T * 1.05, T * 0.95) + '</div>' + (ow ? '<div class="own" style="border-color:' + ow.color + ';width:' + T * 0.5 + 'px;height:' + T * 0.5 + 'px">' + spr(charSpec(ow), T * 0.42, T * 0.42) + '</div>' : '') + lbl(b.th);
-    } else if (MAPS[s.mapIdx].tour && TOUR_ICON[t.type]) {
-      html = '<div class="tbadge" style="font-size:' + T * 0.42 + 'px">' + TOUR_ICON[t.type] + '</div>' + (t.type === 'gate' ? lbl('🔐 ' + fmt(CONFIG.gateFee), '#607d8b') : '');
+    } else if ((MAPS[s.mapIdx].tour || MAPS[s.mapIdx].train) && TOUR_ICON[t.type]) {
+      html = '<div class="tbadge" style="font-size:' + T * 0.42 + 'px">' + TOUR_ICON[t.type] + '</div>' + (t.type === 'gate' ? lbl('🔐 ' + fmt(CONFIG.gateFee), '#607d8b') : t.type === 'platform' ? lbl('🚉 ชานชาลา', '#1e88e5') : t.type === 'prank' ? lbl('🎁 กล่องแกล้ง', '#e53935') : '');
     } else if (t.type === 'dragon') {
       cls += ' dragon'; html = lbl('🐉 ' + fmt(s.dragonPot || 0), '#e53935');
     } else if (t.ov && t.type === 'road') {
@@ -624,6 +626,7 @@
         var el = document.getElementById('pc' + p.id), off = list.length > 1 ? (i - (list.length - 1) / 2) * T * 0.42 : 0;
         el.style.left = (t.x * SC - T * 0.52 + off) + 'px'; el.style.top = (t.y * SC - T * 1.05 + (list.length > 1 ? (i % 2) * 5 : 0)) + 'px';
         el.style.zIndex = 20 + i + (p.id === U.g.cp().id ? 5 : 0);
+        el.classList.toggle('driving', !!(s.train && s.train.phase && p.flags.train));
       });
     });
   }
@@ -1218,6 +1221,55 @@
         if (p.isAI) return aiWait(400).then(function () { var r = A.portalChoice(g, p, owner, t, big, small); toast('🌀 ' + esc(p.name) + (r ? ' จ่าย ' + fmt(big) + ' G แล้ววาร์ป!' : ' จ่าย ' + fmt(small) + ' G (ไม่วาร์ป)')); return r; });
         return modal({ title: '🌀 ประตูทะลุมิติของ ' + esc(owner.name), width: 680, close: false, body: '<div class="row" style="gap:16px;align-items:center">' + spr(['sph', 0], 160, 160) + '<div style="font-weight:700;font-size:17px;line-height:1.7">วาร์ปไปช่องไหนก็ได้ในแผนที่!<br>• วาร์ป: จ่าย <b style="color:#d0342c">' + fmt(big) + ' G</b> (10% ของทรัพย์สิน)<br>• ไม่วาร์ป: จ่าย <b style="color:#d0342c">' + fmt(small) + ' G</b> (5%)</div></div>', buttons: [{ t: '🌀 วาร์ป (' + fmt(big) + ' G)', v: true, cls: 'purple' }, { t: 'ไม่วาร์ป (' + fmt(small) + ' G)', v: false }] });
       },
+      rollTwo: function (p, pre) {
+        if (p.isAI) return this.showTwo(p, pre).then(function () { return pre; });
+        var self = this;
+        return new Promise(function (resolve) {
+          var L = $('#diceLayer'); L.classList.add('on', 'tap'); L.innerHTML = '<div class="two"><div id="spinA"></div><div id="spinB"></div></div><div class="tapmsg">🚂 แตะเพื่อทอยลูกเต๋า 2 ลูก ขับรถไฟ!</div>';
+          setAct('<div style="font-size:17px">🚂 คุณได้ขับรถไฟ! แตะลูกเต๋า</div>');
+          var a = spinner(L.querySelector('#spinA'), 140, diceTint(p)), b = spinner(L.querySelector('#spinB'), 140, diceTint(p)), done = false;
+          L.onclick = async function () {
+            if (done) return; done = true; L.classList.remove('tap'); var m = L.querySelector('.tapmsg'); if (m) m.remove();
+            a.stop(pre[0]); setTimeout(function () { b.stop(pre[1]); }, 180);
+            try { await wait(1100); } catch (e) { }
+            L.insertAdjacentHTML('beforeend', '<div class="dresult">' + pre[0] + ' + ' + pre[1] + ' = ' + (pre[0] + pre[1]) + '!</div>');
+            try { await wait(800); } catch (e) { }
+            L.classList.remove('on'); L.innerHTML = ''; L.onclick = null;
+            setAct('<div>🚂 ' + esc(p.name) + ' ขับรถไฟ ' + (pre[0] + pre[1]) + ' ช่อง!</div>'); resolve(pre);
+          };
+        });
+      },
+      showTwo: async function (p, pre) {
+        setAct('<div>🚂 ' + esc(p.name) + ' ทอยลูกเต๋า 2 ลูก...</div>');
+        var L = $('#diceLayer'); L.classList.add('on'); L.innerHTML = '<div class="two"><div id="spinA"></div><div id="spinB"></div></div>';
+        var a = spinner(L.querySelector('#spinA'), 130, diceTint(p)), b = spinner(L.querySelector('#spinB'), 130, diceTint(p));
+        await wait(650); a.stop(pre[0]); await wait(150); b.stop(pre[1]); await wait(900);
+        L.insertAdjacentHTML('beforeend', '<div class="dresult">' + pre[0] + ' + ' + pre[1] + ' = ' + (pre[0] + pre[1]) + '!</div>'); await wait(600);
+        L.classList.remove('on'); L.innerHTML = '';
+        setAct('<div>🚂 ' + esc(p.name) + ' ขับรถไฟ ' + (pre[0] + pre[1]) + ' ช่อง</div>');
+      },
+      trainPhase: async function (on) {
+        refresh();
+        if (!on) { toast('🚃 จบรอบขับรถไฟ — กลับมาเล่นปกติ', 2200); await wait(600); return; }
+        var ov = document.createElement('div'); ov.className = 'trainintro'; ov.innerHTML = '<img src="assets/train.webp" draggable="false"><div><b>🚂 รอบขับรถไฟ!</b><br>ทุกคนได้ขับคนละ 1 ตา • ลูกเต๋า 2 ลูก<br>ขับผ่านใคร = ชน! 💥</div>';
+        $('#game').appendChild(ov); sfx('win'); await wait(2300 / Math.max(1, U.speed)); ov.remove();
+      },
+      trainCrash: async function (p, q, info) {
+        var s = g.s, txt = info.kind === 'dodge' ? '🛡️ หลบทัน! ไม่เสียอะไร' : info.kind === 'cash' ? '💸 เงินหล่น ' + fmt(info.amt) + ' G' + (info.loot ? '<br><small>' + esc(p.name) + ' เก็บได้ ' + fmt(info.loot) + ' G</small>' : '') : info.kind === 'suit' ? '🃏 ดอก ' + SUIT_GLYPH[info.suit] + ' กระเด็นหาย' : info.kind === 'card' ? '🎴 “' + esc(info.item) + '” หล่นหาย' : info.kind === 'skill' ? '😵 สกิล “' + esc(info.skill) + '” ใช้ไม่ได้ ' + TRAIN.noSkillRounds + ' รอบ' : '💥 กระเด็น!';
+        var el = document.getElementById('pc' + q.id); if (el) { el.classList.remove('crashed'); void el.offsetWidth; el.classList.add('crashed'); }
+        var pop = document.createElement('div'); pop.className = 'eggpop crashpop';
+        pop.innerHTML = '<div style="font-size:46px">💥</div><div><b>' + esc(p.name) + ' 🚂 ชน ' + esc(q.name) + '!</b><br>' + txt + (info.kind !== 'dodge' ? '<br><small>กระเด็นกลับสถานี</small>' : '') + '</div>';
+        $('#game').appendChild(pop); sfx(info.kind === 'dodge' ? 'coin' : 'bad'); var bw = $('#boardWrap'); if (bw) { bw.classList.remove('shake'); void bw.offsetWidth; bw.classList.add('shake'); }
+        setTimeout(function () { pop.remove(); if (el) el.classList.remove('crashed'); }, 2300 / Math.max(1, U.speed));
+        refresh(); await wait(1500);
+      },
+      ticket: async function (p) {
+        var pop = document.createElement('div'); pop.className = 'eggpop gold'; pop.innerHTML = '<img src="assets/ticket.webp" style="height:70px" draggable="false"><div><b>🎫 ' + esc(p.name) + ' ได้ตั๋วรถไฟทอง!</b><br><small>รวม ' + (p.tickets || 0) + ' ใบในเกมนี้</small></div>';
+        $('#game').appendChild(pop); sfx('win'); setTimeout(function () { pop.remove(); }, 2600); await wait(1500);
+      },
+      prankRoll: async function (p, kind) {
+        toast('🎁 กล่องแกล้ง: ' + { swap: 'สลับตำแหน่ง!', back: 'ส่งกลับสถานี!', steal: 'แอบหยิบเงิน 5%!' }[kind], 2200); sfx('card'); await wait(700);
+      },
       bunnyArrive: async function (pos) {
         refresh(); sfx('win'); var b = document.getElementById('bunny'); if (b) { b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop'); }
         centerOnTile(pos, true); toast('🐰 กระต่ายอีสเตอร์โผล่มาแล้ว! จะอยู่ ' + EASTER.bunnyStay + ' รอบ คอยวางไข่ทั่วแผนที่', 2800);
@@ -1374,7 +1426,7 @@
   }
 
   // ---------- RESULT ----------
-  function showResult(g) { U.flushModals(); if (g.s.easter) { setTimeout(function () { Easter.afterStage(g); }, 600); return; } victoryScene(g).then(function () { if (g.s.tour) Tour.afterWorld(g); else showResultPage(g); }); }
+  function showResult(g) { U.flushModals(); if (g.s.train) { victoryScene(g).then(function () { return Train.award(g); }).then(function () { showResultPage(g); }); return; } if (g.s.easter) { setTimeout(function () { Easter.afterStage(g); }, 600); return; } victoryScene(g).then(function () { if (g.s.tour) Tour.afterWorld(g); else showResultPage(g); }); }
   U.victoryScene = function (g) { return victoryScene(g); };
   function victoryScene(g) {
     return new Promise(function (resolve) {
@@ -1550,6 +1602,74 @@
     var pill = document.getElementById('eventPill');
     if (pill) pill.innerHTML = '🐰 อีสเตอร์ ด่าน ' + (E.stage + 1) + '/4 • ' + esc(missionDef(E.mission).name) + ' • ' + (E.bunny.pos >= 0 ? 'กระต่ายอยู่อีก ' + E.bunny.left + ' รอบ' : 'กระต่ายมาอีกใน ' + Math.max(0, E.bunny.cool - 1) + ' รอบ') + ' • 🥚 บนแผนที่ ' + Object.keys(E.eggs).length;
   }
+  // =====================================================================
+  // STEAM TRAIN EVENT — one big board, 200 rounds, everyone drives the train every 5 rounds
+  // =====================================================================
+  var Train = (function () {
+    function mapIdx() { return MAPS.indexOf(TRAIN_MAP); }
+    function saved() { try { var s = JSON.parse(localStorage.getItem('rfs_save_train') || 'null'); return s && !s.over && s.train ? s : null; } catch (e) { return null; } }
+    function rules() {
+      return modal({ title: '📜 กติกาอีเวนต์รถจักรไอน้ำ', width: 900, body: '<div class="erules">' +
+        '<p>🗺️ สนามเดียว <b>สถานีรถจักรไอน้ำ</b> • ' + TRAIN.rounds + ' รอบ • เงินเริ่มต้น ' + fmt(TRAIN.startCash) + ' G • เป้าหมายทรัพย์สิน ' + fmt(TRAIN.target) + ' G (ถึงก่อนชนะทันที)</p>' +
+        '<p>🚂 <b>ทุก ๆ ' + TRAIN.every + ' รอบ</b> จะเป็น “รอบขับรถไฟ” — ทุกคนได้ขับรถไฟคนละ 1 ตา ทอย <b>ลูกเต๋า 2 ลูก</b> ขับครบ 4 คนแล้วกลับมาเล่นปกติ</p>' +
+        '<p>💥 ขับผ่านใคร = <b>ชน!</b> คนโดนชนจะสุ่มเสีย 1 อย่าง: เงินหล่น ' + Math.round(TRAIN.crashCashPct * 100) + '% (ตกกองภาษีเมือง) • ดอก(สัญลักษณ์) 1 ดอก • การ์ด/ไอเทมติดตัว 1 อย่าง • สกิลตัวละครใช้ไม่ได้ ' + TRAIN.noSkillRounds + ' รอบ — แล้ว<b>กระเด็นกลับสถานี</b> (ธนาคาร)</p>' +
+        '<p>🚉 <b>ชานชาลา</b>: หยุดแล้วนั่งรถไฟไปชานชาลาอื่นได้ฟรี • 🎁 <b>กล่องแกล้ง</b>: สุ่มแกล้ง — สลับตำแหน่ง / ส่งกลับสถานี / แอบหยิบเงิน 5% • 🔄 ช่องสลับทิศ</p>' +
+        '<p>🎫 เปิดการ์ดทุกใบมีโอกาส 1% ได้ <b>ตั๋วรถไฟทอง</b> • <b>ชนะอันดับ 1 รับ ' + TRAIN.winTickets + ' ใบ</b> • ตั๋วใช้แลก <b>ตัวละครชุดรอยัลทอง</b> 8 ตัว (6–8 ใบ/ตัว)</p>' +
+        '<p>👫 สร้างห้องออนไลน์ชวนเพื่อนได้ (แข่งเดี่ยว) • AI สุ่มตัวละครและสุ่มความเก่ง</p></div>', buttons: [{ t: 'เข้าใจแล้ว', v: 1, cls: 'green' }] });
+    }
+    function royalGrid() {
+      var P = Meta.p;
+      return ROYAL_CHARS.map(function (c, i) { var k = 'r' + i, own = P.chars[k]; return '<div class="rcard' + (own ? ' own' : '') + '" data-rk="' + k + '">' + spr(['royal', i], 86, 92) + '<div class="rnm">' + esc(c.name) + '</div>' + (own ? '<div class="rown">✅ มีแล้ว</div>' : '<button class="small ' + ((P.tickets || 0) >= c.t ? 'pink' : 'gray') + '" data-rx="' + k + '">🎫 ' + c.t + ' ใบ</button>') + '</div>'; }).join('');
+    }
+    function hub() {
+      var P = Meta.p, sv = saved();
+      $('#trainev').innerHTML = '<div class="scrhead"><div class="uibtn backbtn" id="tvBack">' + spr(['ui', 'prev'], 70, 70) + '</div><div class="title"><span class="ttl">🚂 อีเวนต์รถจักรไอน้ำ</span></div><button class="small" id="tvRules" style="margin-left:auto">📜 กติกา</button></div>' +
+        '<div class="scrbody"><div class="ebanner"><img src="assets/train_banner.webp" draggable="false"></div>' +
+        '<div class="row" style="gap:14px;align-items:stretch;margin-top:12px">' +
+        '<div class="panel" style="padding:12px;width:470px"><div class="tvmap" id="tvMap" style="background-image:url(assets/bg_train.webp)"><span>🔍 แตะเพื่อดูแผนที่</span></div>' +
+        '<div style="font-weight:800;margin-top:8px;line-height:1.6">🗺️ สถานีรถจักรไอน้ำ • ' + TRAIN.rounds + ' รอบ • เริ่ม ' + fmt(TRAIN.startCash) + ' G • เป้าหมาย ' + fmt(TRAIN.target) + ' G<br>🚂 ทุก ' + TRAIN.every + ' รอบ ทุกคนขับรถไฟ (ลูกเต๋า 2 ลูก) ชนใครคนนั้นเสียของ!</div>' +
+        '<div class="row" style="gap:4px;margin-top:6px;align-items:center"><b>สีของคุณ:</b>' + colorDots(P.color || 0, 'tvcol') + '</div>' +
+        '<div class="muted" style="font-size:12px;font-weight:700;margin-top:4px">AI 3 ตัว สุ่มตัวละครและสุ่มความเก่ง • ใช้ตัวละคร/ไอเทมที่ติดตั้งไว้</div>' +
+        '<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap">' + (sv ? '<button class="green" id="tvResume" style="font-size:19px">▶ เล่นต่อ (รอบ ' + sv.round + ')</button><button class="small" id="tvGo">🔄 เริ่มเกมใหม่</button>' : '<button class="pink" id="tvGo" style="font-size:20px">▶ เล่นกับ AI</button>') + '<button id="tvOnline">👫 สร้างห้องเล่นกับเพื่อน</button></div></div>' +
+        '<div class="panel grow" style="padding:12px"><div class="row" style="gap:10px;align-items:center"><img src="assets/ticket.webp" style="height:64px" draggable="false"><div><b style="font-size:22px">ตั๋วรถไฟทอง × ' + (P.tickets || 0) + '</b><div class="muted" style="font-size:12px;font-weight:700">ได้จากเปิดการ์ดในสนามนี้ (1%) • ชนะอันดับ 1 รับ ' + TRAIN.winTickets + ' ใบ</div></div></div>' +
+        '<div style="margin-top:8px;font-weight:900">👑 แลกตัวละครชุดรอยัลทอง (หายาก)</div><div class="rgrid">' + royalGrid() + '</div><div id="tvInfo">' + itemInfoBox(null) + '</div>' +
+        '<div class="muted" style="font-size:12px;font-weight:700;margin-top:4px">🚂 ชุดรถจักรไอน้ำ 8 ตัว (สกิลเกี่ยวกับรถไฟ) ซื้อได้ที่ร้านค้า → Characters</div></div></div></div>';
+      show('trainev');
+      $('#tvBack').onclick = function () { show('menu'); };
+      $('#tvRules').onclick = function () { rules(); };
+      $('#tvMap').onclick = function () { mapViewer(mapIdx(), null); };
+      $('#trainev').querySelectorAll('[data-tvcol]').forEach(function (e) { e.onclick = function () { P.color = +e.dataset.tvcol; Meta.save(); hub(); }; });
+      $('#trainev').querySelectorAll('[data-rk]').forEach(function (e) { e.onclick = function (ev) { if (ev.target.closest('[data-rx]')) return; $('#tvInfo').innerHTML = itemInfoBox(e.dataset.rk); }; });
+      $('#trainev').querySelectorAll('[data-rx]').forEach(function (e) { e.onclick = function () { var k = e.dataset.rx, c = ROYAL_CHARS[+k.slice(1)]; $('#tvInfo').innerHTML = itemInfoBox(k);
+        modal({ title: '👑 แลกตัวละครรอยัล', body: '<div style="text-align:center">' + spr(['royal', +k.slice(1)], 160, 170) + '<div style="font-weight:900;font-size:20px">' + esc(c.name) + '</div>' + skillChip(k, true) + '<div style="margin-top:8px;font-weight:800">ใช้ตั๋วรถไฟทอง ' + c.t + ' ใบ (มี ' + (P.tickets || 0) + ')</div></div>', buttons: [{ t: '🎫 แลกเลย', v: 1, cls: 'pink' }, { t: 'ยกเลิก', v: 0 }] })
+          .then(function (v) { if (!v) return; var r = Meta.redeemRoyal(k); toast(r.msg, 2800); if (r.ok) sfx('win'); hub(); }); }; });
+      $('#tvOnline').onclick = function () { Online.host({ train: true }); };
+      if (sv) $('#tvResume').onclick = function () { startGame(sv, false); };
+      $('#tvGo').onclick = function () { if (sv && !hub._c) { hub._c = 1; toast('กดอีกครั้งเพื่อเริ่มใหม่ (เกมที่ค้างไว้จะหายไป)', 2500); setTimeout(function () { hub._c = 0; }, 2500); return; } hub._c = 0; start(); };
+    }
+    function randLv() { var l = AI_LEVELS.map(function (x) { return x.id; }); return l[Math.floor(Math.random() * l.length)]; }
+    function start() {
+      try { localStorage.removeItem('rfs_save_train'); } catch (e) { }
+      var P = Meta.p, v = Meta.validLoadout(), pool = aiCharKeys().filter(function (k) { return k !== P.equip.char; });
+      var players = [{ name: P.name, char: P.equip.char, isAI: false, loadout: { eq: v.eq, sc: v.sc }, dice: P.equip.dice }];
+      for (var i = 0; i < 3; i++) { var ch = pool.splice(Math.floor(Math.random() * pool.length), 1)[0]; players.push({ name: Meta.charName(ch) + ' AI', char: ch, isAI: true, aiLevel: randLv(), persona: AI_PERSONAS[Math.floor(Math.random() * AI_PERSONAS.length)] }); }
+      var cols = assignColors(players.map(function (q, k) { return k === 0 ? (P.color || 0) : -1; })); players.forEach(function (q, k) { q.color = cols[k]; });
+      var s = Game.create({ train: true, mapIdx: mapIdx(), players: players, target: TRAIN.target, startCash: TRAIN.startCash, maxRounds: TRAIN.rounds, rules: { tax: false, endOnBankrupt: true }, seed: Math.floor(Math.random() * 1e9) });
+      s.ownerIdx = 0; s.dice = P.equip.dice; s.lenName = 'อีเวนต์รถจักรไอน้ำ'; s.train.kind = 'solo';
+      rules().then(function () { startGame(s, true); });
+    }
+    // tickets earned this game + 3 for the winner — shown before the normal result page
+    function award(g) {
+      var s = g.s, me = s.players[s.ownerIdx || 0]; if (g._tk) return Promise.resolve(); g._tk = 1;
+      var rk = s.ranking || [], first = rk.length && rk[0].id === me.id, n = (me.tickets || 0) + (first ? TRAIN.winTickets : 0);
+      if (s.train.kind === 'solo') { try { localStorage.removeItem('rfs_save_train'); } catch (e) { } }
+      if (!n) return Promise.resolve();
+      Meta.addTickets(n);
+      return modal({ title: '🎫 ตั๋วรถไฟทอง', width: 560, body: '<div style="text-align:center"><img src="assets/ticket.webp" class="tkpop" draggable="false"><div style="font-size:28px;font-weight:900;color:#c48a00">+' + n + ' ใบ</div><div style="font-weight:800;margin-top:6px">' + ((me.tickets || 0) ? 'จากการเปิดการ์ด ' + me.tickets + ' ใบ' : '') + (first ? ((me.tickets || 0) ? ' • ' : '') + '👑 ชนะอันดับ 1 รับ ' + TRAIN.winTickets + ' ใบ' : '') + '</div><div class="muted" style="font-weight:700;margin-top:4px">รวมมีตั๋ว ' + (Meta.p.tickets || 0) + ' ใบ — แลกตัวละครรอยัลได้ที่หน้าอีเวนต์</div></div>', buttons: [{ t: 'เยี่ยมเลย!', v: 1, cls: 'green' }] });
+    }
+    return { open: hub, hub: hub, saved: saved, award: award, rules: rules, mapIdx: mapIdx };
+  })();
+  U.Train = Train;
   // =====================================================================
   // TOURNAMENT — 6 worlds, 1st & 2nd go through, boxes by how far you get
   // =====================================================================
@@ -1831,7 +1951,7 @@
   var EQS = { slot: 0, info: null };
   function itemInfoBox(id) {
     if (!id) return '<div class="iinfo muted">👆 แตะไอเทมหรือตัวละครเพื่อดูสรรพคุณ</div>';
-    if (/^[bxjge]\d+$/.test(id)) { var sk = Meta.charSkill(id); return '<div class="iinfo">' + spr(Meta.charSprite(id), 46, 50) + '<div><b>' + esc(Meta.charName(id)) + '</b><br>' + (sk ? '⭐ <b>' + esc(sk.name) + '</b>: ' + esc(sk.desc) + (sk.ename ? '<br>🥚 <b>' + esc(sk.ename) + '</b> (อีสเตอร์): ' + esc(sk.edesc) : '') : 'ไม่มีสกิลพิเศษ') + '</div></div>'; }
+    if (/^[bxjgers]\d+$/.test(id)) { var sk = Meta.charSkill(id); return '<div class="iinfo">' + spr(Meta.charSprite(id), 46, 50) + '<div><b>' + esc(Meta.charName(id)) + '</b><br>' + (sk ? '⭐ <b>' + esc(sk.name) + '</b>: ' + esc(sk.desc) + (sk.ename ? '<br>🥚 <b>' + esc(sk.ename) + '</b> (อีสเตอร์): ' + esc(sk.edesc) : '') : 'ไม่มีสกิลพิเศษ') + '</div></div>'; }
     var it = Meta.item(id); if (!it) return ''; return '<div class="iinfo">' + spr(it.spr, 46, 44) + '<div><b>' + esc(it.name) + '</b> <span class="chip" style="font-size:11px">' + (/^SC_/.test(id) ? 'การ์ดพิเศษ' : /^dice/.test(id) ? 'สกินลูกเต๋า' : 'อุปกรณ์') + ' • มี ' + (Meta.owned(id) || (Meta.p.dice[id] ? 1 : 0)) + '</span><br>' + esc(it.desc || it.th || '') + '</div></div>';
   }
   function renderEquipTab(box) {
@@ -2025,6 +2145,7 @@
     var host = R.role === 'host', S = R.settings || {}, ps = R.players || [], fill = S.fillAI || S.teams;
     if (S.tour) { renderTourLobby(B, R, host, S, ps); return; }
     if (S.easter) { renderEasterLobby(B, R, host, S, ps); return; }
+    if (S.train) { renderTrainLobby(B, R, host, S, ps); return; }
     var teamOf = S.teamOf || [0, 1, 0, 1], aiLv = S.aiLv || ['normal', 'normal', 'normal', 'normal'];
     var tcol = S.teamCol || [0, 1], TC = [TEAM_PAL[tcol[0]].c, TEAM_PAL[tcol[1]].c], TN = ['ทีม' + TEAM_PAL[tcol[0]].n, 'ทีม' + TEAM_PAL[tcol[1]].n];
     var slots = [0, 1, 2, 3].map(function (i) {
@@ -2062,6 +2183,17 @@
     B.querySelectorAll('[data-al]').forEach(function (e) { e.onclick = function () { var a = e.dataset.al.split(':'), l = aiLv.slice(); l[+a[0]] = a[1]; set('aiLv', l); }; });
     var clampIn = function (id, k, lo, hi) { var el = B.querySelector('#' + id); el.onchange = function () { var v = Math.round(+el.value || 0); if (k === 'rounds' && v <= 0) v = 0; else v = Math.max(lo, Math.min(hi, v)); set(k, v); }; };
     clampIn('lobTg', 'target', 10000, 9999999); clampIn('lobCash', 'startCash', 1000, 999999); clampIn('lobRd', 'rounds', 5, 9999);
+    B.querySelector('#lobStart').onclick = function () { Online.startHost(); };
+  }
+  function renderTrainLobby(B, R, host, S, ps) {
+    var slots = [0, 1, 2, 3].map(function (i) { var x = ps[i]; return x ? '<div><div class="teamchip" style="background:#c62828">P' + (i + 1) + '</div>' + spr(Meta.charSprite(x.char), 80, 90) + '<div>' + esc(x.name) + '</div><div style="font-size:12px;color:#2c9a2c">' + (i === 0 ? '👑 โฮสต์' : '✅ พร้อม') + '</div></div>' : '<div style="border-style:dashed"><div style="font-size:40px;margin-top:10px">🤖</div><div>AI สุ่ม</div><div style="font-size:12px;opacity:.7">ตัวละคร/ความเก่งสุ่ม — เพื่อนเข้าแทนได้</div></div>'; }).join('');
+    B.innerHTML = '<div class="row" style="justify-content:center;gap:16px"><span style="font-weight:700">🚂 อีเวนต์รถจักรไอน้ำ • รหัสห้อง</span><span class="roomcode">' + R.code + '</span><span class="chip">' + (Online.kind === 'p2p' ? '🌐 ออนไลน์ P2P' : '📱 โหมดทดสอบเครื่องเดียว') + '</span></div>' +
+      '<div style="text-align:center;font-weight:700;margin:6px 0">' + (host ? 'ส่งรหัสให้เพื่อน (สูงสุด 4 คน) — แข่งเดี่ยวทุกคน ที่ว่างเติม AI' : 'เข้าห้องแล้ว! รอโฮสต์เริ่มเกม...') + '</div>' +
+      '<div class="lobbyP">' + slots + '</div>' +
+      '<div style="text-align:center;font-weight:700;margin-top:10px;line-height:1.7">🗺️ สถานีรถจักรไอน้ำ • ' + TRAIN.rounds + ' รอบ • เริ่ม ' + fmt(TRAIN.startCash) + ' G • เป้าหมาย ' + fmt(TRAIN.target) + ' G<br>🚂 ทุก ' + TRAIN.every + ' รอบทุกคนขับรถไฟ • 🎫 อันดับ 1 รับตั๋วรถไฟทอง ' + TRAIN.winTickets + ' ใบ</div>' +
+      (host ? '<div class="row" style="gap:4px;align-items:center;justify-content:center;margin-top:8px"><b>สีของคุณ:</b>' + colorDots(ps[0] && typeof ps[0].color === 'number' ? ps[0].color : (Meta.p.color || 0), 'myc') + '</div><div style="text-align:center;margin-top:12px"><button class="pink" id="lobStart" style="font-size:22px">▶ เริ่มเกม</button></div>' : '');
+    if (!host) return;
+    B.querySelectorAll('[data-myc]').forEach(function (e) { e.onclick = function () { Meta.p.color = +e.dataset.myc; Meta.save(); if (Online.room.players[0]) Online.room.players[0].color = Meta.p.color; Online.setSetting('_c', Date.now()); renderLobby(); }; });
     B.querySelector('#lobStart').onclick = function () { Online.startHost(); };
   }
   function renderEasterLobby(B, R, host, S, ps) {
@@ -2125,9 +2257,9 @@
   // ---------- boot ----------
   renderMenu();
   (function resumePrompt() {
-    var t = Tour.load(), sv = t && Tour.savedWorld(t), hs = Online.savedHost(), seat = Online.savedSeat(), et = Easter.load(), esv = et && Easter.savedStage(et);
-    if (!sv && !hs && !seat && !esv) { if (Meta.loginState().canClaim) setTimeout(dailyLogin, 600); return; }
-    var opts = (esv ? '<div class="opt bigopt pmB" data-rs="easter" style="width:100%"><span style="font-size:38px">🐰</span><div class="col" style="gap:0"><span style="font-size:20px">เล่นอีเวนต์อีสเตอร์ต่อ — ด่าน ' + (et.stage + 1) + ' รอบ ' + esv.round + '</span><span style="font-size:13px">กลับไปเล่นต่อจากจุดที่บันทึกไว้</span></div></div>' : '') + (sv ? '<div class="opt bigopt pmA" data-rs="tour" style="width:100%"><span style="font-size:38px">🏆</span><div class="col" style="gap:0"><span style="font-size:20px">เล่นทัวร์นาเมนต์ต่อ — World ' + (t.world + 1) + ' รอบ ' + sv.round + '</span><span style="font-size:13px">กลับไปเล่นต่อจากจุดที่บันทึกไว้</span></div></div>' : '') +
+    var t = Tour.load(), sv = t && Tour.savedWorld(t), hs = Online.savedHost(), seat = Online.savedSeat(), et = Easter.load(), esv = et && Easter.savedStage(et), tsv = Train.saved();
+    if (!sv && !hs && !seat && !esv && !tsv) { if (Meta.loginState().canClaim) setTimeout(dailyLogin, 600); return; }
+    var opts = (tsv ? '<div class="opt bigopt pmA" data-rs="train" style="width:100%"><span style="font-size:38px">🚂</span><div class="col" style="gap:0"><span style="font-size:20px">เล่นอีเวนต์รถจักรไอน้ำต่อ — รอบ ' + tsv.round + '</span><span style="font-size:13px">กลับไปเล่นต่อจากจุดที่บันทึกไว้</span></div></div>' : '') + (esv ? '<div class="opt bigopt pmB" data-rs="easter" style="width:100%"><span style="font-size:38px">🐰</span><div class="col" style="gap:0"><span style="font-size:20px">เล่นอีเวนต์อีสเตอร์ต่อ — ด่าน ' + (et.stage + 1) + ' รอบ ' + esv.round + '</span><span style="font-size:13px">กลับไปเล่นต่อจากจุดที่บันทึกไว้</span></div></div>' : '') + (sv ? '<div class="opt bigopt pmA" data-rs="tour" style="width:100%"><span style="font-size:38px">🏆</span><div class="col" style="gap:0"><span style="font-size:20px">เล่นทัวร์นาเมนต์ต่อ — World ' + (t.world + 1) + ' รอบ ' + sv.round + '</span><span style="font-size:13px">กลับไปเล่นต่อจากจุดที่บันทึกไว้</span></div></div>' : '') +
       (hs ? '<div class="opt bigopt pmD" data-rs="host" style="width:100%"><span style="font-size:38px">🏠</span><div class="col" style="gap:0"><span style="font-size:20px">เปิดห้องออนไลน์ ' + hs.code + ' ต่อ (รอบ ' + hs.s.round + ')</span><span style="font-size:13px">คุณเป็นโฮสต์ — เพื่อนจะกลับเข้ามาที่นั่งเดิมเอง</span></div></div>' : '') +
       (seat && !hs ? '<div class="opt bigopt pmD" data-rs="seat" style="width:100%"><span style="font-size:38px">🔄</span><div class="col" style="gap:0"><span style="font-size:20px">กลับเข้าห้องออนไลน์ ' + seat.code + '</span><span style="font-size:13px">กลับไปนั่งที่เดิมในเกมที่หลุดออกมา</span></div></div>' : '');
     setTimeout(function () {
@@ -2135,6 +2267,7 @@
         .then(function (v) {
           if (v === 'tour') startGame(sv, false);
           else if (v === 'easter') startGame(esv, false);
+          else if (v === 'train') startGame(tsv, false);
           else if (v === 'host') { toast('⏳ กำลังเปิดห้องเดิม...'); Online.resumeHost(function (err) { if (err) toast('⚠️ ' + err, 3500); }); }
           else if (v === 'seat') { toast('⏳ กำลังกลับเข้าห้อง...'); Online.rejoin(function (err) { if (err) toast('⚠️ ' + err, 3500); }); }
           else if (Meta.loginState().canClaim) dailyLogin();

@@ -164,7 +164,7 @@
     modal({ title: '👑 อันดับและสถิติ', width: 760, body: '<div class="row" style="justify-content:center;gap:12px"><span class="chip">เล่น ' + P.stats.games + ' เกม</span><span class="chip">ชนะ ' + P.stats.wins + '</span><span class="chip">ทรัพย์สินสูงสุด ' + fmt(P.stats.best) + ' G</span></div><table style="width:100%;margin-top:12px;font-weight:700;border-collapse:collapse"><tr style="background:#ffe2a8"><th>#</th><th>แผนที่</th><th>อันดับ</th><th>ทรัพย์สิน</th><th>วันที่</th></tr>' + (rows || '<tr><td colspan=5 style="text-align:center">ยังไม่มีผลการแข่งขัน</td></tr>') + '</table>', buttons: [{ t: 'ปิด', v: 1 }] });
   }
   function achievements() {
-    var P = Meta.p, A = [['ชนะครั้งแรก', P.stats.wins >= 1], ['เล่นครบ 5 เกม', P.stats.games >= 5], ['เศรษฐีหมื่นห้า (NW 15,000+)', P.stats.best >= 15000], ['เจ้าสัว (NW 30,000+)', P.stats.best >= 30000], ['นักสะสม (ของตกแต่ง 5 ชิ้น)', Object.keys(P.deco).length >= 5], ['เพื่อนครบแก๊ง (ตัวละคร 8 ตัว)', Object.keys(P.chars).length >= 8]];
+    var P = Meta.p, A = [['ชนะครั้งแรก', P.stats.wins >= 1], ['เล่นครบ 5 เกม', P.stats.games >= 5], ['เศรษฐีหมื่นห้า (NW 15,000+)', P.stats.best >= 15000], ['เจ้าสัว (NW 30,000+)', P.stats.best >= 30000], ['นักสะสม (อุปกรณ์/การ์ด 10 ชิ้น)', Object.keys(P.inv || {}).filter(function (k) { return P.inv[k] > 0; }).length >= 10], ['เพื่อนครบแก๊ง (ตัวละคร 8 ตัว)', Object.keys(P.chars).length >= 8]];
     modal({ title: '🏆 ความสำเร็จ', body: '<div class="col" style="min-width:460px">' + A.map(function (a) { return '<div class="opt">' + (a[1] ? '🏅' : '🔒') + ' ' + a[0] + '</div>'; }).join('') + '</div>', buttons: [{ t: 'ปิด', v: 1 }] });
   }
   function newsModal() {
@@ -374,7 +374,7 @@
   var SC = 0.6, BT = 42, VW = 1040, VH = 686;
   var CAM = { z: 1, tx: 0, ty: 0, follow: true };
   function startGame(state, isNew) {
-    U.token++; var tok = U.token;
+    U.token++; var tok = U.token; var pp0 = document.getElementById('pickPanel'); if (pp0) pp0.remove(); U.planTap = null;
     migrate(state); U.tut = state.tutorial ? Tutorial : null;
     if (!U.online) state.players.forEach(function (p) { if (p.remote || p.seat) { p.seat = null; p.remote = null; p.isAI = true; p.ai = { level: 'normal', persona: 'Balanced' }; } });
     var g = new Game(state, null); g.io = makeIO(g, tok); U.g = g;
@@ -706,6 +706,42 @@
     var r = el.getBoundingClientRect(), st = $('#stage').getBoundingClientRect(), sc = st.width / 1280;
     var d = document.createElement('div'); d.className = 'float'; d.style.left = ((r.left - st.left) / sc + 90) + 'px'; d.style.top = ((r.top - st.top) / sc + 40) + 'px';
     d.style.color = amt >= 0 ? '#2c9a2c' : '#d0342c'; d.textContent = (amt >= 0 ? '+' : '') + fmt(amt) + ' G'; $('#stage').appendChild(d); setTimeout(function () { d.remove(); }, 1400);
+  }
+  // pick a shop / tile / district right on the board: candidates blink, the chosen one pulses and the camera goes there
+  function boardChoose(g, p, req) {
+    var s = g.s, isD = req.kind === 'district', cancel = req.kind === 'shop' || req.kind === 'player';
+    var tilesOf = function (o) { return isD ? s.tiles.filter(function (t) { return t.district === o.value && (t.type === 'shop' || t.type === 'vacant'); }).map(function (t) { return t.id; }) : [o.value]; };
+    var all = []; req.options.forEach(function (o) { tilesOf(o).forEach(function (id) { if (all.indexOf(id) < 0) all.push(id); }); });
+    var cls = function (id, c, on) { var e = document.getElementById('t' + id); if (e) e.classList.toggle(c, on); };
+    var sel = -1, panel = document.createElement('div'); panel.id = 'pickPanel'; $('#game').appendChild(panel);
+    all.forEach(function (id) { cls(id, 'dest', true); });
+    fitCam(true);
+    return new Promise(function (resolve) {
+      var done = function (v) { all.forEach(function (id) { cls(id, 'dest', false); cls(id, 'pksel', false); }); U.planTap = null; panel.remove(); sfx('card'); resolve(v); };
+      var choose = function (i) {
+        if (sel >= 0) tilesOf(req.options[sel]).forEach(function (id) { cls(id, 'pksel', false); });
+        sel = i; var ts = tilesOf(req.options[i]); ts.forEach(function (id) { cls(id, 'pksel', true); });
+        if (ts.length === 1) { CAM.z = Math.max(CAM.z, 1.5); centerOnTile(ts[0], true); } else fitCam(true);
+        sfx('tap'); draw();
+        var it = panel.querySelector('[data-po="' + i + '"]'); if (it) it.scrollIntoView({ block: 'nearest' });
+      };
+      var draw = function () {
+        var o = sel >= 0 ? req.options[sel] : null;
+        panel.innerHTML = '<div class="pkhead">' + esc(req.title) + '</div><div class="pkhint">👆 แตะช่องที่กระพริบบนแผนที่ หรือเลือกจากรายการ</div><div class="pklist">' + req.options.map(function (q, i) { return '<div class="pkopt' + (i === sel ? ' on' : '') + '" data-po="' + i + '"><span class="sw" style="background:' + (q.color || '#fff') + '"></span><div class="col" style="gap:0;text-align:left"><span>' + esc(q.label) + '</span>' + (q.sub ? '<span style="font-size:11px;font-weight:700">' + esc(q.sub) + '</span>' : '') + '</div></div>'; }).join('') + '</div>' +
+          '<div class="pksel">' + (o ? '📍 ' + esc(o.label) + (o.sub ? '<br><span style="font-size:12px">' + esc(o.sub) + '</span>' : '') : 'ยังไม่ได้เลือก') + '</div>' +
+          '<div class="row" style="gap:6px;justify-content:center"><button class="green" id="pkOk"' + (o ? '' : ' disabled') + '>✅ ยืนยัน</button>' + (cancel ? '<button class="small gray" id="pkNo">ยกเลิก</button>' : '') + '</div>';
+        panel.querySelectorAll('[data-po]').forEach(function (e) { e.onclick = function () { var i = +e.dataset.po; if (i === sel) done(req.options[i].value); else choose(i); }; });
+        panel.querySelector('#pkOk').onclick = function () { if (sel >= 0) done(req.options[sel].value); };
+        var no = panel.querySelector('#pkNo'); if (no) no.onclick = function () { done(null); };
+      };
+      U.planTap = function (id) {
+        var i = req.options.findIndex(function (o) { return tilesOf(o).indexOf(id) >= 0; });
+        if (i < 0) return false;
+        if (i === sel) done(req.options[i].value); else choose(i);
+        return true;
+      };
+      draw();
+    });
   }
   function setAct(html) { $('#actMain').innerHTML = html; }
   function setTurn(p, mine) {
@@ -1129,6 +1165,7 @@
       },
       choose: function (p, req) {
         if (p.isAI) return aiWait(300).then(function () { return A.choose(g, p, req); });
+        if (req.kind === 'shop' || req.kind === 'tile' || req.kind === 'district') return boardChoose(g, p, req);
         var cancel = req.kind === 'shop' || req.kind === 'player';
         return modal({ title: req.title, width: 760, close: cancel, xValue: null, bgClose: false, body: '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' + req.options.map(function (o, i) { return '<div class="opt" data-o="' + i + '"><span class="sw" style="background:' + (o.color || '#fff') + '"></span><div class="col" style="gap:0"><span>' + esc(o.label) + '</span>' + (o.sub ? '<span style="font-size:12px;font-weight:700">' + esc(o.sub) + '</span>' : '') + '</div></div>'; }).join('') + '</div>', mount: function (box, close) { box.querySelectorAll('[data-o]').forEach(function (e) { e.onclick = function () { close(req.options[+e.dataset.o].value); }; }); } });
       },
@@ -1175,6 +1212,17 @@
         }
         if (p.isAI) return aiWait(400).then(function () { var r = A.portalChoice(g, p, owner, t, big, small); toast('🌀 ' + esc(p.name) + (r ? ' จ่าย ' + fmt(big) + ' G แล้ววาร์ป!' : ' จ่าย ' + fmt(small) + ' G (ไม่วาร์ป)')); return r; });
         return modal({ title: '🌀 ประตูทะลุมิติของ ' + esc(owner.name), width: 680, close: false, body: '<div class="row" style="gap:16px;align-items:center">' + spr(['sph', 0], 160, 160) + '<div style="font-weight:700;font-size:17px;line-height:1.7">วาร์ปไปช่องไหนก็ได้ในแผนที่!<br>• วาร์ป: จ่าย <b style="color:#d0342c">' + fmt(big) + ' G</b> (10% ของทรัพย์สิน)<br>• ไม่วาร์ป: จ่าย <b style="color:#d0342c">' + fmt(small) + ' G</b> (5%)</div></div>', buttons: [{ t: '🌀 วาร์ป (' + fmt(big) + ' G)', v: true, cls: 'purple' }, { t: 'ไม่วาร์ป (' + fmt(small) + ' G)', v: false }] });
+      },
+      cardFx: async function (p, tiles, dists) {
+        var s = g.s, ids = tiles.slice();
+        dists.forEach(function (i) { (s.districts[i].tiles || []).forEach(function (id) { if (ids.indexOf(id) < 0) ids.push(id); }); });
+        if (!ids.length) return;
+        var names = tiles.filter(function (i) { return s.tiles[i].name; }).slice(0, 3).map(function (i) { return s.tiles[i].name; }).concat(dists.slice(0, 3).map(function (i) { return 'เขต' + s.districts[i].th; }));
+        ids.forEach(function (id) { var e = document.getElementById('t' + id); if (e) { e.classList.remove('cfx'); void e.offsetWidth; e.classList.add('cfx'); } });
+        if (ids.length === 1) centerOnTile(ids[0], true); else fitCam(true);
+        toast('🃏 การ์ดมีผลกับ: ' + names.join(', ') + (tiles.length + dists.length > 6 ? ' ...' : '') + ' (ช่องที่กระพริบ)', 3200);
+        setTimeout(function () { ids.forEach(function (id) { var e = document.getElementById('t' + id); if (e) e.classList.remove('cfx'); }); }, 3600);
+        await wait(p.isAI ? 900 : 1700);
       },
       pickTile: function (p, title, ids) {
         if (p.isAI) return aiWait(400).then(function () { return A.pickTile(g, p, title, ids); });
@@ -1553,7 +1601,7 @@
   // SHOP (7 categories) — real purchases into Inventory, atomic, with history
   // =====================================================================
   var SH = { cat: 'rec', sort: 'popular' };
-  var SHOP_CATS = [['rec', '⭐ ไอเทมแนะนำ'], ['deco', '🏠 อาคาร/ของตกแต่ง'], ['chars', '🐻 ตัวละคร'], ['equip', '🎲 อุปกรณ์เกม'], ['cards', '🃏 การ์ดพิเศษ'], ['packs', '🎁 แพ็กเกจพิเศษ'], ['exch', '💱 แลกเปลี่ยน'], ['hist', '🧾 ประวัติ']];
+  var SHOP_CATS = [['rec', '⭐ ไอเทมแนะนำ'], ['chars', '🐻 ตัวละคร'], ['equip', '🎲 อุปกรณ์เกม'], ['cards', '🃏 การ์ดพิเศษ'], ['packs', '🎁 แพ็กเกจพิเศษ'], ['exch', '💱 แลกเปลี่ยน'], ['hist', '🧾 ประวัติ']];
   function openShop(cat) { SH.cat = cat || 'rec'; renderShop(); show('shop'); }
   function renderShop() {
     var P = Meta.p;
@@ -1567,7 +1615,7 @@
     } else {
       var list;
       if (SH.cat === 'rec') {
-        var ids = ['pk_begin', 'eq_golden', 'SC_upg', 'pk_lucky', 'x3', 'eq_rent', 'g2', 'deco_40', 'SC_cash', 'eq_travel', 'dice_2', 'pk_deco', 'b4', 'eq_lucky', 'SC_stock'];
+        var ids = ['pk_begin', 'eq_golden', 'SC_upg', 'pk_lucky', 'x3', 'eq_rent', 'g2', 'SC_cash', 'eq_travel', 'dice_2', 'b4', 'eq_lucky', 'SC_stock'];
         list = ids.map(Meta.item).filter(Boolean);
         var srt = SH.sort;
         if (srt === 'new') list = list.filter(function (i) { return Meta.tags(i.id).indexOf('new') >= 0; });
@@ -1600,7 +1648,7 @@
   // =====================================================================
   // INVENTORY
   // =====================================================================
-  var INV_TABS = ['🎽 ติดตั้ง', 'Characters', 'Buildings', 'Decorations', 'Game Equipment', 'Special Cards', 'Packages', 'Dice Skins', 'Other Items'];
+  var INV_TABS = ['🎽 ติดตั้ง', 'Characters', 'Game Equipment', 'Special Cards', 'Packages', 'Dice Skins', 'Other Items'];
   var IV = { tab: '🎽 ติดตั้ง' };
   function openInventory(tab) { if (tab) IV.tab = tab; renderInventory(); show('inventory'); }
   // ---------- "ติดตั้ง" tab: one saved loadout used by every mode ----------
@@ -1673,44 +1721,44 @@
         var id = e.dataset.iv;
         if (IV.tab === 'Characters') { P.equip.char = id; Meta.save(); toast('ตั้ง ' + Meta.charName(id) + ' เป็นตัวละครหลัก'); renderInventory(); }
         else if (IV.tab === 'Dice Skins') { P.equip.dice = id; Meta.save(); toast('เปลี่ยนสกินลูกเต๋าแล้ว'); renderInventory(); }
-        else if (IV.tab === 'Buildings' || IV.tab === 'Decorations') openProfile();
         else { var it = Meta.item(id); modal({ title: it.name, body: '<div class="col" style="align-items:center;min-width:380px">' + spr(it.spr, 130, 110) + '<div style="font-weight:800">' + it.desc + '</div><div class="chip">มี ' + Meta.owned(id) + ' ชิ้น</div><div class="muted" style="font-size:13px">ติดตั้งได้ที่แท็บ 🎽 ติดตั้ง</div></div>', buttons: [{ t: 'ปิด', v: 1 }] }); }
       };
     });
   }
 
   // =====================================================================
-  // PROFILE DECORATION (personal town — cosmetic only)
+  // PROFILE — who you are, your record, your collection (no town)
   // =====================================================================
-  var PF = { sel: null, move: null };
   function openProfile() { renderProfile(); show('profile'); }
   function renderProfile() {
-    var P = Meta.p, cols = 8, rows = 4;
-    var placedCount = {}; P.town.forEach(function (x) { placedCount[x.id] = (placedCount[x.id] || 0) + 1; });
-    var cells = '';
-    for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) {
-      var it = P.town.find(function (x) { return x.c === c && x.r === r; });
-      cells += '<div class="tcell ' + (PF.move && PF.move.c === c && PF.move.r === r ? 'sel' : '') + '" data-tc="' + c + ':' + r + '" style="left:' + c * 120 + 'px;top:' + (40 + r * 118) + 'px">' + (it ? spr(Meta.item(it.id).spr, 112, 108, it.flip ? 'transform:scaleX(-1)' : '') : '') + '</div>';
-    }
-    var owned = Object.keys(P.deco).filter(function (k) { return P.deco[k] > 0; });
-    var side = owned.map(function (k) { var it = Meta.item(k), free = P.deco[k] - (placedCount[k] || 0); return '<div class="invitem ' + (PF.sel === k ? 'eqd' : '') + (free <= 0 ? ' dim' : '') + '" data-dk="' + k + '"><span class="q">' + free + '/' + P.deco[k] + '</span>' + spr(it.spr, 70, 64) + '<div style="font-size:11px">' + it.name + '</div></div>'; }).join('') || '<div class="muted">ยังไม่มีของตกแต่ง — ซื้อได้ที่ร้านค้า</div>';
-    $('#profile').innerHTML = '<div class="scrhead">' + '<div class="uibtn backbtn" id="pfBack">' + spr(['ui', 'prev'], 70, 70) + '</div>' + spr(Meta.charSprite(P.equip.char), 64, 70) + '<div class="title"><span class="ttl">เมืองของ ' + esc(P.name) + '</span></div><span class="chip">Lv ' + P.level + '</span><span class="chip">ชนะ ' + P.stats.wins + '/' + P.stats.games + '</span><button class="small pink" id="pfShop">ซื้อของตกแต่ง</button></div>' +
-      '<div class="scrbody"><div class="row" style="align-items:flex-start;gap:14px"><div><div class="town">' + cells + '</div><div style="font-weight:800;margin-top:6px;font-size:14px">' + (PF.move ? '👉 แตะช่องว่างเพื่อย้าย' : PF.sel ? '👉 แตะช่องในเมืองเพื่อวาง ' + Meta.item(PF.sel).name : 'เลือกของตกแต่งด้านขวา แล้วแตะช่องเพื่อวาง • แตะของที่วางแล้วเพื่อย้าย/หมุน/ถอด') + ' • ของตกแต่งไม่มีผลต่อการแข่งขัน</div></div><div class="panel" style="padding:8px;width:270px;max-height:640px;overflow:auto"><b>ของตกแต่งที่มี</b><div class="invgrid" style="grid-template-columns:1fr 1fr">' + side + '</div></div></div></div>';
-    $('#pfBack').onclick = function () { PF.sel = null; PF.move = null; show('menu'); };
-    $('#pfShop').onclick = function () { openShop('deco'); };
-    document.querySelectorAll('[data-dk]').forEach(function (e) { e.onclick = function () { var k = e.dataset.dk, free = P.deco[k] - (placedCount[k] || 0); if (free <= 0) { toast('วางครบจำนวนที่มีแล้ว'); return; } PF.sel = PF.sel === k ? null : k; PF.move = null; renderProfile(); }; });
-    document.querySelectorAll('[data-tc]').forEach(function (e) {
-      e.onclick = function () {
-        var a = e.dataset.tc.split(':'), c = +a[0], r = +a[1], it = P.town.find(function (x) { return x.c === c && x.r === r; });
-        if (PF.move) { if (!it) { PF.move.c = c; PF.move.r = r; } PF.move = null; Meta.save(); renderProfile(); return; }
-        if (it) {
-          modal({ title: Meta.item(it.id).name, body: '<div style="text-align:center">' + spr(Meta.item(it.id).spr, 150, 130) + '</div>', buttons: [{ t: '↔ ย้าย', v: 'm', cls: 'blue' }, { t: '🔄 หมุน', v: 'f' }, { t: '🗑 ถอดออก', v: 'd', cls: 'pink' }, { t: 'ปิด', v: null }] })
-            .then(function (v) { if (v === 'm') PF.move = it; if (v === 'f') it.flip = !it.flip; if (v === 'd') P.town.splice(P.town.indexOf(it), 1); Meta.save(); renderProfile(); });
-          return;
-        }
-        if (PF.sel) { P.town.push({ id: PF.sel, c: c, r: r, flip: false }); var free = P.deco[PF.sel] - P.town.filter(function (x) { return x.id === PF.sel; }).length; if (free <= 0) PF.sel = null; Meta.save(); renderProfile(); }
-      };
-    });
+    var P = Meta.p, st = P.stats, rate = st.games ? Math.round(st.wins / st.games * 100) : 0, need = P.level * 300;
+    var res = []; try { res = JSON.parse(localStorage.getItem('rfs_results') || '[]'); } catch (e) { }
+    var tr = []; try { tr = JSON.parse(localStorage.getItem('rfs_trophies') || '[]'); } catch (e) { }
+    var champs = tr.filter(function (x) { return x.res === 'champ'; }).length, bestW = tr.reduce(function (m, x) { return Math.max(m, x.res === 'champ' ? 7 : x.world); }, 0);
+    var keys = allCharKeys(), have = keys.filter(function (k) { return P.chars[k]; }).length;
+    var dk = DICE_SKINS.find(function (d) { return d.id === P.equip.dice; }) || DICE_SKINS[0], sk = Meta.charSkill(P.equip.char);
+    var stat = function (ic, v, l) { return '<div class="pfstat"><div style="font-size:26px">' + ic + '</div><b>' + v + '</b><span>' + l + '</span></div>'; };
+    var eqs = P.equip.eq.concat(P.equip.sc ? [P.equip.sc] : []).map(function (id) { var it = Meta.item(id); return it ? '<div class="pfeq">' + spr(it.spr, 48, 44) + '<span>' + it.name + '</span></div>' : ''; }).join('') || '<span class="muted">ยังไม่ได้ติดตั้งไอเทม</span>';
+    var rows = res.slice(0, 6).map(function (r) { return '<tr><td>' + esc(r.map) + '</td><td>อันดับ ' + r.rank + '</td><td>' + fmt(r.nw) + ' G</td><td style="font-size:12px">' + r.date + '</td></tr>'; }).join('') || '<tr><td colspan="4" class="muted">ยังไม่มีประวัติการแข่ง</td></tr>';
+    var trs = tr.slice(0, 6).map(function (x) { return '<div class="pfeq">' + (x.res === 'champ' ? '👑 แชมป์' : x.res === 'runner' ? '🥈 รองแชมป์' : '🏳️ ตกรอบ W' + x.world) + '<span style="font-size:11px">' + x.date + '</span></div>'; }).join('') || '<span class="muted">ยังไม่เคยลงทัวร์นาเมนต์</span>';
+    $('#profile').innerHTML = '<div class="scrhead"><div class="uibtn backbtn" id="pfBack">' + spr(['ui', 'prev'], 70, 70) + '</div><div class="title"><span class="ttl">👤 โปรไฟล์ผู้เล่น</span></div></div>' +
+      '<div class="scrbody"><div class="row" style="align-items:stretch;gap:16px">' +
+      '<div class="panel" style="width:360px;padding:16px;text-align:center">' + spr(Meta.charSprite(P.equip.char), 220, 220) +
+      '<div class="row" style="justify-content:center;gap:6px;margin-top:4px"><span style="font-size:26px;font-weight:900">' + esc(P.name) + '</span><button class="small" id="pfName">✏️</button></div>' +
+      '<div style="font-weight:800">' + Meta.charName(P.equip.char) + '</div>' + (sk ? '<div class="chip" style="margin-top:4px;white-space:normal">⭐ ' + esc(sk.name) + ': ' + esc(sk.desc) + '</div>' : '') +
+      '<div style="margin-top:10px;font-weight:900">Lv ' + P.level + '</div><div class="pfxp"><i style="width:' + Math.min(100, Math.round(P.xp / need * 100)) + '%"></i></div><div class="muted" style="font-size:12px;font-weight:700">EXP ' + P.xp + ' / ' + need + '</div>' +
+      '<button class="pink" id="pfSetup" style="margin-top:12px;width:100%">🎽 เปลี่ยนตัวละคร / ไอเทม</button></div>' +
+      '<div class="col grow" style="gap:12px">' +
+      '<div class="panel" style="padding:12px"><b>📊 สถิติ</b><div class="row" style="gap:10px;margin-top:8px;flex-wrap:wrap">' + stat('🎮', st.games, 'เกมที่เล่น') + stat('🏆', st.wins, 'ชนะ') + stat('📈', rate + '%', 'อัตราชนะ') + stat('💰', fmt(st.best), 'ทรัพย์สินสูงสุด') + stat('👑', champs, 'แชมป์ทัวร์ฯ') + stat('🐻', have + '/' + keys.length, 'ตัวละครที่มี') + '</div></div>' +
+      '<div class="row" style="gap:12px;align-items:stretch"><div class="panel grow" style="padding:12px"><b>🎒 ชุดที่ติดตั้ง</b><div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap"><div class="pfeq">' + spr(dk.spr, 48, 44) + '<span>' + dk.name + '</span></div>' + eqs + '</div></div>' +
+      '<div class="panel grow" style="padding:12px"><b>🏆 ทัวร์นาเมนต์</b>' + (bestW ? ' <span class="chip">ไปได้ไกลสุด: ' + (bestW === 7 ? 'แชมป์' : 'World ' + bestW) + '</span>' : '') + '<div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap">' + trs + '</div></div></div>' +
+      '<div class="panel" style="padding:12px"><b>📜 ผลการแข่งล่าสุด</b><table class="ttable" style="margin-top:6px">' + rows + '</table></div></div></div></div>';
+    $('#pfBack').onclick = function () { show('menu'); };
+    $('#pfSetup').onclick = function () { openInventory('🎽 ติดตั้ง'); };
+    $('#pfName').onclick = function () {
+      modal({ title: '✏️ เปลี่ยนชื่อ', body: '<input id="pfNm" maxlength="14" value="' + esc(P.name) + '" style="font-size:22px;width:320px;padding:8px;border-radius:12px;border:3px solid #6b4226;font-family:inherit">', buttons: [{ t: 'บันทึก', v: 1, cls: 'green' }, { t: 'ยกเลิก', v: 0 }], mount: function (box) { var i = box.querySelector('#pfNm'); U._lastName = P.name; i.oninput = function () { U._lastName = i.value; }; setTimeout(function () { i.focus(); }, 50); } })
+        .then(function (v) { var n = (U._lastName || '').trim(); if (v && n) { P.name = n.slice(0, 14); Meta.save(); renderMenu(); } renderProfile(); });
+    };
   }
 
   // =====================================================================

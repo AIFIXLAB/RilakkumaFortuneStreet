@@ -7,7 +7,7 @@ var Online = (function () {
   var room = null;        // { code, role, players:[{peer,name,char,costume,loadout}], settings }
   var pending = {}, rpcSeq = 0, chain = Promise.resolve(), dirty = false, dirtyT = null;
   var DECIDE = ['preRoll', 'rollDice', 'planPath', 'chooseDir', 'confirmBuy', 'chooseInvest', 'confirmBuyout', 'bank', 'broker', 'pickCard', 'choose', 'chooseNumber', 'confirmUse', 'confirmDeal', 'auctionBid', 'casinoBet', 'chooseBuilding', 'chooseSpecialHouse', 'portalChoice', 'pickTile', 'debtSell', 'dragonBet'];
-  var DISPLAY = ['wheel', 'turnStart', 'showDice', 'step', 'teleport', 'landed', 'rent', 'dividend', 'money', 'promotion', 'suit', 'built', 'showCard', 'lineBonus', 'casinoShow', 'notify', 'info', 'party', 'windmill', 'toll', 'dragonResult', 'windSteal'];
+  var DISPLAY = ['cardFx', 'wheel', 'turnStart', 'showDice', 'step', 'teleport', 'landed', 'rent', 'dividend', 'money', 'promotion', 'suit', 'built', 'showCard', 'lineBonus', 'casinoShow', 'notify', 'info', 'party', 'windmill', 'toll', 'dragonResult', 'windSteal'];
   var LOCAL_ONLY = { info: 1 };
 
   function code() { var c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', s = ''; for (var i = 0; i < 4; i++) s += c[Math.floor(Math.random() * c.length)]; return s; }

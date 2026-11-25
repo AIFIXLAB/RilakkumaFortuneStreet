@@ -871,8 +871,16 @@
       var self0 = this, alt = s.deck.map(function (id, i) { return i; }).filter(function (i) { return !s.grid[i] && self0.cardDef(s.deck[i]).cat === 'A' && !self0.cardDef(s.deck[i]).neg; });
       if (alt.length) { var j0 = alt[Math.floor(this.r() * alt.length)], tmp = s.deck[cell]; s.deck[cell] = s.deck[j0]; s.deck[j0] = tmp; this.log('🍀 สกิล ' + p.name + ': ได้การ์ดเงินแทน!'); }
     }
+    var self1 = this, sig = function () { return { t: s.tiles.map(function (t) { return t.type === 'shop' || t.type === 'vacant' ? [t.owner, t.level, t.invest || 0, t.bonusVal || 0, t.bonusPct || 0, t.type].join(',') : ''; }), d: s.districts.map(function (d, i) { return d.price + '|' + s.players.map(function (q) { return q.shares[i] || 0; }).join(','); }) }; };
+    var before = sig();
     this._inCard = true;
     try { await this.applyCard(p, s.deck[cell], cell); } finally { this._inCard = false; }
+    if (this.io.cardFx && !s.over) {
+      var after = sig(), ct = [], cd = [];
+      after.t.forEach(function (v, i) { if (v !== before.t[i]) ct.push(i); });
+      after.d.forEach(function (v, i) { if (v !== before.d[i]) cd.push(i); });
+      if (ct.length || cd.length) await this.io.cardFx(p, ct, cd);
+    }
     if (run >= 3 && !s.over && !p.bankrupt) {
       var bonus = C.cardLine[Math.min(10, run)] || 0;
       this.log('🌈 ' + p.name + ' ต่อแถวสีของตัวเองได้ ' + run + ' ช่อง! โบนัส ' + fmt(bonus) + ' G', 'gain');

@@ -30,7 +30,7 @@ var Meta = (function () {
     EQUIPMENT.forEach(function (e) { out.push({ id: e.id, cat: 'equip', type: 'Game Equipment', name: e.name, desc: e.th, price: e.price, cur: e.cur, spr: e.spr, stack: true }); });
     SPECIAL_CARDS.forEach(function (e) { out.push({ id: e.id, cat: 'cards', type: 'Special Cards', name: e.name, desc: e.th, price: e.price, cur: e.cur, spr: e.spr, stack: true }); });
     PACKAGES.forEach(function (e) { out.push({ id: e.id, cat: 'packs', type: 'Packages', name: e.name, desc: e.th, price: e.price, cur: e.cur, spr: e.spr, pack: e.gives }); });
-    DECOS.forEach(function (e) { out.push({ id: e.id, cat: 'deco', type: e.id.match(/deco_(2\d|3\d)$/) ? 'Buildings' : 'Decorations', name: e.name, desc: 'ของตกแต่งโปรไฟล์ — ไม่มีผลต่อการแข่งขัน', price: e.price, cur: e.cur, spr: e.spr, stack: true }); });
+    if (0) DECOS.forEach(function (e) { out.push({ id: e.id, cat: 'deco', type: e.id.match(/deco_(2\d|3\d)$/) ? 'Buildings' : 'Decorations', name: e.name, desc: 'ของตกแต่งโปรไฟล์ — ไม่มีผลต่อการแข่งขัน', price: e.price, cur: e.cur, spr: e.spr, stack: true }); });
     CHARACTERS.forEach(function (c, i) { if (c.price) out.push({ id: 'b' + i, cat: 'chars', type: 'Characters', name: c.name, desc: skillDesc('b' + i), price: c.price, cur: 'gold', spr: ['chars', i], uniq: true }); });
     JOB_CHARS.forEach(function (c, i) { out.push({ id: 'j' + i, cat: 'chars', type: 'Characters', name: c.name, desc: skillDesc('j' + i), price: c.price, cur: 'gold', spr: ['jobs', i], uniq: true }); });
     GOLD_CHARS.forEach(function (c, i) { out.push({ id: 'g' + i, cat: 'chars', type: 'Characters', name: c.name, desc: skillDesc('g' + i), price: c.d, cur: 'diamond', spr: ['gold', i], uniq: true, gold: true }); });
@@ -121,7 +121,7 @@ var Meta = (function () {
   function openBox() {
     if (!(P.boxes > 0)) return null;
     P.boxes--;
-    var rare = all().filter(function (x) { return x.uniq && !owned(x.id); }), kind = P.jackpotNext && rare.length ? 'rare' : pickW([[26, 'gold'], [16, 'diamond'], [22, 'equip'], [16, 'card'], [10, 'deco'], [10, 'rare']]);
+    var rare = all().filter(function (x) { return x.uniq && !owned(x.id); }), kind = P.jackpotNext && rare.length ? 'rare' : pickW([[30, 'gold'], [18, 'diamond'], [24, 'equip'], [18, 'card'], [10, 'rare']]);
     P.jackpotNext = 0;
     var out = [];
     if (kind === 'rare' && !rare.length) kind = 'gold';

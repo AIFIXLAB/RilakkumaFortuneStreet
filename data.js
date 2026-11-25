@@ -572,12 +572,10 @@ var PACKAGES = [
     gives: { gold: 3000, items: { eq_lucky: 1, eq_move: 1 } } },
   { id: 'pk_biz', name: 'Business Pack', th: 'Shop Discount x2 + Upgrade Coupon x2 + Stock Gift', price: 40, cur: 'diamond', spr: ['rec', 'pk12'],
     gives: { items: { eq_shopdc: 2, eq_upg: 2, SC_stock: 1 } } },
-  { id: 'pk_hotel', name: 'Hotel Owner Pack', th: 'Free Upgrade x2 + Value Boost + ตึกโรงแรม (ตกแต่ง)', price: 50, cur: 'diamond', spr: ['rec', 'pk17'],
-    gives: { items: { SC_upg: 2, SC_value: 1, deco_31: 1 } } },
+  { id: 'pk_hotel', name: 'Hotel Owner Pack', th: 'Free Upgrade x2 + Value Boost + Upgrade Coupon x2', price: 50, cur: 'diamond', spr: ['rec', 'pk17'],
+    gives: { items: { SC_upg: 2, SC_value: 1, eq_upg: 2 } } },
   { id: 'pk_lucky', name: 'Lucky Player Pack', th: 'Golden Dice + Lucky Dice x2 + Insurance', price: 35, cur: 'diamond', spr: ['rec', 'pk4'],
     gives: { items: { eq_golden: 1, eq_lucky: 2, eq_ins: 1 } } },
-  { id: 'pk_deco', name: 'Decoration Pack', th: 'ซากุระ + น้ำพุ + สะพาน + ม้านั่ง', price: 3000, cur: 'gold', spr: ['rec', 'pk20'],
-    gives: { items: { deco_43: 1, deco_44: 1, deco_40: 1, deco_42: 1 } } },
 ];
 var EXCHANGE = [
   { id: 'ex_g1', th: 'แลก 10 💎 → 2,000 G', pay: { diamond: 10 }, get: { gold: 2000 }, spr: ['rec', 'exg'] },

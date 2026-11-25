@@ -474,8 +474,9 @@
     return s.players.map(function (p, i) {
       var nw = p.bankrupt ? 0 : self.netWorth(p), eggs = p.eggs || 0;
       var bonus = M.per ? (p.geggs || 0) * M.per : (best > 0 && vals[i] === best ? D.EASTER.missionBonus : 0);
-      var stage = nw + eggs * D.EASTER.eggScore + bonus, prev = (E.prev && E.prev[i]) || 0;
-      return { id: p.id, name: p.name, nw: nw, eggs: eggs, geggs: p.geggs || 0, metric: vals[i], bonus: bonus, stage: stage, total: prev + stage };
+      var pts = eggs * Math.round(self.cs(p, 'eggPts') || 0);
+      var stage = nw + eggs * D.EASTER.eggScore + pts + bonus, prev = (E.prev && E.prev[i]) || 0;
+      return { id: p.id, name: p.name, nw: nw, eggs: eggs, geggs: p.geggs || 0, metric: vals[i], bonus: bonus, pts: pts, stage: stage, total: prev + stage };
     });
   };
   P.nextOptions = function (pos, prev) { var t = this.tile(pos); var o = t.n.filter(function (x) { return x !== prev; }); return o.length ? o : t.n.slice(); };

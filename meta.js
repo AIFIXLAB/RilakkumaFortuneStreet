@@ -39,7 +39,7 @@ var Meta = (function () {
     DICE_SKINS.forEach(function (d) { if (d.price) out.push({ id: d.id, cat: 'equip', type: 'Dice Skins', name: d.name, desc: d.desc ? '✨ ' + d.desc : 'สกินลูกเต๋า (Cosmetic)', price: d.price, cur: d.cur, spr: d.spr, uniq: true }); });
     return out;
   }
-  function skillDesc(k) { var s = CHAR_SKILLS[k]; return s ? '⭐ สกิลติดตัว “' + s.name + '”: ' + s.desc : ''; }
+  function skillDesc(k) { var s = CHAR_SKILLS[k]; return s ? '⭐ สกิลติดตัว “' + s.name + '”: ' + s.desc + (s.ename ? ' • 🥚 สกิลอีสเตอร์ “' + s.ename + '”: ' + s.edesc : '') : ''; }
   var CAT = null;
   function item(id) { if (!CAT) CAT = catalog(); return CAT.find(function (x) { return x.id === id; }); }
   function all() { if (!CAT) CAT = catalog(); return CAT; }

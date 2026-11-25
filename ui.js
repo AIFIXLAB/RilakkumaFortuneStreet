@@ -140,11 +140,120 @@
       mount: function (box, close) { box.querySelectorAll('[data-pm]').forEach(function (e) { e.onclick = function () { if (!e.classList.contains('dimo')) close(e.dataset.pm); }; }); } })
       .then(function (v) { if (v === 'new') openSetup(vsAI); else if (v === 'cont') startGame(JSON.parse(localStorage.getItem('rfs_save_auto'))); else if (v === 'load') loadModal(); else if (v === 'tut') Tutorial.start(); });
   }
+  // =====================================================================
+  // SAVE TRANSFER — move the whole save to another device/browser
+  //  • live: 4-digit code, both devices online (PeerJS, no server needed)
+  //  • backup code: copy text → paste on the other device (works any time)
+  // =====================================================================
+  var Sync = (function () {
+    var SKIP = /^rfs_(online_|cloud)/;
+    function collect() { var d = {}; for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (/^rfs_/.test(k) && !SKIP.test(k)) d[k] = localStorage.getItem(k); } return { app: 'rfs', v: 1, t: Date.now(), d: d }; }
+    function summary(pkg) { var p = null; try { p = JSON.parse(pkg.d.rfs_profile_v1); } catch (e) { } return p ? 'ชื่อ <b>' + esc(p.name) + '</b> • Lv ' + p.level + ' • ' + fmt(p.gold) + ' G • ' + p.diamond + ' 💎 • ตัวละคร ' + Object.keys(p.chars || {}).length + ' ตัว' + (p.tickets ? ' • 🎫 ' + p.tickets : '') : 'ไม่มีโปรไฟล์'; }
+    function apply(pkg) {
+      if (!pkg || pkg.app !== 'rfs' || !pkg.d || !pkg.d.rfs_profile_v1) { toast('⚠️ ข้อมูลเซฟไม่ถูกต้อง', 3000); return Promise.resolve(false); }
+      if (U._closeModal) U._closeModal();
+      return modal({ title: '📥 โหลดเซฟนี้?', width: 560, body: '<div style="text-align:center;font-weight:700;line-height:1.7">เซฟที่ได้รับ: ' + summary(pkg) + '<br><span class="muted">บันทึกเมื่อ ' + new Date(pkg.t).toLocaleString('th-TH') + '</span><br><span style="color:#d0342c">⚠️ เซฟในเครื่องนี้ (' + summary(collect()) + ') จะถูกแทนที่</span></div>', buttons: [{ t: '✅ ใช้เซฟนี้', v: 1, cls: 'green' }, { t: 'ยกเลิก', v: 0 }] })
+        .then(function (v) {
+          if (!v) return false;
+          Object.keys(collect().d).forEach(function (k) { localStorage.removeItem(k); });
+          Object.keys(pkg.d).forEach(function (k) { try { localStorage.setItem(k, pkg.d[k]); } catch (e) { } });
+          toast('✅ โหลดเซฟแล้ว! กำลังเริ่มเกมใหม่...', 2500); setTimeout(function () { location.reload(); }, 1200); return true;
+        });
+    }
+    // ---- backup code (text) ----
+    function toCode(pkg) { var s = JSON.stringify(pkg); return 'RFS1:' + btoa(unescape(encodeURIComponent(s))); }
+    function fromCode(c) { try { c = (c || '').trim().replace(/\s+/g, ''); if (c.indexOf('RFS1:') !== 0) return null; return JSON.parse(decodeURIComponent(escape(atob(c.slice(5))))); } catch (e) { return null; } }
+    // ---- live transfer ----
+    var peer = null;
+    function stop() { if (peer) { try { peer.destroy(); } catch (e) { } peer = null; } }
+    function ready() { return new Promise(function (res) { if (typeof window.Peer === 'function') return res(true); var t0 = Date.now(), iv = setInterval(function () { if (typeof window.Peer === 'function') { clearInterval(iv); res(true); } else if (Date.now() - t0 > 8000) { clearInterval(iv); res(false); } }, 150); }); }
+    function send(code, el) {
+      stop();
+      ready().then(function (ok) {
+        if (!ok) { el.innerHTML = '⚠️ เชื่อมต่ออินเทอร์เน็ตไม่ได้ — ใช้ “รหัสเซฟสำรอง” แทน'; return; }
+        peer = new Peer('rfs-save-' + code, { debug: 0 });
+        peer.on('open', function () { el.innerHTML = '✅ พร้อมส่งแล้ว! บนเครื่องที่จะเล่น กด <b>📥 รับเซฟ</b> แล้วใส่รหัส <b style="font-size:26px;color:#ff5d8f;letter-spacing:4px">' + code + '</b><br><span class="muted">เปิดหน้านี้ค้างไว้จนกว่าอีกเครื่องรับเสร็จ (10 นาที)</span>'; });
+        peer.on('connection', function (c) {
+          c.on('open', function () { c.send(JSON.stringify(collect())); el.innerHTML = '📤 กำลังส่งเซฟ...'; });
+          c.on('data', function (d) { if (d === 'got') { el.innerHTML = '🎉 ส่งเซฟสำเร็จ! อีกเครื่องได้เซฟแล้ว'; sfx('win'); setTimeout(stop, 1500); } });
+        });
+        peer.on('error', function (e) { el.innerHTML = e && e.type === 'unavailable-id' ? '⚠️ รหัสนี้มีคนใช้อยู่ — เปลี่ยนรหัสใหม่' : '⚠️ เชื่อมต่อไม่ได้ (' + (e && e.type || 'network') + ') — ลองใหม่ หรือใช้รหัสเซฟสำรอง'; });
+        setTimeout(function () { if (peer && peer.id === 'rfs-save-' + code) { stop(); el.innerHTML = '⌛ หมดเวลา 10 นาที — กดส่งใหม่ได้'; } }, 600000);
+      });
+    }
+    function receive(code, el) {
+      stop();
+      ready().then(function (ok) {
+        if (!ok) { el.innerHTML = '⚠️ เชื่อมต่ออินเทอร์เน็ตไม่ได้'; return; }
+        el.innerHTML = '🔍 กำลังหาเครื่องที่ส่งรหัส ' + code + '...';
+        peer = new Peer({ debug: 0 }); var got = false;
+        peer.on('open', function () {
+          var c = peer.connect('rfs-save-' + code, { reliable: true });
+          c.on('data', function (d) { if (got) return; got = true; var pkg = null; try { pkg = JSON.parse(d); } catch (e) { } try { c.send('got'); } catch (e) { } el.innerHTML = '📥 ได้รับเซฟแล้ว!'; setTimeout(function () { stop(); apply(pkg); }, 500); });
+        });
+        peer.on('error', function (e) { el.innerHTML = e && e.type === 'peer-unavailable' ? '⚠️ ไม่พบรหัส ' + code + ' — ให้อีกเครื่องกด “📤 ส่งเซฟ” ค้างไว้ก่อน แล้วตรวจรหัสอีกครั้ง' : '⚠️ เชื่อมต่อไม่ได้ (' + (e && e.type || 'network') + ')'; });
+        setTimeout(function () { if (!got && peer) { stop(); if (/กำลังหา/.test(el.innerHTML)) el.innerHTML = '⌛ ไม่พบเครื่องที่ส่ง — ตรวจรหัส แล้วลองใหม่'; } }, 20000);
+      });
+    }
+    // ---- cloud save: running-number codes from the server (never collide) ----
+    var API = 'api/save';
+    function errText(e) { return e === 'nodb' ? 'ยังไม่ได้เชื่อมฐานข้อมูลบน Vercel (ดูวิธีตั้งค่า)' : e === 'notfound' ? 'ไม่พบเลขเซฟนี้ — ตรวจเลขอีกครั้ง' : e === 'big' ? 'เซฟใหญ่เกินไป' : e === 'offline' ? 'ต่อเซิร์ฟเวอร์เซฟไม่ได้ — ระบบเซฟคลาวด์ใช้ได้บนเว็บที่อัปขึ้น Vercel (ใช้รหัสเซฟสำรองแทนได้)' : 'เกิดข้อผิดพลาด (' + e + ')'; }
+    function cloudSave() {
+      return fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: toCode(collect()) }) })
+        .then(function (r) { return r.json().catch(function () { return { error: 'offline' }; }); }, function () { return { error: 'offline' }; })
+        .then(function (j) { if (j && j.code) { var h = []; try { h = JSON.parse(localStorage.getItem('rfs_cloud') || '[]'); } catch (e) { } h.unshift({ code: j.code, t: Date.now() }); try { localStorage.setItem('rfs_cloud', JSON.stringify(h.slice(0, 5))); } catch (e) { } } return j; });
+    }
+    function cloudLoad(code) {
+      return fetch(API + '?code=' + encodeURIComponent(code), { cache: 'no-store' })
+        .then(function (r) { return r.json().catch(function () { return { error: 'offline' }; }); }, function () { return { error: 'offline' }; });
+    }
+    function open() {
+      var mine = collect(), hist = []; try { hist = JSON.parse(localStorage.getItem('rfs_cloud') || '[]'); } catch (e) { }
+      modal({ title: '☁️ เซฟคลาวด์ — ย้ายเซฟข้ามเครื่อง', width: 820, body:
+        '<div class="sync"><div class="muted" style="font-weight:700;text-align:center;margin-bottom:8px">เซฟในเครื่องนี้: ' + summary(mine) + '</div>' +
+        '<div class="row" style="gap:12px;align-items:stretch">' +
+        '<div class="panel grow" style="padding:12px"><b style="font-size:18px">📤 เซฟขึ้นคลาวด์ (ก่อนเลิกเล่น)</b><div class="muted" style="font-size:13px;font-weight:700">ระบบจะออกเลขเซฟใหม่ให้ทุกครั้ง ไม่ซ้ำกับใคร</div>' +
+        '<button class="pink" id="cSave" style="margin-top:10px;font-size:20px;width:100%">☁️ เซฟตอนนี้</button><div id="cMsg1" class="symsg">' + (hist.length ? 'เลขเซฟล่าสุดของเครื่องนี้: <b style="font-size:20px;color:#ff5d8f">' + hist[0].code + '</b> <span class="muted">(' + new Date(hist[0].t).toLocaleString('th-TH') + ')</span>' : '') + '</div></div>' +
+        '<div class="panel grow" style="padding:12px"><b style="font-size:18px">📥 ดึงเซฟ (อีกเครื่อง)</b><div class="muted" style="font-size:13px;font-weight:700">กรอกเลขเซฟ 6 หลักที่ได้จากเครื่องที่เล่นล่าสุด</div>' +
+        '<div class="row" style="gap:6px;margin-top:10px"><input id="cCode" class="pin" style="width:150px" maxlength="8" inputmode="numeric" placeholder="______"><button class="green" id="cLoad">📥 ดึงเซฟ</button></div><div id="cMsg2" class="symsg"></div></div></div>' +
+        '<div class="muted" style="font-size:12px;font-weight:700;margin-top:8px">💡 เครื่องไม่ต้องเปิดพร้อมกัน • เลขเซฟเก็บไว้ 90 วัน • ทุกครั้งที่เซฟจะได้เลขใหม่ ให้ใช้ “เลขล่าสุด” เสมอ</div>' +
+        '<details style="margin-top:8px"><summary style="font-weight:900;cursor:pointer">🔑 รหัสเซฟสำรอง (ใช้ได้แม้ไม่มีเน็ต/คลาวด์ — คัดลอกส่งทาง LINE)</summary>' +
+        '<div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap"><button class="small" id="syCopy">📋 คัดลอกรหัสเซฟของเครื่องนี้</button><button class="small" id="syFile">💾 ดาวน์โหลดเป็นไฟล์</button><label class="small btnlike">📂 โหลดจากไฟล์<input type="file" id="syIn" accept=".txt" hidden></label></div>' +
+        '<textarea id="syTxt" placeholder="วางรหัสเซฟที่ขึ้นต้นด้วย RFS1: ตรงนี้" style="width:100%;height:70px;margin-top:6px;border-radius:12px;border:3px solid #e0a96d;padding:6px;font-size:11px"></textarea><button class="green small" id="syPaste">📥 โหลดจากรหัสที่วาง</button></details></div>',
+        buttons: [{ t: 'ปิด', v: 0 }],
+        mount: function (box) {
+          var m1 = box.querySelector('#cMsg1'), m2 = box.querySelector('#cMsg2'), busy = false;
+          box.querySelector('#cSave').onclick = function () {
+            if (busy) return; busy = true; m1.innerHTML = '⏳ กำลังเซฟขึ้นคลาวด์...';
+            cloudSave().then(function (j) { busy = false;
+              if (!j.code) { m1.innerHTML = '⚠️ ' + errText(j.error); return; }
+              sfx('win'); m1.innerHTML = '✅ เซฟแล้ว! เลขเซฟของคุณ<div class="ccode">' + j.code + '</div><button class="small" id="cCopyNo">📋 คัดลอกเลข</button> <span class="muted">จดเลขนี้ไว้ แล้วไปกรอกในอีกเครื่อง</span>';
+              var cp = box.querySelector('#cCopyNo'); cp.onclick = function () { if (navigator.clipboard) navigator.clipboard.writeText(j.code); toast('📋 คัดลอกเลข ' + j.code + ' แล้ว'); };
+            });
+          };
+          box.querySelector('#cLoad').onclick = function () {
+            var c = (box.querySelector('#cCode').value || '').replace(/\D/g, ''); if (c.length < 6) { toast('กรอกเลขเซฟ 6 หลัก'); return; }
+            if (busy) return; busy = true; m2.innerHTML = '⏳ กำลังดึงเซฟ ' + c + '...';
+            cloudLoad(c).then(function (j) { busy = false;
+              if (!j.data) { m2.innerHTML = '⚠️ ' + errText(j.error); return; }
+              var pkg = fromCode(j.data); if (!pkg) { m2.innerHTML = '⚠️ ข้อมูลเซฟเสียหาย'; return; }
+              m2.innerHTML = '📥 ได้เซฟแล้ว!'; apply(pkg);
+            });
+          };
+          box.querySelector('#syCopy').onclick = function () { var code = toCode(collect()), ta = box.querySelector('#syTxt'); ta.value = code; ta.select(); var done = function () { toast('📋 คัดลอกรหัสเซฟแล้ว — ส่งให้ตัวเองแล้ววางในเครื่องใหม่', 3000); }; if (navigator.clipboard) navigator.clipboard.writeText(code).then(done, function () { try { document.execCommand('copy'); } catch (e) { } done(); }); else { try { document.execCommand('copy'); } catch (e) { } done(); } };
+          box.querySelector('#syFile').onclick = function () { var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([toCode(collect())], { type: 'text/plain' })); a.download = 'rilakkuma-save-' + new Date().toISOString().slice(0, 10) + '.txt'; document.body.appendChild(a); a.click(); a.remove(); };
+          box.querySelector('#syIn').onchange = function (ev) { var f = ev.target.files[0]; if (!f) return; var r = new FileReader(); r.onload = function () { var pkg = fromCode(r.result); if (!pkg) { toast('⚠️ ไฟล์เซฟไม่ถูกต้อง', 3000); return; } apply(pkg); }; r.readAsText(f); };
+          box.querySelector('#syPaste').onclick = function () { var pkg = fromCode(box.querySelector('#syTxt').value); if (!pkg) { toast('⚠️ รหัสเซฟไม่ถูกต้อง (ต้องขึ้นต้นด้วย RFS1:)', 3000); return; } apply(pkg); };
+        } });
+    }
+    return { open: open, collect: collect, toCode: toCode, fromCode: fromCode, apply: apply };
+  })();
+  U.Sync = Sync;
   function hubModal() {
     var it = function (k, n, t) { return '<div class="hubit" data-hb="' + k + '">' + spr(['ui', n], 150, 120) + '</div>'; };
-    modal({ title: 'เมนู', width: 720, body: '<div class="hub">' + it('settings', 'settings') + it('lessons', 'guide') + it('music', 'music') + it('load', 'load') + it('inv', 'assets') + it('prof', 'chars') + it('achv', 'achv') + it('rank', 'rank') + '</div>',
-      mount: function (box, close) { box.querySelectorAll('[data-hb]').forEach(function (e) { e.onclick = function () { close(e.dataset.hb); }; }); } })
-      .then(function (v) { ({ settings: settingsModal, lessons: lessonsModal, guide: guideModal, music: function () { if (!Music.playing) { U.music = true; saveSettings(); Music.start('menu'); } else Music.next(); toast('🎵 ' + (Music.song ? esc(Music.song.title) : '')); }, load: loadModal, inv: function () { openInventory('🎽 ติดตั้ง'); }, prof: openProfile, achv: achievements, rank: rankingModal }[v] || function () { })(); });
+    modal({ title: 'เมนู', width: 720, body: '<div class="hub">' + it('settings', 'settings') + it('lessons', 'guide') + it('music', 'music') + it('load', 'load') + it('inv', 'assets') + it('prof', 'chars') + it('achv', 'achv') + it('rank', 'rank') + '</div><button class="pink" id="hbSync" style="width:100%;margin-top:10px;font-size:20px">☁️ ย้ายเซฟ / ดึงเซฟจากเครื่องอื่น</button>',
+      mount: function (box, close) { box.querySelector('#hbSync').onclick = function () { close('sync'); }; box.querySelectorAll('[data-hb]').forEach(function (e) { e.onclick = function () { close(e.dataset.hb); }; }); } })
+      .then(function (v) { ({ sync: Sync.open, settings: settingsModal, lessons: lessonsModal, guide: guideModal, music: function () { if (!Music.playing) { U.music = true; saveSettings(); Music.start('menu'); } else Music.next(); toast('🎵 ' + (Music.song ? esc(Music.song.title) : '')); }, load: loadModal, inv: function () { openInventory('🎽 ติดตั้ง'); }, prof: openProfile, achv: achievements, rank: rankingModal }[v] || function () { })(); });
   }
   function backBtns() { document.querySelectorAll('.backbtn').forEach(function (b) { if (!b.innerHTML) b.innerHTML = spr(['ui', 'prev'], 70, 70); }); }
   backBtns();
@@ -2045,7 +2154,7 @@
       '<div class="row" style="justify-content:center;gap:6px;margin-top:4px"><span style="font-size:26px;font-weight:900">' + esc(P.name) + '</span><button class="small" id="pfName">✏️</button></div>' +
       '<div style="font-weight:800">' + Meta.charName(P.equip.char) + '</div>' + (sk ? '<div class="chip" style="margin-top:4px;white-space:normal">⭐ ' + esc(sk.name) + ': ' + esc(sk.desc) + (sk.ename ? '<br>' + (sk.etag || '🥚') + ' ' + esc(sk.ename) + ': ' + esc(sk.edesc) : '') + '</div>' : '') +
       '<div style="margin-top:10px;font-weight:900">Lv ' + P.level + '</div><div class="pfxp"><i style="width:' + Math.min(100, Math.round(P.xp / need * 100)) + '%"></i></div><div class="muted" style="font-size:12px;font-weight:700">EXP ' + P.xp + ' / ' + need + '</div>' +
-      '<button class="pink" id="pfSetup" style="margin-top:12px;width:100%">🎽 เปลี่ยนตัวละคร / ไอเทม</button></div>' +
+      '<button class="pink" id="pfSetup" style="margin-top:12px;width:100%">🎽 เปลี่ยนตัวละคร / ไอเทม</button><button id="pfSync" style="margin-top:8px;width:100%">☁️ ย้ายเซฟไปเครื่องอื่น</button></div>' +
       '<div class="col grow" style="gap:12px">' +
       '<div class="panel" style="padding:12px"><b>📊 สถิติ</b><div class="row" style="gap:10px;margin-top:8px;flex-wrap:wrap">' + stat('🎮', st.games, 'เกมที่เล่น') + stat('🏆', st.wins, 'ชนะ') + stat('📈', rate + '%', 'อัตราชนะ') + stat('💰', fmt(st.best), 'ทรัพย์สินสูงสุด') + stat('👑', champs, 'แชมป์ทัวร์ฯ') + stat('🐻', have + '/' + keys.length, 'ตัวละครที่มี') + '</div></div>' +
       '<div class="row" style="gap:12px;align-items:stretch"><div class="panel grow" style="padding:12px"><b>🎒 ชุดที่ติดตั้ง</b><div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap"><div class="pfeq">' + spr(dk.spr, 48, 44) + '<span>' + dk.name + '</span></div>' + eqs + '</div></div>' +
@@ -2053,6 +2162,7 @@
       '<div class="panel" style="padding:12px"><b>📜 ผลการแข่งล่าสุด</b><table class="ttable" style="margin-top:6px">' + rows + '</table></div></div></div></div>';
     $('#pfBack').onclick = function () { show('menu'); };
     $('#pfSetup').onclick = function () { openInventory('🎽 ติดตั้ง'); };
+    $('#pfSync').onclick = function () { Sync.open(); };
     $('#pfName').onclick = function () {
       modal({ title: '✏️ เปลี่ยนชื่อ', body: '<input id="pfNm" maxlength="14" value="' + esc(P.name) + '" style="font-size:22px;width:320px;padding:8px;border-radius:12px;border:3px solid #6b4226;font-family:inherit">', buttons: [{ t: 'บันทึก', v: 1, cls: 'green' }, { t: 'ยกเลิก', v: 0 }], mount: function (box) { var i = box.querySelector('#pfNm'); U._lastName = P.name; i.oninput = function () { U._lastName = i.value; }; setTimeout(function () { i.focus(); }, 50); } })
         .then(function (v) { var n = (U._lastName || '').trim(); if (v && n) { P.name = n.slice(0, 14); Meta.save(); renderMenu(); } renderProfile(); });

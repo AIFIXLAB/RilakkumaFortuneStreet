@@ -1,0 +1,7 @@
+{
+  "name": "rilakkuma-fortune-street",
+  "private": true,
+  "dependencies": {
+    "@vercel/blob": "^1.1.1"
+  }
+}

@@ -300,7 +300,7 @@
   var LO = { slot: 0 };
   function allCharKeys() { var k = []; CHARACTERS.forEach(function (c, i) { k.push('b' + i); }); EXTRA_CHARS.forEach(function (c, i) { k.push('x' + i); }); JOB_CHARS.forEach(function (c, i) { k.push('j' + i); }); GOLD_CHARS.forEach(function (c, i) { k.push('g' + i); }); EASTER_CHARS.forEach(function (c, i) { k.push('e' + i); }); return k; }
   function aiCharKeys() { return allCharKeys().filter(function (k) { return k[0] !== 'e'; }); }
-  function skillChip(k, big) { var s = Meta.charSkill(k); if (!s) return ''; return '<div class="skillchip' + (k[0] === 'g' ? ' gold' : k[0] === 'e' ? ' easter' : k[0] === 'r' ? ' royal' : '') + (big ? ' big' : '') + '"><b>⭐ ' + esc(s.name) + '</b><span>' + esc(s.desc) + '</span>' + (s.ename ? '<b style="margin-top:3px">🥚 ' + esc(s.ename) + ' <small>(อีเวนต์อีสเตอร์)</small></b><span>' + esc(s.edesc) + '</span>' : '') + '</div>'; }
+  function skillChip(k, big) { var s = Meta.charSkill(k); if (!s) return ''; return '<div class="skillchip' + (k[0] === 'g' ? ' gold' : k[0] === 'e' ? ' easter' : k[0] === 'r' ? ' royal' : '') + (big ? ' big' : '') + '"><b>⭐ ' + esc(s.name) + '</b><span>' + esc(s.desc) + '</span>' + (s.ename ? '<b style="margin-top:3px">' + (s.etag || '🥚') + ' ' + esc(s.ename) + ' <small>(โบนัส' + (s.elabel || 'อีเวนต์อีสเตอร์') + ')</small></b><span>' + esc(s.edesc) + '</span>' : '') + '</div>'; }
   U.skillChip = skillChip;
   function openLoadout() { var e = Meta.p.equip, v = Meta.validLoadout(); e.eq = v.eq; e.sc = v.sc; renderLoadout(); show('loadout'); }
   function renderLoadout() {
@@ -1951,7 +1951,7 @@
   var EQS = { slot: 0, info: null };
   function itemInfoBox(id) {
     if (!id) return '<div class="iinfo muted">👆 แตะไอเทมหรือตัวละครเพื่อดูสรรพคุณ</div>';
-    if (/^[bxjgers]\d+$/.test(id)) { var sk = Meta.charSkill(id); return '<div class="iinfo">' + spr(Meta.charSprite(id), 46, 50) + '<div><b>' + esc(Meta.charName(id)) + '</b><br>' + (sk ? '⭐ <b>' + esc(sk.name) + '</b>: ' + esc(sk.desc) + (sk.ename ? '<br>🥚 <b>' + esc(sk.ename) + '</b> (อีสเตอร์): ' + esc(sk.edesc) : '') : 'ไม่มีสกิลพิเศษ') + '</div></div>'; }
+    if (/^[bxjgers]\d+$/.test(id)) { var sk = Meta.charSkill(id); return '<div class="iinfo">' + spr(Meta.charSprite(id), 46, 50) + '<div><b>' + esc(Meta.charName(id)) + '</b><br>' + (sk ? '⭐ <b>' + esc(sk.name) + '</b>: ' + esc(sk.desc) + (sk.ename ? '<br>' + (sk.etag || '🥚') + ' <b>' + esc(sk.ename) + '</b> (' + (sk.elabel || 'อีสเตอร์') + '): ' + esc(sk.edesc) : '') : 'ไม่มีสกิลพิเศษ') + '</div></div>'; }
     var it = Meta.item(id); if (!it) return ''; return '<div class="iinfo">' + spr(it.spr, 46, 44) + '<div><b>' + esc(it.name) + '</b> <span class="chip" style="font-size:11px">' + (/^SC_/.test(id) ? 'การ์ดพิเศษ' : /^dice/.test(id) ? 'สกินลูกเต๋า' : 'อุปกรณ์') + ' • มี ' + (Meta.owned(id) || (Meta.p.dice[id] ? 1 : 0)) + '</span><br>' + esc(it.desc || it.th || '') + '</div></div>';
   }
   function renderEquipTab(box) {
@@ -2042,7 +2042,7 @@
       '<div class="scrbody"><div class="row" style="align-items:stretch;gap:16px">' +
       '<div class="panel" style="width:360px;padding:16px;text-align:center">' + spr(Meta.charSprite(P.equip.char), 220, 220) +
       '<div class="row" style="justify-content:center;gap:6px;margin-top:4px"><span style="font-size:26px;font-weight:900">' + esc(P.name) + '</span><button class="small" id="pfName">✏️</button></div>' +
-      '<div style="font-weight:800">' + Meta.charName(P.equip.char) + '</div>' + (sk ? '<div class="chip" style="margin-top:4px;white-space:normal">⭐ ' + esc(sk.name) + ': ' + esc(sk.desc) + (sk.ename ? '<br>🥚 ' + esc(sk.ename) + ': ' + esc(sk.edesc) : '') + '</div>' : '') +
+      '<div style="font-weight:800">' + Meta.charName(P.equip.char) + '</div>' + (sk ? '<div class="chip" style="margin-top:4px;white-space:normal">⭐ ' + esc(sk.name) + ': ' + esc(sk.desc) + (sk.ename ? '<br>' + (sk.etag || '🥚') + ' ' + esc(sk.ename) + ': ' + esc(sk.edesc) : '') + '</div>' : '') +
       '<div style="margin-top:10px;font-weight:900">Lv ' + P.level + '</div><div class="pfxp"><i style="width:' + Math.min(100, Math.round(P.xp / need * 100)) + '%"></i></div><div class="muted" style="font-size:12px;font-weight:700">EXP ' + P.xp + ' / ' + need + '</div>' +
       '<button class="pink" id="pfSetup" style="margin-top:12px;width:100%">🎽 เปลี่ยนตัวละคร / ไอเทม</button></div>' +
       '<div class="col grow" style="gap:12px">' +

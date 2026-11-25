@@ -216,7 +216,7 @@
         '<button class="pink" id="cSave" style="margin-top:10px;font-size:20px;width:100%">☁️ เซฟตอนนี้</button><div id="cMsg1" class="symsg">' + (hist.length ? 'เลขเซฟล่าสุดของเครื่องนี้: <b style="font-size:20px;color:#ff5d8f">' + hist[0].code + '</b> <span class="muted">(' + new Date(hist[0].t).toLocaleString('th-TH') + ')</span>' : '') + '</div></div>' +
         '<div class="panel grow" style="padding:12px"><b style="font-size:18px">📥 ดึงเซฟ (อีกเครื่อง)</b><div class="muted" style="font-size:13px;font-weight:700">กรอกเลขเซฟ 6 หลักที่ได้จากเครื่องที่เล่นล่าสุด</div>' +
         '<div class="row" style="gap:6px;margin-top:10px"><input id="cCode" class="pin" style="width:150px" maxlength="8" inputmode="numeric" placeholder="______"><button class="green" id="cLoad">📥 ดึงเซฟ</button></div><div id="cMsg2" class="symsg"></div></div></div>' +
-        '<div class="muted" style="font-size:12px;font-weight:700;margin-top:8px">💡 เครื่องไม่ต้องเปิดพร้อมกัน • เลขเซฟเก็บไว้ 90 วัน • ทุกครั้งที่เซฟจะได้เลขใหม่ ให้ใช้ “เลขล่าสุด” เสมอ</div>' +
+        '<div class="muted" style="font-size:12px;font-weight:700;margin-top:8px">💡 เครื่องไม่ต้องเปิดพร้อมกัน • เลขเซฟไม่ถูกลบและไม่ถูกใช้ซ้ำ • ทุกครั้งที่เซฟจะได้เลขใหม่ ให้ใช้ “เลขล่าสุด” เสมอ</div>' +
         '<details style="margin-top:8px"><summary style="font-weight:900;cursor:pointer">🔑 รหัสเซฟสำรอง (ใช้ได้แม้ไม่มีเน็ต/คลาวด์ — คัดลอกส่งทาง LINE)</summary>' +
         '<div class="row" style="gap:6px;margin-top:6px;flex-wrap:wrap"><button class="small" id="syCopy">📋 คัดลอกรหัสเซฟของเครื่องนี้</button><button class="small" id="syFile">💾 ดาวน์โหลดเป็นไฟล์</button><label class="small btnlike">📂 โหลดจากไฟล์<input type="file" id="syIn" accept=".txt" hidden></label></div>' +
         '<textarea id="syTxt" placeholder="วางรหัสเซฟที่ขึ้นต้นด้วย RFS1: ตรงนี้" style="width:100%;height:70px;margin-top:6px;border-radius:12px;border:3px solid #e0a96d;padding:6px;font-size:11px"></textarea><button class="green small" id="syPaste">📥 โหลดจากรหัสที่วาง</button></details></div>',
@@ -1513,9 +1513,9 @@
   // ---------- game menu / save / load ----------
   $('#btnGameMenu').onclick = function () {
     if (modalOpen) return;
-    modal({ title: 'เมนูเกม', body: '<div class="col" style="min-width:380px"><button class="green" data-m="save">💾 บันทึกเกม</button><button class="blue" data-m="guide">📖 คู่มือ</button><button data-m="settings">⚙️ ตั้งค่า (ความเร็ว/เสียง)</button><button class="pink" data-m="quit">🏠 ออกไปหน้าหลัก (บันทึกอัตโนมัติ)</button></div>', mount: function (box, close) { box.querySelectorAll('[data-m]').forEach(function (b) { b.onclick = function () { close(b.dataset.m); }; }); } })
+    modal({ title: 'เมนูเกม', body: '<div class="col" style="min-width:380px"><button class="green" data-m="save">💾 บันทึกเกม</button><button class="pink" data-m="cloud">☁️ เซฟคลาวด์ (ย้ายไปเล่นเครื่องอื่น)</button><button class="blue" data-m="guide">📖 คู่มือ</button><button data-m="settings">⚙️ ตั้งค่า (ความเร็ว/เสียง)</button><button class="pink" data-m="quit">🏠 ออกไปหน้าหลัก (บันทึกอัตโนมัติ)</button></div>', mount: function (box, close) { box.querySelectorAll('[data-m]').forEach(function (b) { b.onclick = function () { close(b.dataset.m); }; }); } })
       .then(function (v) {
-        if (v === 'save') saveModal(); else if (v === 'guide') guideModal(); else if (v === 'settings') settingsModal().then(refresh);
+        if (v === 'cloud') Sync.open(); else if (v === 'save') saveModal(); else if (v === 'guide') guideModal(); else if (v === 'settings') settingsModal().then(refresh);
         else if (v === 'quit') { if (U.online) { Online.leave(); } U.token++; U.g = null; $('#diceLayer').classList.remove('on'); show('menu'); }
       });
   };

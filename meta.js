@@ -15,6 +15,8 @@ var Meta = (function () {
   var P = null;
   function load() { try { P = JSON.parse(localStorage.getItem(KEY)); } catch (e) { P = null; } if (!P || P.v !== 1) P = fresh();
     Object.keys(P.deco).forEach(function (k) { if (!item(k)) delete P.deco[k]; }); P.town = P.town.filter(function (x) { return item(x.id); });
+    // characters that were wrongly stored as items (steam/royal/easter) → move into the character collection
+    Object.keys(P.inv).forEach(function (k) { if (/^[bxjgers]\d+$/.test(k)) { if (P.inv[k] > 0) P.chars[k] = 1; delete P.inv[k]; } });
     Object.keys(P.inv).forEach(function (k) { if (!item(k)) delete P.inv[k]; });
     // costumes were removed: refund what was paid
     var cz = Object.keys(P.costumes || {}); if (cz.length) { var ref = cz.reduce(function (a, k) { return a + 2000 + (+k.slice(2) || 0) * 250; }, 0); P.gold += ref; P.costumeRefund = ref; P.costumes = {}; save(); }
@@ -51,14 +53,14 @@ var Meta = (function () {
   function priceOf(it) { return tags(it.id).indexOf('sale') >= 0 ? Math.round(it.price * 0.8) : it.price; }
 
   function owned(id) {
-    if (/^[bxjg]\d+$/.test(id)) return P.chars[id] ? 1 : 0;
+    if (/^[bxjgers]\d+$/.test(id)) return P.chars[id] ? 1 : 0;
     if (/^dice_/.test(id)) return P.dice[id] ? 1 : 0;
     if (/^deco_/.test(id)) return P.deco[id] || 0;
     return P.inv[id] || 0;
   }
   function addItem(id, n) {
     n = n || 1;
-    if (/^[bxjg]\d+$/.test(id)) P.chars[id] = 1;
+    if (/^[bxjgers]\d+$/.test(id)) P.chars[id] = 1;
     else if (/^dice_/.test(id)) P.dice[id] = 1;
     else if (/^deco_/.test(id)) P.deco[id] = (P.deco[id] || 0) + n;
     else P.inv[id] = (P.inv[id] || 0) + n;

@@ -663,6 +663,37 @@ button.pink{background:linear-gradient(#fff0f5,#ffb0c8 60%,#ff8fb3)} button.gree
 #mvI{position:absolute;left:0;top:0;transform-origin:0 0;background-size:100% 100%}
 .mvz{position:absolute;right:10px;bottom:10px;display:flex;flex-direction:column;gap:6px}
 .mvz button{width:46px;height:46px;font-size:22px;padding:0}
+.hlwrap{position:relative;width:900px;height:506px;margin:0 auto;background-size:100% 100%;border-radius:16px;border:4px solid #6b4226;overflow:hidden}
+.hlwrap.winfx{animation:hlwin .5s 4 alternate}@keyframes hlwin{to{box-shadow:0 0 40px 10px #ffd54f;filter:brightness(1.15)}}
+.hlrule{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:rgba(40,10,40,.82);color:#ffe082;font-weight:900;padding:8px 16px;border-radius:14px;white-space:nowrap;font-size:16px;border:2px solid #ffd54f}
+.hlchips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.hlchip{border-radius:50%;width:78px;height:78px;font-weight:900;font-size:15px;background:radial-gradient(circle,#fff 0 45%,#e53935 46% 60%,#fff 61% 66%,#e53935 67%);color:#5d2b0a;border:3px solid #fff;box-shadow:0 3px 0 #8d1b1b}
+.hlchip.on{transform:translateY(-6px) scale(1.08);box-shadow:0 0 0 4px #ffd54f,0 6px 0 #8d1b1b}
+.hlbtn{min-width:220px;font-size:26px;font-weight:900;padding:12px 18px;border-radius:24px;color:#fff;display:flex;flex-direction:column;align-items:center;border:4px solid #ffe082}
+.hlbtn small{font-size:16px;opacity:.9}.hlbtn.hi{background:linear-gradient(#ff6f61,#c62828)}.hlbtn.lo{background:linear-gradient(#64b5f6,#1565c0)}
+.hldome{position:absolute;left:50%;top:50%;transform:translate(-50%,-42%);width:400px;height:210px;border-radius:200px 200px 30px 30px;background:radial-gradient(ellipse at 50% 30%,rgba(255,255,255,.45),rgba(255,255,255,.12) 60%,rgba(255,255,255,.05));border:3px solid rgba(255,255,255,.7);display:flex;align-items:flex-end;justify-content:center;gap:18px;padding-bottom:26px;box-shadow:0 0 30px rgba(255,220,120,.6)}
+.hldie{width:84px;height:84px;background:#fff;border-radius:16px;box-shadow:inset 0 -6px 0 #e0d6c8,0 6px 10px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center}
+.hldie.spin{animation:hlspin .35s linear infinite}.hldie.land{animation:hlland .4s ease-out}
+@keyframes hlspin{0%{transform:translateY(-30px) rotate(0)}25%{transform:translateY(-8px) rotate(90deg) scale(.9)}50%{transform:translateY(-40px) rotate(180deg)}75%{transform:translateY(-10px) rotate(270deg) scale(.92)}100%{transform:translateY(-30px) rotate(360deg)}}
+@keyframes hlland{0%{transform:translateY(-30px) scale(1.2)}60%{transform:translateY(4px) scale(.95)}100%{transform:none}}
+.pips{display:grid;grid-template-columns:repeat(3,18px);grid-template-rows:repeat(3,18px);gap:4px}.pips i{border-radius:50%}.pips i.on{background:#3e2723}.pips i.on.red{background:#e53935}
+.hlres{text-align:center;font-weight:900;font-size:22px;margin-top:8px;line-height:1.6}.hlsum{padding:2px 12px;border-radius:12px;color:#fff}.hlsum.hi{background:#c62828}.hlsum.lo{background:#1565c0}
+.ptile .bkico{position:absolute;left:50%;bottom:8%;transform:translateX(-50%);pointer-events:none;filter:drop-shadow(0 2px 2px rgba(0,0,0,.35))}
+.hot.eventbtn.bkkbtn{top:130px!important;box-shadow:0 6px 18px rgba(255,160,0,.5)}
+.hot.eventbtn.bkkbtn span{background:linear-gradient(transparent,rgba(200,90,0,.92))}
+.bktiers{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px}
+.bktier{border:4px solid #e0c9a6;border-radius:16px;padding:6px;text-align:center;cursor:pointer;background:#fffaf0;display:flex;flex-direction:column;align-items:center;gap:2px}
+.bktier img{height:92px}.bktier.on{border-color:var(--tc);box-shadow:0 0 0 3px #fff,0 0 16px var(--tc);transform:translateY(-3px)}
+.bkt1{font-weight:900;font-size:19px;color:var(--tc)}.bkt2{font-weight:700;font-size:11px}
+.bkodds{font-size:12px;font-weight:700;margin-top:6px;background:#fff6e0;border-radius:10px;padding:6px 8px;line-height:1.5}
+.bkgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:6px;max-height:420px;overflow:auto}
+.rcard.bkc:not(.own){background:linear-gradient(#f4f4f4,#e0e0e0);border-color:#bdbdbd}.rcard.bkc.sel{box-shadow:0 0 0 3px #ff5d8f}
+.bagfx.bag-blue .bxcell{box-shadow:0 0 18px rgba(30,136,229,.55)}.bagfx.bag-purple .bxcell{box-shadow:0 0 22px rgba(142,36,170,.6)}.bagfx.bag-red .bxcell{box-shadow:0 0 28px rgba(255,193,7,.85);animation:bagglow 1.2s infinite alternate}
+@keyframes bagglow{to{box-shadow:0 0 40px rgba(255,80,0,.9)}}
+.bagfx.bag-red .bxcell.open{background:radial-gradient(circle,#fff6c0,#ffd54f)}
+.bkev{width:100%;border-radius:16px;border:4px solid #6b4226;display:block}
+.bkevpop{display:flex;justify-content:center;animation:bkpop .45s cubic-bezier(.2,1.6,.4,1)}@keyframes bkpop{from{transform:scale(.3) rotate(-8deg);opacity:0}}
+.bagpop{animation:bkpop .6s cubic-bezier(.2,1.6,.4,1),wob 2s .6s infinite}
 </style>
 </head>
 <body>
@@ -713,6 +744,7 @@ button.pink{background:linear-gradient(#fff0f5,#ffb0c8 60%,#ff8fb3)} button.gree
   <div id="tour" class="screen"></div>
   <div id="easter" class="screen"></div>
   <div id="trainev" class="screen"></div>
+  <div id="bkkev" class="screen"></div>
   <!-- SHOP -->
   <div id="shop" class="screen"></div>
   <!-- INVENTORY -->

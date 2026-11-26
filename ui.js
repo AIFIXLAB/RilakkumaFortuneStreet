@@ -101,9 +101,10 @@
     h += '<div class="hudnum" style="left:637px;top:22px;width:82px;height:34px">' + fmt(P.diamond) + '</div>';
     h += '<div class="hudnum" style="left:836px;top:22px;width:78px;height:34px">20/20</div>';
     h += '<div class="hudnum" style="left:172px;top:22px;width:84px;height:34px;background:#5a2a14">Lv. ' + P.level + '</div>';
+    h += '<div class="hot eventbtn bkkbtn" data-act="bkk"><img src="assets/bkk_banner.webp" draggable="false"><span>🛺 Bangkok City' + (Meta.bagCount('blue') + Meta.bagCount('purple') + Meta.bagCount('red') > 0 ? ' • 👝×' + (Meta.bagCount('blue') + Meta.bagCount('purple') + Meta.bagCount('red')) : '') + '</span></div>';
     h += '<div class="hot eventbtn trainbtn" data-act="trainev"><img src="assets/train_banner.webp" draggable="false"><span>🚂 อีเวนต์รถจักรไอน้ำ' + (P.tickets > 0 ? ' • 🎫×' + P.tickets : '') + '</span></div>';
     h += '<div class="hot eventbtn" data-act="easter"><img src="assets/easter_banner.webp" draggable="false"><span>🐰 อีเวนต์อีสเตอร์' + (P.eeggs > 0 ? ' • 🥚×' + P.eeggs : '') + '</span></div>';
-    if (P.boxes > 0) h += '<div class="hot giftbtn" data-act="boxes" style="left:120px;top:150px;width:150px;height:130px"><img src="assets/box.webp" draggable="false"><span>เปิดกล่อง ×' + P.boxes + '</span></div>';
+    if (P.boxes > 0) h += '<div class="hot giftbtn" data-act="boxes" style="left:290px;top:150px;width:150px;height:130px"><img src="assets/box.webp" draggable="false"><span>เปิดกล่อง ×' + P.boxes + '</span></div>';
     if (ls.canClaim) h += '<div class="badge" style="left:70px;top:140px">!</div><div class="badge" style="left:1176px;top:8px">!</div>';
     $('#menuHot').innerHTML = h; $('#menuHot').style.cssText = 'position:absolute;left:0;top:69px;width:1280px;height:721px';
   }
@@ -119,6 +120,7 @@
     else if (act === 'boxes') boxModal().then(renderMenu);
     else if (act === 'easter') Easter.open();
     else if (act === 'trainev') Train.open();
+    else if (act === 'bkk') Bkk.open();
     else if (act === 'login') dailyLogin();
     else if (act === 'rank') rankingModal();
     else if (act === 'trophy') achievements();
@@ -344,6 +346,7 @@
   function renderSetup() {
     var sel = U.sel;
     $('#mapCards').innerHTML = MAPS.map(function (m, i) {
+      if (m.bkk) return '';
       return '<div class="mapcard ' + (sel.map === i ? 'sel' : '') + '" data-map="' + i + '"><div class="thumb" style="background-image:url(assets/' + m.bg + '.webp)"><div class="mzoom" data-mz="' + i + '">🔍</div></div><div class="nm">' + m.th + ' <span class="muted" style="font-size:14px">' + m.name + '</span></div><div class="row" style="gap:4px;padding:0 12px 10px">' + m.districts.map(function (d) { return '<span title="' + esc(d.th) + '" style="width:22px;height:14px;border-radius:5px;background:' + d.color + ';border:2px solid #6b4226"></span>'; }).join('') + '<span style="font-size:12px;font-weight:800;margin-left:4px">' + (function () { var b = Game.buildBoard(i); return 'แผนที่' + m.size + ' • ' + b.tiles.length + ' ช่อง • ' + b.districts.length + ' เขต • ' + b.tiles.filter(function (t) { return t.type === 'shop'; }).length + ' ร้าน'; })() + '</span></div></div>';
     }).join('');
     document.querySelectorAll('[data-map]').forEach(function (e) { e.onclick = function (ev) { if (ev.target.closest('[data-mz]')) { ev.stopPropagation(); mapViewer(+e.dataset.map, function () { sel.map = +e.dataset.map; renderSetup(); }); return; } sel.map = +e.dataset.map; renderSetup(); }; });
@@ -407,8 +410,8 @@
   // PRE-MATCH LOADOUT (Character • Costume • Equipment x2 • Special Card x1 • Inventory • Map Preview • Ready)
   // =====================================================================
   var LO = { slot: 0 };
-  function allCharKeys() { var k = []; CHARACTERS.forEach(function (c, i) { k.push('b' + i); }); EXTRA_CHARS.forEach(function (c, i) { k.push('x' + i); }); JOB_CHARS.forEach(function (c, i) { k.push('j' + i); }); GOLD_CHARS.forEach(function (c, i) { k.push('g' + i); }); EASTER_CHARS.forEach(function (c, i) { k.push('e' + i); }); STEAM_CHARS.forEach(function (c, i) { k.push('s' + i); }); ROYAL_CHARS.forEach(function (c, i) { k.push('r' + i); }); return k; }
-  function aiCharKeys() { return allCharKeys().filter(function (k) { return k[0] !== 'e' && k[0] !== 'r'; }); }
+  function allCharKeys() { var k = []; CHARACTERS.forEach(function (c, i) { k.push('b' + i); }); EXTRA_CHARS.forEach(function (c, i) { k.push('x' + i); }); JOB_CHARS.forEach(function (c, i) { k.push('j' + i); }); GOLD_CHARS.forEach(function (c, i) { k.push('g' + i); }); EASTER_CHARS.forEach(function (c, i) { k.push('e' + i); }); STEAM_CHARS.forEach(function (c, i) { k.push('s' + i); }); ROYAL_CHARS.forEach(function (c, i) { k.push('r' + i); }); BKK_CHARS.forEach(function (c, i) { k.push('k' + i); }); return k; }
+  function aiCharKeys() { return allCharKeys().filter(function (k) { return k[0] !== 'e' && k[0] !== 'r' && k[0] !== 'k'; }); }
   function skillChip(k, big) { var s = Meta.charSkill(k); if (!s) return ''; return '<div class="skillchip' + (k[0] === 'g' ? ' gold' : k[0] === 'e' ? ' easter' : k[0] === 'r' ? ' royal' : '') + (big ? ' big' : '') + '"><b>⭐ ' + esc(s.name) + '</b><span>' + esc(s.desc) + '</span>' + (s.ename ? '<b style="margin-top:3px">' + (s.etag || '🥚') + ' ' + esc(s.ename) + ' <small>(โบนัส' + (s.elabel || 'อีเวนต์อีสเตอร์') + ')</small></b><span>' + esc(s.edesc) + '</span>' : '') + '</div>'; }
   U.skillChip = skillChip;
   function openLoadout() { var e = Meta.p.equip, v = Meta.validLoadout(); e.eq = v.eq; e.sc = v.sc; renderLoadout(); show('loadout'); }
@@ -514,7 +517,7 @@
       }
     })();
   }
-  function saveKey(s) { return s && s.train && s.train.kind === 'solo' ? 'rfs_save_train' : s && s.easter && s.easter.kind === 'solo' ? 'rfs_save_easter' : s && s.tour && s.tour.kind === 'solo' ? 'rfs_save_tour' : 'rfs_save_auto'; }
+  function saveKey(s) { return s && s.bkk && s.bkk.kind === 'solo' ? 'rfs_save_bkk' : s && s.train && s.train.kind === 'solo' ? 'rfs_save_train' : s && s.easter && s.easter.kind === 'solo' ? 'rfs_save_easter' : s && s.tour && s.tour.kind === 'solo' ? 'rfs_save_tour' : 'rfs_save_auto'; }
   U.saveKey = saveKey;
   // ---------- 3D dice (faces from the project's dice art) ----------
   var FACE_ROT = { 1: [0, 0], 6: [0, 180], 2: [0, -90], 5: [0, 90], 3: [-90, 0], 4: [90, 0] };
@@ -655,6 +658,9 @@
     });
   })();
   var TOUR_ICON = { platform: '🚉', prank: '🎁', chance: '🃏', lucky: '⭐', superlucky: '🌟', tax: '🧾', casino: '🎰', broker: '📈', rest: '♨️', festival: '🎉', event: '❗', boost: '⏩', ice: '⛸️', whirl: '🌀', wheel: '🎡', gate: '🔐', switch: '🔄', warp: '🌀' };
+  function bkBld(t) { var L = [1, 2, 2, 3, 4, 4, 5, 5][Math.max(0, Math.min(7, (t.level || 1) - 1))]; return ['bkb', (t.biz === 'onsen' ? 5 : 0) + L - 1]; }
+  var BK_ICON = { manhole: 0, cross: 1, bts: 2, mrt: 3, tuktuk: 4, pier: 5 }, BK_LBL = { manhole: '🕳️ ท่อ', cross: '🚸 ทางม้าลาย', bts: '🚈 BTS', mrt: 'Ⓜ️ MRT', tuktuk: '🛺 ตุ๊กตุ๊ก', pier: '⛴️ ท่าเรือ', event: '🏙️ อีเวนต์', casino: '🎲 คาสิโน', broker: '📈 หุ้น' };
+  function dieFace(n) { var P = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] }[n] || [4], h = ''; for (var i = 0; i < 9; i++) h += '<i' + (P.indexOf(i) >= 0 ? ' class="on' + (n === 1 || n === 4 ? ' red' : '') + '"' : '') + '></i>'; return '<div class="pips">' + h + '</div>'; }
   function tileHTML(t) {
     var g = U.g, s = g.s, T = BT, html = '', style = '', cls = 'ptile', fs = Math.max(8.5, T * 0.21);
     var lbl = function (txt, col) { return '<div class="lbl" style="font-size:' + fs + 'px;line-height:' + (fs * 1.35) + 'px;' + (col ? 'border-color:' + col : '') + '">' + txt + '</div>'; };
@@ -664,7 +670,7 @@
         var o = s.players[t.owner], bw = Math.max(3, T * 0.09);
         cls += ' owned'; style += 'border:' + bw + 'px solid ' + o.color + ';background:' + hexA(o.color, .35) + ';box-shadow:0 0 0 2px #fff,0 0 ' + T * 0.25 + 'px ' + o.color + ';';
         var ch = g.chainLen(t);
-        html += '<div class="bld">' + spr(['lvl', t.level - 1], T * 1.12, T * 1.02) + '</div><div class="lv" style="font-size:' + fs * 0.9 + 'px">' + (ch > 1 ? '🔗' + ch : 'Lv' + t.level) + '</div><div class="own" style="border-color:' + o.color + ';width:' + T * 0.5 + 'px;height:' + T * 0.5 + 'px">' + spr(charSpec(o), T * 0.42, T * 0.42) + '</div>' + lbl(fmt(g.shopRent(t)), o.color);
+        html += '<div class="bld">' + (MAPS[s.mapIdx].bkk ? spr(bkBld(t), T * 1.15, T * 1.1) : spr(['lvl', t.level - 1], T * 1.12, T * 1.02)) + '</div><div class="lv" style="font-size:' + fs * 0.9 + 'px">' + (ch > 1 ? '🔗' + ch : 'Lv' + t.level) + '</div><div class="own" style="border-color:' + o.color + ';width:' + T * 0.5 + 'px;height:' + T * 0.5 + 'px">' + spr(charSpec(o), T * 0.42, T * 0.42) + '</div>' + lbl(fmt(g.shopRent(t)), o.color);
         if (g.noRent(t)) html += '<div style="position:absolute;top:10%;font-size:' + T * 0.4 + 'px">🔧</div>';
       } else {
         style += 'border:' + Math.max(2, T * 0.05) + 'px dashed ' + d.color + ';';
@@ -683,6 +689,9 @@
       var b = SPECIAL_BUILDINGS.find(function (x) { return x.id === t.special; }), ow = s.players[t.spOwner];
       style += ow ? 'border:' + Math.max(3, T * 0.09) + 'px solid ' + ow.color + ';background:' + hexA(ow.color, .3) + ';' : '';
       html = '<div class="bld">' + spr(b.spr, T * 1.05, T * 0.95) + '</div>' + (ow ? '<div class="own" style="border-color:' + ow.color + ';width:' + T * 0.5 + 'px;height:' + T * 0.5 + 'px">' + spr(charSpec(ow), T * 0.42, T * 0.42) + '</div>' : '') + lbl(b.th);
+    } else if (MAPS[s.mapIdx].bkk && (BK_ICON[t.type] !== undefined || BK_LBL[t.type])) {
+      var bkc = { manhole: '#607d8b', cross: '#455a64', bts: '#2e7d32', mrt: '#1565c0', tuktuk: '#f9a825', pier: '#0288d1', event: '#e91e63', casino: '#c2185b', broker: '#2e7d32' }[t.type];
+      html = (BK_ICON[t.type] !== undefined ? '<div class="bkico">' + spr(['bkt', BK_ICON[t.type]], T * 1.05, T * 0.85) + '</div>' : '<div class="tbadge" style="font-size:' + T * 0.42 + 'px">' + (t.type === 'event' ? '🏙️' : t.type === 'casino' ? '🎲' : '📈') + '</div>') + lbl(BK_LBL[t.type], bkc);
     } else if ((MAPS[s.mapIdx].tour || MAPS[s.mapIdx].train) && TOUR_ICON[t.type]) {
       html = '<div class="tbadge" style="font-size:' + T * 0.42 + 'px">' + TOUR_ICON[t.type] + '</div>' + (t.type === 'gate' ? lbl('🔐 ' + fmt(CONFIG.gateFee), '#607d8b') : t.type === 'platform' ? lbl('🚉 ชานชาลา', '#1e88e5') : t.type === 'prank' ? lbl('🎁 กล่องแกล้ง', '#e53935') : '');
     } else if (t.type === 'dragon') {
@@ -1305,15 +1314,36 @@
         var steps = [1.1, 1.3, 1.6].map(function (m) { return Math.round(cur * m / 10) * 10; }).filter(function (v) { return v <= q.cash; });
         return modal({ title: '🔨 ประมูล ' + t.name + ' — ' + esc(q.name), body: '<div style="text-align:center;font-weight:800">ราคาปัจจุบัน ' + fmt(cur) + ' G • มูลค่า ' + fmt(g.shopValue(t)) + ' G • เงินสดของคุณ ' + fmt(q.cash) + ' G</div>', buttons: steps.map(function (v) { return { t: 'เสนอ ' + fmt(v), v: v, cls: 'green' }; }).concat([{ t: 'ไม่เสนอ', v: 0 }]), close: false });
       },
+      bkEvent: function (p, idx, dodged) {
+        var ev = BKK_EVENTS[idx]; sfx(ev.bad ? 'bad' : 'coin');
+        return modal({ title: '🏙️ อีเวนต์กรุงเทพฯ — ' + esc(p.name), width: 720, close: false, body: '<div class="bkevpop">' + spr(['bkev', idx], 660, 365) + '</div><div style="text-align:center;font-weight:900;font-size:22px;margin-top:8px">' + esc(ev.name) + '</div><div style="text-align:center;font-weight:700;font-size:16px">' + esc(ev.desc) + '</div>' + (dodged ? '<div style="text-align:center;font-weight:900;color:#2e7d32;font-size:18px;margin-top:4px">🛡️ สกิลตัวละครหลบอีเวนต์ร้ายได้!</div>' : ''), buttons: [{ t: 'ตกลง', v: 1, cls: 'green' }], auto: p.isAI ? 2200 : 0 });
+      },
       casinoBet: function (p, bets) {
         if (p.isAI) return Promise.resolve(A.casinoBet(g, p, bets));
-        return modal({ title: '🎰 คาสิโน', width: 940, body: '<div style="width:900px;height:506px;background:url(assets/bg_casino.webp) center/100% 100%;border-radius:16px;border:4px solid #6b4226"></div><div style="text-align:center;font-weight:800;margin-top:6px">3 ตัวเหมือน = x3 (🐻 x4, 7 x5) • 2 ตัวเหมือน = x1.5 • รางวัลสูงสุด ' + fmt(CONFIG.casino.maxWin) + ' G</div>', buttons: bets.map(function (b) { return { t: 'เดิมพัน ' + b, v: b, cls: 'pink' }; }).concat([{ t: 'ไม่เล่น', v: 0 }]), close: false });
+        var sel = bets[Math.min(1, bets.length - 1)], bg = MAPS[g.s.mapIdx].bkk ? 'bg_bkcasino' : 'bg_casino';
+        return modal({ title: '🎲 คาสิโน — แทงสูง/ต่ำ ลูกเต๋า 3 ลูก', width: 960, close: false, body: '<div class="hlwrap" style="background-image:url(assets/' + bg + '.webp)"><div class="hlrule">🔺 สูง = 11–18 &nbsp;•&nbsp; 🔻 ต่ำ = 3–10 &nbsp;•&nbsp; ทายถูกได้ x2 &nbsp;•&nbsp; ออกตอง (3 ลูกเหมือนกัน) เจ้ามือกิน</div></div>' +
+          '<div style="text-align:center;font-weight:800;margin:8px 0 4px">เลือกจำนวนเงินเดิมพัน • เงินสด ' + fmt(p.cash) + ' G</div><div class="hlchips">' + bets.map(function (b) { return '<button class="hlchip' + (b === sel ? ' on' : '') + '" data-bet="' + b + '">' + fmt(b) + '</button>'; }).join('') + '</div>' +
+          '<div class="row" style="justify-content:center;gap:16px;margin-top:10px"><button class="hlbtn hi" data-side="hi">🔺 แทงสูง<small>11–18</small></button><button class="hlbtn lo" data-side="lo">🔻 แทงต่ำ<small>3–10</small></button></div>', buttons: [{ t: 'ไม่เล่น', v: 0, cls: 'gray' }],
+          mount: function (box, close) {
+            box.querySelectorAll('[data-bet]').forEach(function (e) { e.onclick = function () { sel = +e.dataset.bet; box.querySelectorAll('[data-bet]').forEach(function (x) { x.classList.toggle('on', x === e); }); sfx('tap'); }; });
+            box.querySelectorAll('[data-side]').forEach(function (e) { e.onclick = function () { close({ bet: sel, side: e.dataset.side }); }; });
+          } });
       },
-      casinoShow: function (p, reels, bet, win) {
-        var syms = ['🍒', '🔔', '⭐', '🐻', '7'];
-        return modal({ title: '🎰 ' + esc(p.name) + ' เดิมพัน ' + bet + ' G', width: 940, close: false, body: '<div style="position:relative;width:900px;height:506px;background:url(assets/bg_casino.webp) center/100% 100%;border-radius:16px;border:4px solid #6b4226"><div class="reel" id="r0" style="position:absolute;left:371px;top:191px;width:108px;height:124px"></div><div class="reel" id="r1" style="position:absolute;left:492px;top:191px;width:105px;height:124px"></div><div class="reel" id="r2" style="position:absolute;left:611px;top:191px;width:110px;height:124px"></div></div><div id="cres" style="text-align:center;font-weight:900;font-size:24px;margin-top:6px">หมุน...</div>', buttons: [{ t: 'ตกลง', v: 1, cls: 'green' }], auto: p.isAI ? 2600 : 0,
+      casinoShow: function (p, dice, bet, win, side, refund) {
+        var bg = MAPS[g.s.mapIdx].bkk ? 'bg_bkcasino' : 'bg_casino', sum = dice[0] + dice[1] + dice[2], triple = dice[0] === dice[1] && dice[1] === dice[2];
+        return modal({ title: '🎲 ' + esc(p.name) + ' แทง' + (side === 'hi' ? 'สูง 🔺' : 'ต่ำ 🔻') + ' ' + fmt(bet) + ' G', width: 960, close: false, body: '<div class="hlwrap" style="background-image:url(assets/' + bg + '.webp)"><div class="hldome"><div class="hldie" id="hd0"></div><div class="hldie" id="hd1"></div><div class="hldie" id="hd2"></div></div></div><div id="cres" class="hlres">กำลังเขย่า...</div>', buttons: [{ t: 'ตกลง', v: 1, cls: 'green' }], auto: p.isAI ? 3000 : 0,
           mount: function (box) {
-            var k = 0, iv = setInterval(function () { for (var i = 0; i < 3; i++) { var e = box.querySelector('#r' + i); if (e && k < 10 + i * 5) e.textContent = syms[(k + i * 2) % 5]; else if (e) e.textContent = reels[i]; } k++; sfx('dice'); if (k > 22) { clearInterval(iv); var r = box.querySelector('#cres'); if (r) r.innerHTML = win ? '🎉 ชนะ +' + fmt(win) + ' G!' : 'เสียใจด้วย ลองใหม่ครั้งหน้า'; sfx(win ? 'win' : 'bad'); } }, 80);
+            var k = 0, els = [0, 1, 2].map(function (i) { return box.querySelector('#hd' + i); });
+            els.forEach(function (e) { e.classList.add('spin'); });
+            var iv = setInterval(function () {
+              els.forEach(function (e, i) { if (!e) return; if (k < 14 + i * 4) e.innerHTML = dieFace(1 + Math.floor(Math.random() * 6)); else if (e.classList.contains('spin')) { e.classList.remove('spin'); e.classList.add('land'); e.innerHTML = dieFace(dice[i]); sfx('tap'); } });
+              k++; if (k % 3 === 0) sfx('dice');
+              if (k > 24) {
+                clearInterval(iv); var r = box.querySelector('#cres'), hi = sum >= 11;
+                if (r) r.innerHTML = '<span class="hlsum ' + (hi ? 'hi' : 'lo') + '">' + dice.join(' + ') + ' = ' + sum + ' → ' + (triple ? 'ตอง! เจ้ามือกิน' : hi ? 'สูง 🔺' : 'ต่ำ 🔻') + '</span><br>' + (win && !refund ? '🎉 ชนะ! รับ ' + fmt(win) + ' G (กำไร +' + fmt(win - bet) + ')' : refund ? '🍀 สกิลตัวละครคืนเงินเดิมพัน ' + fmt(win) + ' G' : '💸 เสียเดิมพัน ' + fmt(bet) + ' G');
+                sfx(win && !refund ? 'win' : 'bad'); if (win && !refund) box.querySelector('.hlwrap').classList.add('winfx');
+              }
+            }, 90);
           } });
       },
       chooseSpecialHouse: async function (p, t, opts) {
@@ -1535,7 +1565,7 @@
   }
 
   // ---------- RESULT ----------
-  function showResult(g) { U.flushModals(); if (g.s.train) { victoryScene(g).then(function () { return Train.award(g); }).then(function () { showResultPage(g); }); return; } if (g.s.easter) { setTimeout(function () { Easter.afterStage(g); }, 600); return; } victoryScene(g).then(function () { if (g.s.tour) Tour.afterWorld(g); else showResultPage(g); }); }
+  function showResult(g) { U.flushModals(); if (g.s.bkk) { victoryScene(g).then(function () { return Bkk.award(g); }).then(function () { showResultPage(g); }); return; } if (g.s.train) { victoryScene(g).then(function () { return Train.award(g); }).then(function () { showResultPage(g); }); return; } if (g.s.easter) { setTimeout(function () { Easter.afterStage(g); }, 600); return; } victoryScene(g).then(function () { if (g.s.tour) Tour.afterWorld(g); else showResultPage(g); }); }
   U.victoryScene = function (g) { return victoryScene(g); };
   function victoryScene(g) {
     return new Promise(function (resolve) {
@@ -1780,6 +1810,82 @@
   })();
   U.Train = Train;
   // =====================================================================
+  // BANGKOK CITY — special map, Bangkok characters only, no round limit, wealth target 50k/70k/100k → lucky bags
+  var Bkk = (function () {
+    var SEL = { tier: 0 };
+    function mapIdx() { return MAPS.indexOf(BKK_MAP); }
+    function saved() { try { var s = JSON.parse(localStorage.getItem('rfs_save_bkk') || 'null'); return s && !s.over && s.bkk ? s : null; } catch (e) { return null; } }
+    function myChars() { var P = Meta.p; return BKK_CHARS.map(function (c, i) { return 'k' + i; }).filter(function (k) { return P.chars[k]; }); }
+    function rules() {
+      return modal({ title: '📜 กติกา Bangkok City – มหานครแห่งโชคลาภ', width: 920, body: '<div class="erules">' +
+        '<p>🧸 <b>ใช้ได้เฉพาะตัวละคร Bangkok Collection</b> (28 ตัว) — ต้องซื้อ/ปลดล็อกก่อนเข้าเล่น • สกิลตัวละครชุดนี้ใช้ได้ทุกแมพ และมีโบนัส 🛺 เพิ่มในแมพกรุงเทพฯ</p>' +
+        '<p>🏠 บ้าน/ร้านค้า Lv.1–5 และโรงแรม Lv.1–5 ธีมกรุงเทพฯ — ระดับยิ่งสูง มูลค่าและค่าเช่ายิ่งสูง</p>' +
+        '<p>🎯 เลือกเป้าหมายก่อนเริ่ม: <b>50,000 / 70,000 / 100,000 G</b> • <b>ไม่จำกัดรอบ</b> — ใครทรัพย์สินถึงเป้าก่อนชนะ</p>' +
+        '<p>🏙️ ช่องอีเวนต์: สุ่ม 16 เหตุการณ์ (รถติด ฝนตก สงกรานต์ ลอยกระทง เยาวราช จตุจักร BTS MRT เรือด่วน ท่อลับ ทางม้าลาย ทำบุญ ช้อปปิ้ง สตรีทฟู้ด งานวัด เลือกตั้ง)</p>' +
+        '<p>🚈 BTS / Ⓜ️ MRT วาร์ปไปสถานีอื่น • ⛴️ เรือด่วนข้ามฟาก +300 G • 🛺 ตุ๊กตุ๊กพุ่ง 1–6 ช่อง + ลุ้นไอเทม • 🕳️ ท่อระบายน้ำวาร์ปสุ่ม • 🚸 ทางม้าลาย รับ 200 G หรือเดิน +1–3</p>' +
+        '<p>🎲 คาสิโนแทงสูง–ต่ำ ลูกเต๋า 3 ลูก • กติกาหลักคงเดิม: ซื้อร้าน ลงทุน หุ้น เก็บ ♥♠♣♦ กลับ BANK เลื่อนระดับ (เงินเดือนในแมพนี้ ×1.8)</p>' +
+        '<p>👝 จบเกมได้ <b>ถุงโชคดี</b> ตามระดับเป้าหมาย — อันดับ 1/2/3/4 ได้ <b>' + BKK.bagsByRank.join('/') + ' ถุง</b> • ถุงสูงขึ้น = รางวัลดีขึ้น (เงิน 💎 ไอเทม การ์ด กล่องสุ่ม และตัวละครกรุงเทพฯ)</p></div>', buttons: [{ t: 'เข้าใจแล้ว', v: 1, cls: 'green' }] });
+    }
+    function odds(tier) { var B = Meta.BAG[tier], tot = B.w.reduce(function (a, x) { return a + x[0]; }, 0), N = { gold: '🪙 Gold ' + fmt(B.gold[0]) + '–' + fmt(B.gold[B.gold.length - 1]), diamond: '💎 ' + B.dia[0] + '–' + B.dia[B.dia.length - 1], equip: '🎒 ไอเทม ×' + B.n.join('–'), card: '🃏 การ์ดพิเศษ ×' + B.n.join('–'), 'char': '🧸 ตัวละครกรุงเทพฯ' + (tier === 'blue' ? ' (ชุดเหรียญ)' : ''), boxes: '🎁 กล่องสุ่ม ×' + (tier === 'red' ? 5 : 3) };
+      return B.w.map(function (x) { return N[x[1]] + ' <b>' + Math.round(x[0] / tot * 100) + '%</b>'; }).join(' • ') + ' • ทุกถุงมีโบนัส ' + fmt(B.bonus[0]) + '–' + fmt(B.bonus[1]) + ' G'; }
+    function hub() {
+      var P = Meta.p, sv = saved(), mine = myChars();
+      if (!P.bkChar || !P.chars[P.bkChar]) P.bkChar = mine[0] || null;
+      var tiers = BKK.tiers.map(function (t, i) { var n = Meta.bagCount(t.id); return '<div class="bktier' + (SEL.tier === i ? ' on' : '') + '" data-bt="' + i + '" style="--tc:' + t.color + '"><img src="' + t.img + '" draggable="false"><div class="bkt1">' + fmt(t.target) + ' G</div><div class="bkt2">' + t.name + ' • เริ่ม ' + fmt(t.start) + ' G</div>' + (n ? '<button class="small pink" data-bo="' + t.id + '">เปิดถุง ×' + n + '</button>' : '<div class="bkt2">ถุงในคลัง: 0</div>') + '</div>'; }).join('');
+      var chars = BKK_CHARS.map(function (c, i) { var k = 'k' + i, own = P.chars[k]; return '<div class="rcard bkc' + (own ? ' own' : '') + (P.bkChar === k ? ' sel' : '') + '" data-kc="' + k + '">' + spr(['bkk', i], 74, 80) + '<div class="rnm">' + esc(c.name) + '</div>' + (own ? '<div class="rown">' + (P.bkChar === k ? '✅ เลือกอยู่' : 'แตะเพื่อเลือก') + '</div>' : '<button class="small ' + (c.cur === 'gold' ? 'green' : 'pink') + '" data-kb="' + k + '">' + (c.cur === 'gold' ? '🪙 ' + fmt(c.price) : '💎 ' + c.price) + '</button>') + '</div>'; }).join('');
+      $('#bkkev').innerHTML = '<div class="scrhead"><div class="uibtn backbtn" id="bkBack">' + spr(['ui', 'prev'], 70, 70) + '</div><div class="title"><span class="ttl">🛺 Bangkok City – มหานครแห่งโชคลาภ</span></div><button class="small" id="bkRules" style="margin-left:auto">📜 กติกา</button></div>' +
+        '<div class="scrbody"><div class="ebanner"><img src="assets/bkk_banner.webp" draggable="false"></div>' +
+        '<div class="row" style="gap:14px;align-items:stretch;margin-top:12px">' +
+        '<div class="panel" style="padding:12px;width:520px"><div class="tvmap" id="bkMap" style="background-image:url(assets/bg_bkk.webp)"><span>🔍 แตะเพื่อดูแผนที่</span></div>' +
+        '<div style="font-weight:900;margin-top:10px">🎯 เลือกหมวดเป้าหมาย (ไม่จำกัดรอบ)</div><div class="bktiers">' + tiers + '</div>' +
+        '<div class="bkodds" id="bkOdds">👝 ถุง' + ['สีน้ำเงิน', 'สีม่วง', 'สีแดงทอง'][SEL.tier] + ': ' + odds(BKK.tiers[SEL.tier].id) + '</div>' +
+        '<div class="row" style="gap:4px;margin-top:6px;align-items:center"><b>สีของคุณ:</b>' + colorDots(P.color || 0, 'bkcol') + '</div>' +
+        '<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap">' + (sv ? '<button class="green" id="bkResume" style="font-size:19px">▶ เล่นต่อ (รอบ ' + sv.round + ' • เป้า ' + fmt(sv.settings.target) + ')</button><button class="small" id="bkGo">🔄 เริ่มเกมใหม่</button>' : '<button class="pink" id="bkGo" style="font-size:20px">▶ เริ่มแข่งกับ AI 3 ตัว</button>') + '</div>' +
+        '<div class="muted" style="font-size:12px;font-weight:700;margin-top:4px">อันดับ 1/2/3/4 รับถุงโชคดี ' + BKK.bagsByRank.join('/') + ' ถุง ทุกครั้งที่จบเกม • ใช้ไอเทม/การ์ดที่ติดตั้งไว้</div></div>' +
+        '<div class="panel grow" style="padding:12px"><div style="font-weight:900">🧸 ตัวละคร Bangkok Collection (' + mine.length + '/28) — ' + (mine.length ? 'เลือกตัวที่จะลงแข่ง' : '<span style="color:#e53935">ต้องซื้ออย่างน้อย 1 ตัวก่อนเข้าเล่น</span>') + '</div>' +
+        '<div class="bkgrid">' + chars + '</div><div id="bkInfo">' + itemInfoBox(P.bkChar) + '</div></div></div></div>';
+      show('bkkev');
+      var R = $('#bkkev');
+      $('#bkBack').onclick = function () { show('menu'); renderMenu(); };
+      $('#bkRules').onclick = function () { rules(); };
+      $('#bkMap').onclick = function () { mapViewer(mapIdx(), null); };
+      R.querySelectorAll('[data-bkcol]').forEach(function (e) { e.onclick = function () { P.color = +e.dataset.bkcol; Meta.save(); hub(); }; });
+      R.querySelectorAll('[data-bt]').forEach(function (e) { e.onclick = function (ev) { if (ev.target.closest('[data-bo]')) return; SEL.tier = +e.dataset.bt; sfx('tap'); hub(); }; });
+      R.querySelectorAll('[data-bo]').forEach(function (e) { e.onclick = function () { boxModal('bag:' + e.dataset.bo).then(hub); }; });
+      R.querySelectorAll('[data-kc]').forEach(function (e) { e.onclick = function (ev) { if (ev.target.closest('[data-kb]')) return; var k = e.dataset.kc; if (P.chars[k]) { P.bkChar = k; Meta.save(); hub(); } else $('#bkInfo').innerHTML = itemInfoBox(k); }; });
+      R.querySelectorAll('[data-kb]').forEach(function (e) { e.onclick = function () { var k = e.dataset.kb, c = BKK_CHARS[+k.slice(1)];
+        modal({ title: '🛺 ซื้อตัวละครกรุงเทพฯ', body: '<div style="text-align:center">' + spr(['bkk', +k.slice(1)], 160, 170) + '<div style="font-weight:900;font-size:20px">' + esc(c.name) + '</div>' + skillChip(k, true) + '<div style="margin-top:8px;font-weight:800">ราคา ' + (c.cur === 'gold' ? fmt(c.price) + ' Gold (มี ' + fmt(P.gold) + ')' : c.price + ' 💎 (มี ' + P.diamond + ')') + '</div></div>', buttons: [{ t: 'ซื้อเลย', v: 1, cls: 'pink' }, { t: 'ยกเลิก', v: 0 }] })
+          .then(function (v) { if (!v) return; var r = Meta.buy(k); toast(r.msg, 2600); if (r.ok) { sfx('win'); P.bkChar = k; Meta.save(); } hub(); }); }; });
+      if (sv) $('#bkResume').onclick = function () { startGame(sv, false); };
+      $('#bkGo').onclick = function () {
+        if (!myChars().length) { toast('🧸 ต้องมีตัวละครชุดกรุงเทพฯ อย่างน้อย 1 ตัว — กดปุ่มราคาเพื่อซื้อ', 3000); return; }
+        if (sv && !hub._c) { hub._c = 1; toast('กดอีกครั้งเพื่อเริ่มใหม่ (เกมที่ค้างไว้จะหายไป)', 2500); setTimeout(function () { hub._c = 0; }, 2500); return; } hub._c = 0; start(); };
+    }
+    function randLv() { var l = AI_LEVELS.map(function (x) { return x.id; }); return l[Math.floor(Math.random() * l.length)]; }
+    function start() {
+      try { localStorage.removeItem('rfs_save_bkk'); } catch (e) { }
+      var P = Meta.p, v = Meta.validLoadout(), T = BKK.tiers[SEL.tier], me = P.bkChar && P.chars[P.bkChar] ? P.bkChar : myChars()[0];
+      var pool = BKK_CHARS.map(function (c, i) { return 'k' + i; }).filter(function (k) { return k !== me; });
+      var players = [{ name: P.name, char: me, isAI: false, loadout: { eq: v.eq, sc: v.sc }, dice: P.equip.dice }];
+      for (var i = 0; i < 3; i++) { var ch = pool.splice(Math.floor(Math.random() * pool.length), 1)[0]; players.push({ name: Meta.charName(ch) + ' AI', char: ch, isAI: true, aiLevel: randLv(), persona: AI_PERSONAS[Math.floor(Math.random() * AI_PERSONAS.length)] }); }
+      var cols = assignColors(players.map(function (q, k) { return k === 0 ? (P.color || 0) : -1; })); players.forEach(function (q, k) { q.color = cols[k]; });
+      var s = Game.create({ bkk: { tier: SEL.tier, kind: 'solo' }, mapIdx: mapIdx(), players: players, target: T.target, startCash: T.start, maxRounds: BKK.maxRounds, rules: { endOnBankrupt: true }, seed: Math.floor(Math.random() * 1e9) });
+      s.ownerIdx = 0; s.dice = P.equip.dice; s.lenName = 'Bangkok City • เป้า ' + fmt(T.target) + ' G';
+      modal({ title: '🎯 เป้าหมายการแข่งขัน', width: 620, body: '<div style="text-align:center"><img src="' + T.img + '" style="height:200px" draggable="false"><div style="font-size:30px;font-weight:900;color:' + T.color + '">' + fmt(T.target) + ' G</div><div style="font-weight:800;line-height:1.7">ถุงโชคดี' + T.name + ' • ไม่จำกัดรอบ<br>ใครทรัพย์สินถึง ' + fmt(T.target) + ' G ก่อน ชนะ! • เงินเริ่มต้น ' + fmt(T.start) + ' G<br>อันดับ 1/2/3/4 รับถุง ' + BKK.bagsByRank.join('/') + ' ถุง</div></div>', buttons: [{ t: '▶ เริ่มเลย!', v: 1, cls: 'pink' }] })
+        .then(function () { startGame(s, true); });
+    }
+    function award(g) {
+      var s = g.s, me = s.players[s.ownerIdx || 0]; if (g._bag) return Promise.resolve(); g._bag = 1;
+      var rk = s.ranking || [], myR = Math.max(0, rk.findIndex(function (r) { return r.id === me.id; })), T = BKK.tiers[s.bkk.tier || 0], n = BKK.bagsByRank[myR] || 1;
+      if (s.bkk.kind === 'solo') { try { localStorage.removeItem('rfs_save_bkk'); } catch (e) { } }
+      Meta.addBags(T.id, n);
+      return modal({ title: '👝 ถุงโชคดี' + T.name, width: 640, close: false, body: '<div style="text-align:center"><img src="' + T.img + '" class="tkpop bagpop" style="height:220px" draggable="false"><div style="font-size:30px;font-weight:900;color:' + T.color + '">×' + n + ' ถุง</div><div style="font-weight:800;margin-top:6px">' + (myR === 0 ? '👑 ' : '🏅 ') + 'อันดับ ' + (myR + 1) + ' • เป้าหมาย ' + fmt(T.target) + ' G</div></div>', buttons: [{ t: '👝 เปิดถุงเลย!', v: 1, cls: 'pink' }, { t: 'เก็บไว้เปิดทีหลัง', v: 0 }] })
+        .then(function (v) { if (v) return boxModal('bag:' + T.id); });
+    }
+    return { open: hub, hub: hub, saved: saved, award: award, rules: rules, mapIdx: mapIdx };
+  })();
+  U.Bkk = Bkk;
+  // =====================================================================
   // TOURNAMENT — 6 worlds, 1st & 2nd go through, boxes by how far you get
   // =====================================================================
   var Tour = (function () {
@@ -1929,10 +2035,11 @@
   U.Tour = Tour;
   // ---------- mystery boxes ----------
   function boxModal(kind) {
-    var EG = kind === 'easter', P = Meta.p, n = (EG ? P.eeggs : P.boxes) || 0; if (!n) return Promise.resolve();
-    var opener = EG ? Meta.openEgg : Meta.openBox, img = EG ? 'assets/easter_egg.webp' : 'assets/box.webp';
-    return modal({ title: EG ? '🥚 ไข่อีสเตอร์สุ่ม' : '🎁 กล่องสุ่มของรางวัล', width: 1060, close: false, bgClose: false, body: '<div id="bxB"></div>', buttons: [], mount: function (box, close) {
-      var B = box.querySelector('#bxB'), cells = [];
+    var EG = kind === 'easter', BG = kind && kind.indexOf('bag:') === 0 ? kind.slice(4) : null, P = Meta.p, n = (BG ? Meta.bagCount(BG) : EG ? P.eeggs : P.boxes) || 0; if (!n) return Promise.resolve();
+    var BT = BG && BKK.tiers.find(function (t) { return t.id === BG; });
+    var opener = BG ? function () { return Meta.openBag(BG); } : EG ? Meta.openEgg : Meta.openBox, img = BG ? BT.img : EG ? 'assets/easter_egg.webp' : 'assets/box.webp';
+    return modal({ title: BG ? '👝 ถุงโชคดี' + BT.name + ' (' + fmt(BT.target) + ' G)' : EG ? '🥚 ไข่อีสเตอร์สุ่ม' : '🎁 กล่องสุ่มของรางวัล', width: 1060, close: false, bgClose: false, body: '<div id="bxB"></div>', buttons: [], mount: function (box, close) {
+      var B = box.querySelector('#bxB'), cells = []; if (BG) B.className = 'bagfx bag-' + BG;
       for (var i = 0; i < n; i++) cells.push(null);
       function cellHTML(c, i) {
         if (!c) return '<div class="bxcell" data-bx="' + i + '"><img class="bximg" src="' + img + '" draggable="false"><div class="bxtap">แตะเพื่อเปิด!</div></div>';
@@ -1942,7 +2049,7 @@
       }
       function draw() {
         var left = cells.filter(function (c) { return !c; }).length;
-        B.innerHTML = '<div style="text-align:center;font-weight:800;font-size:17px;margin-bottom:8px">' + (left ? (EG ? 'มีไข่อีสเตอร์รอเปิด ' : 'มีกล่องสุ่มรอเปิด ') + '<b style="color:#ff5d8f;font-size:24px">' + left + '</b> ' + (EG ? 'ฟอง' : 'กล่อง') + ' • แตะกล่องเพื่อเปิด!' : '🎉 เปิดครบแล้ว! ของรางวัลเข้ากระเป๋าแล้ว') + '</div>' +
+        B.innerHTML = '<div style="text-align:center;font-weight:800;font-size:17px;margin-bottom:8px">' + (left ? (BG ? 'มีถุงโชคดีรอเปิด ' : EG ? 'มีไข่อีสเตอร์รอเปิด ' : 'มีกล่องสุ่มรอเปิด ') + '<b style="color:#ff5d8f;font-size:24px">' + left + '</b> ' + (BG ? 'ถุง' : EG ? 'ฟอง' : 'กล่อง') + ' • แตะเพื่อเปิด!' : '🎉 เปิดครบแล้ว! ของรางวัลเข้ากระเป๋าแล้ว') + '</div>' +
           '<div class="bxgrid">' + cells.map(cellHTML).join('') + '</div>' +
           '<div class="row" style="justify-content:center;gap:10px;margin-top:12px">' + (left ? '<button class="pink" id="bxAll">🎁 เปิดทั้งหมด</button><button class="gray" id="bxLater">เก็บไว้เปิดทีหลัง</button>' : '<button class="green" id="bxOk">เยี่ยมเลย!</button>') + '</div>';
         B.querySelectorAll('[data-bx]').forEach(function (e) { e.onclick = function () { openOne(+e.dataset.bx); }; });
@@ -1990,7 +2097,7 @@
     var rk = s.ranking || s.players.map(function (p) { return { id: p.id, nw: g.netWorth(p) }; }).sort(function (a, b) { return b.nw - a.nw; });
     var myRank = rk.findIndex(function (r) { return r.id === owner.id; });
     if (s.teams && s.winTeam >= 0) myRank = owner.team === s.winTeam ? Math.min(myRank, 1) : Math.max(myRank, 2);
-    var reward = !owner.isAI ? Meta.matchReward(myRank, s.winner === owner.id || (s.teams && s.winTeam >= 0 && owner.team === s.winTeam), g.netWorth(owner), !!s.train) : null;
+    var reward = !owner.isAI ? Meta.matchReward(myRank, s.winner === owner.id || (s.teams && s.winTeam >= 0 && owner.team === s.winTeam), g.netWorth(owner), !!(s.train || s.bkk)) : null;
     if (reward && s.train) { reward.boxes = TRAIN.rankBoxes[myRank] || 0; Meta.addBoxes(reward.boxes); }
     try { var L = JSON.parse(localStorage.getItem('rfs_results') || '[]'); L.unshift({ map: MAPS[s.mapIdx].th, rank: myRank + 1, nw: g.netWorth(owner), date: new Date().toLocaleDateString('th-TH') }); localStorage.setItem('rfs_results', JSON.stringify(L.slice(0, 20))); } catch (e) { }
     var W = 560, H = 220, mx = Math.max.apply(null, s.players.map(function (p) { return Math.max.apply(null, p.hist.concat([g.netWorth(p), 1])); }));
@@ -2061,7 +2168,7 @@
   var EQS = { slot: 0, info: null };
   function itemInfoBox(id) {
     if (!id) return '<div class="iinfo muted">👆 แตะไอเทมหรือตัวละครเพื่อดูสรรพคุณ</div>';
-    if (/^[bxjgers]\d+$/.test(id)) { var sk = Meta.charSkill(id); return '<div class="iinfo">' + spr(Meta.charSprite(id), 46, 50) + '<div><b>' + esc(Meta.charName(id)) + '</b><br>' + (sk ? '⭐ <b>' + esc(sk.name) + '</b>: ' + esc(sk.desc) + (sk.ename ? '<br>' + (sk.etag || '🥚') + ' <b>' + esc(sk.ename) + '</b> (' + (sk.elabel || 'อีสเตอร์') + '): ' + esc(sk.edesc) : '') : 'ไม่มีสกิลพิเศษ') + '</div></div>'; }
+    if (/^[bxjgersk]\d+$/.test(id)) { var sk = Meta.charSkill(id); return '<div class="iinfo">' + spr(Meta.charSprite(id), 46, 50) + '<div><b>' + esc(Meta.charName(id)) + '</b><br>' + (sk ? '⭐ <b>' + esc(sk.name) + '</b>: ' + esc(sk.desc) + (sk.ename ? '<br>' + (sk.etag || '🥚') + ' <b>' + esc(sk.ename) + '</b> (' + (sk.elabel || 'อีสเตอร์') + '): ' + esc(sk.edesc) : '') : 'ไม่มีสกิลพิเศษ') + '</div></div>'; }
     var it = Meta.item(id); if (!it) return ''; return '<div class="iinfo">' + spr(it.spr, 46, 44) + '<div><b>' + esc(it.name) + '</b> <span class="chip" style="font-size:11px">' + (/^SC_/.test(id) ? 'การ์ดพิเศษ' : /^dice/.test(id) ? 'สกินลูกเต๋า' : 'อุปกรณ์') + ' • มี ' + (Meta.owned(id) || (Meta.p.dice[id] ? 1 : 0)) + '</span><br>' + esc(it.desc || it.th || '') + '</div></div>';
   }
   function renderEquipTab(box) {
@@ -2109,7 +2216,7 @@
   }
   function renderInventory() {
     var P = Meta.p, items = [];
-    if (IV.tab === 'Characters') { allCharKeys().forEach(function (k) { if (P.chars[k]) items.push({ id: k, name: Meta.charName(k), spr: Meta.charSprite(k), q: 1, eq: P.equip.char === k }); }); allCharKeys().forEach(function (k) { if (!P.chars[k] && (k[0] === 'r' || k[0] === 'e' || k[0] === 's')) items.push({ id: k, name: Meta.charName(k), spr: Meta.charSprite(k), q: 0, lockedHow: k[0] === 'r' ? '🎫 แลกตั๋วทอง' : k[0] === 'e' ? '🥚 จากไข่อีสเตอร์' : '💎 ร้านค้า' }); }); }
+    if (IV.tab === 'Characters') { allCharKeys().forEach(function (k) { if (P.chars[k]) items.push({ id: k, name: Meta.charName(k), spr: Meta.charSprite(k), q: 1, eq: P.equip.char === k }); }); allCharKeys().forEach(function (k) { if (!P.chars[k] && (k[0] === 'r' || k[0] === 'e' || k[0] === 's' || k[0] === 'k')) items.push({ id: k, name: Meta.charName(k), spr: Meta.charSprite(k), q: 0, lockedHow: k[0] === 'r' ? '🎫 แลกตั๋วทอง' : k[0] === 'e' ? '🥚 จากไข่อีสเตอร์' : k[0] === 'k' ? '🛺 ร้านค้า/ถุงโชคดี' : '💎 ร้านค้า' }); }); }
     else if (IV.tab === 'Dice Skins') { DICE_SKINS.forEach(function (d) { if (P.dice[d.id]) items.push({ id: d.id, name: d.name, spr: d.spr, q: 1, eq: P.equip.dice === d.id }); }); }
     else if (IV.tab === 'Packages') { items = []; }
     else if (IV.tab === 'Other Items') { items = []; }
@@ -2270,7 +2377,7 @@
     var tgPre = S.teams ? [50000, 80000, 120000, 200000] : [25000, 40000, 60000, 100000];
     var num = function (id, v, w) { return '<input type="number" id="' + id + '" value="' + v + '" style="width:' + (w || 110) + 'px;font-size:16px;padding:5px 8px;border:2px solid #6b4226;border-radius:10px;font-family:inherit">'; };
     var settings = host ?
-      '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:10px"><b>แผนที่:</b>' + MAPS.map(function (m, i) { return '<button class="small rbtn ' + (S.map === i ? 'on' : '') + '" data-lm="' + i + '">' + m.th + '</button>'; }).join('') + '</div>' +
+      '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:10px"><b>แผนที่:</b>' + MAPS.map(function (m, i) { return m.bkk ? '' : '<button class="small rbtn ' + (S.map === i ? 'on' : '') + '" data-lm="' + i + '">' + m.th + '</button>'; }).join('') + '</div>' +
       '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px"><b>โหมด:</b><div class="seg"><div data-mode="0" class="' + (!S.teams ? 'on' : '') + '">👤 เดี่ยว</div><div data-mode="1" class="' + (S.teams ? 'on' : '') + '">🤝 ทีม 2 vs 2</div></div>' + (S.teams ? [0, 1].map(function (k) { return '<div class="row" style="gap:4px;align-items:center"><b style="color:' + TC[k] + '">สี' + TN[k] + ':</b>' + TEAM_PAL.map(function (c, ci) { var taken = ci === tcol[1 - k]; return '<span class="tcdot' + (ci === tcol[k] ? ' on' : '') + (taken ? ' off' : '') + '" data-tc="' + k + ':' + ci + '" title="' + c.n + '" style="background:' + c.c + '"></span>'; }).join('') + '</div>'; }).join('') : '') + (S.teams ? '<span class="muted" style="font-size:12px;font-weight:700">เพื่อนร่วมทีมไม่เก็บค่าเช่ากัน • ช่วยลงทุนร้านกันได้ • ร้านในเขตเดียวกันนับรวมเป็นของทีม • ทรัพย์สินรวมของทีมถึงเป้า = ชนะ</span>' : '') + '</div>' +
       '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px"><b>' + (S.teams ? 'เป้าหมายรวมของทีม:' : 'เป้าหมาย:') + '</b>' + tgPre.map(function (t) { return '<button class="small rbtn ' + (S.target === t ? 'on' : '') + '" data-lt="' + t + '">' + fmt(t) + '</button>'; }).join('') + num('lobTg', S.target) + ' G</div>' +
       '<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px"><b>เงินเริ่มต้น:</b>' + [5000, 10000, 15000, 20000, 30000].map(function (t) { return '<button class="small rbtn ' + (S.startCash === t ? 'on' : '') + '" data-lc="' + t + '">' + fmt(t) + '</button>'; }).join('') + num('lobCash', S.startCash || 10000) + ' G</div>' +
@@ -2369,9 +2476,9 @@
   // ---------- boot ----------
   renderMenu();
   (function resumePrompt() {
-    var t = Tour.load(), sv = t && Tour.savedWorld(t), hs = Online.savedHost(), seat = Online.savedSeat(), et = Easter.load(), esv = et && Easter.savedStage(et), tsv = Train.saved();
-    if (!sv && !hs && !seat && !esv && !tsv) { if (Meta.loginState().canClaim) setTimeout(dailyLogin, 600); return; }
-    var opts = (tsv ? '<div class="opt bigopt pmA" data-rs="train" style="width:100%"><span style="font-size:38px">🚂</span><div class="col" style="gap:0"><span style="font-size:20px">เล่นอีเวนต์รถจักรไอน้ำต่อ — รอบ ' + tsv.round + '</span><span style="font-size:13px">กลับไปเล่นต่อจากจุดที่บันทึกไว้</span></div></div>' : '') + (esv ? '<div class="opt bigopt pmB" data-rs="easter" style="width:100%"><span style="font-size:38px">🐰</span><div class="col" style="gap:0"><span style="font-size:20px">เล่นอีเวนต์อีสเตอร์ต่อ — ด่าน ' + (et.stage + 1) + ' รอบ ' + esv.round + '</span><span style="font-size:13px">กลับไปเล่นต่อจากจุดที่บันทึกไว้</span></div></div>' : '') + (sv ? '<div class="opt bigopt pmA" data-rs="tour" style="width:100%"><span style="font-size:38px">🏆</span><div class="col" style="gap:0"><span style="font-size:20px">เล่นทัวร์นาเมนต์ต่อ — World ' + (t.world + 1) + ' รอบ ' + sv.round + '</span><span style="font-size:13px">กลับไปเล่นต่อจากจุดที่บันทึกไว้</span></div></div>' : '') +
+    var t = Tour.load(), sv = t && Tour.savedWorld(t), hs = Online.savedHost(), seat = Online.savedSeat(), et = Easter.load(), esv = et && Easter.savedStage(et), tsv = Train.saved(), bsv = Bkk.saved();
+    if (!sv && !hs && !seat && !esv && !tsv && !bsv) { if (Meta.loginState().canClaim) setTimeout(dailyLogin, 600); return; }
+    var opts = (bsv ? '<div class="opt bigopt pmA" data-rs="bkk" style="width:100%"><span style="font-size:38px">🛺</span><div class="col" style="gap:0"><span style="font-size:20px">เล่น Bangkok City ต่อ — รอบ ' + bsv.round + '</span><span style="font-size:13px">เป้าหมาย ' + fmt(bsv.settings.target) + ' G</span></div></div>' : '') + (tsv ? '<div class="opt bigopt pmA" data-rs="train" style="width:100%"><span style="font-size:38px">🚂</span><div class="col" style="gap:0"><span style="font-size:20px">เล่นอีเวนต์รถจักรไอน้ำต่อ — รอบ ' + tsv.round + '</span><span style="font-size:13px">กลับไปเล่นต่อจากจุดที่บันทึกไว้</span></div></div>' : '') + (esv ? '<div class="opt bigopt pmB" data-rs="easter" style="width:100%"><span style="font-size:38px">🐰</span><div class="col" style="gap:0"><span style="font-size:20px">เล่นอีเวนต์อีสเตอร์ต่อ — ด่าน ' + (et.stage + 1) + ' รอบ ' + esv.round + '</span><span style="font-size:13px">กลับไปเล่นต่อจากจุดที่บันทึกไว้</span></div></div>' : '') + (sv ? '<div class="opt bigopt pmA" data-rs="tour" style="width:100%"><span style="font-size:38px">🏆</span><div class="col" style="gap:0"><span style="font-size:20px">เล่นทัวร์นาเมนต์ต่อ — World ' + (t.world + 1) + ' รอบ ' + sv.round + '</span><span style="font-size:13px">กลับไปเล่นต่อจากจุดที่บันทึกไว้</span></div></div>' : '') +
       (hs ? '<div class="opt bigopt pmD" data-rs="host" style="width:100%"><span style="font-size:38px">🏠</span><div class="col" style="gap:0"><span style="font-size:20px">เปิดห้องออนไลน์ ' + hs.code + ' ต่อ (รอบ ' + hs.s.round + ')</span><span style="font-size:13px">คุณเป็นโฮสต์ — เพื่อนจะกลับเข้ามาที่นั่งเดิมเอง</span></div></div>' : '') +
       (seat && !hs ? '<div class="opt bigopt pmD" data-rs="seat" style="width:100%"><span style="font-size:38px">🔄</span><div class="col" style="gap:0"><span style="font-size:20px">กลับเข้าห้องออนไลน์ ' + seat.code + '</span><span style="font-size:13px">กลับไปนั่งที่เดิมในเกมที่หลุดออกมา</span></div></div>' : '');
     setTimeout(function () {
@@ -2380,6 +2487,7 @@
           if (v === 'tour') startGame(sv, false);
           else if (v === 'easter') startGame(esv, false);
           else if (v === 'train') startGame(tsv, false);
+          else if (v === 'bkk') startGame(bsv, false);
           else if (v === 'host') { toast('⏳ กำลังเปิดห้องเดิม...'); Online.resumeHost(function (err) { if (err) toast('⚠️ ' + err, 3500); }); }
           else if (v === 'seat') { toast('⏳ กำลังกลับเข้าห้อง...'); Online.rejoin(function (err) { if (err) toast('⚠️ ' + err, 3500); }); }
           else if (Meta.loginState().canClaim) dailyLogin();

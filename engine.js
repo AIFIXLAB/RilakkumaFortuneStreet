@@ -6,6 +6,7 @@
   var C = D.CONFIG;
 
   function mulberry(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  var FOOD_BIZ = ['food', 'cafe', 'bakery'];
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   function fmt(n) { return (Math.round(n)).toLocaleString('en-US'); }
 
@@ -102,6 +103,7 @@
       }),
       cur: 0, round: 1, turnNo: 0, deck: [], grid: [], taxPool: 0, effects: [], log: [], tx: 0, over: false, winner: null,
       train: opts.train ? { normal: 0, phase: false, count: 0 } : undefined,
+      bkk: opts.bkk ? { tier: opts.bkk.tier || 0, kind: opts.bkk.kind || 'solo' } : undefined,
       easter: opts.easter ? { stage: opts.easter.stage || 0, kind: opts.easter.kind || 'solo', mission: opts.easter.mission || 'eggs', prev: opts.easter.prev || [], eggs: {}, laid: 0, bunny: { pos: -1, prev: null, left: 0, cool: 1 } } : undefined,
       seed: opts.seed || (Date.now() & 0xffffff), rngCalls: 0, cardHistory: [], phase: 'idle', forcedDice: null,
     };
@@ -187,8 +189,10 @@
       if (e.owner !== undefined && e.owner !== t.owner) return;
       if (e.district !== undefined && e.district !== t.district) return;
       if (e.hotels && t.level < 6) return;
+      if (e.biz && e.biz.indexOf(t.biz) < 0) return;
       m *= e.mult;
     });
+    if (s.bkk && t.owner >= 0 && FOOD_BIZ.indexOf(t.biz) >= 0) { var bf = this.cs(s.players[t.owner], 'bkFood'); if (bf) m *= 1 + bf; }
     // Market special building: +5% to its district
     s.tiles.forEach(function (v) { if (v.special === 'market' && v.near === t.district) m *= 1.05; });
     return m;
@@ -211,6 +215,7 @@
     var gardens = this.s.tiles.filter(function (t) { return t.special === 'garden' && t.spOwner === p.id; }).length;
     if (gardens) sal += Math.min(400 * gardens, Math.round(sal * 0.05 * gardens));
     if (this.cs(p, 'salaryBonus')) sal = Math.round(sal * (1 + this.cs(p, 'salaryBonus')));
+    if (this.s.bkk) sal = Math.round(sal * 1.8);
     return sal;
   };
 
@@ -409,8 +414,7 @@
       case 'SC_guard': p.flags.insurance = 1; p.flags.rentShield = 1; this.log('🛡️ ' + p.name + ' ป้องกันผลร้าย + กันค่าเช่า 1 ครั้ง'); break;
       case 'SC_boom': { var touched = {}; this.shopsOf(p).forEach(function (x) { x.bonusPct += 0.15; touched[x.district] = 1; }); Object.keys(touched).forEach(function (d) { self.valueChanged(+d); }); this.log('📈 ร้านทั้งหมดของ ' + p.name + ' มูลค่า +15%'); break; }
       case 'SC_storm': { var others = s.players.filter(function (q) { return q !== p && !q.bankrupt; }), poss = others.map(function (q) { return q.pos; }); for (var si = poss.length - 1; si > 0; si--) { var sj = Math.floor(this.r() * (si + 1)), tmp = poss[si]; poss[si] = poss[sj]; poss[sj] = tmp; } for (var sk = 0; sk < others.length; sk++) { var q = others[sk], f0 = q.pos; if (f0 === poss[sk]) continue; q.pos = poss[sk]; q.prev = null; if (this.io.teleport) await this.io.teleport(q, f0, q.pos); } this.log('🌪️ พายุ! สลับตำแหน่งผู้เล่นคนอื่น'); break; }
-      case 'SC_master': { var pick = await this.choose(p, { title: '👑 การ์ดมหาสมบัติ — เลือก 1 อย่าง', kind: 'list', options: [{ value: 'cash', label: '💰 รับเงิน 8,000 G', score: 3 }, { value: 'stock', label: '📈 หุ้นฟรี 30 หุ้น (เขตที่มีร้านมากสุด)', score: 2 }, { value: 'warp', label: '🌀 วาร์ปไปช่องไหนก็ได้', score: 1 }] });
-        if (pick === 'stock') { var d3 = this.bestShopDistrict(p); this.giveShares(p, d3, 30); this.valueChanged(d3); } else if (pick === 'warp') { var w2 = await this.io.pickTile(p, '🌀 เลือกช่องที่จะวาร์ปไป', s.tiles.filter(function (x) { return x.id !== p.pos; }).map(function (x) { return x.id; })); if (w2 !== null && w2 !== undefined) s.warpTo = w2; } else await this.gain(p, 8000, 'การ์ดมหาสมบัติ'); break; }
+      case 'SC_master': { var w2 = await this.io.pickTile(p, '👑 การ์ดรอยัล — เลือกช่องที่จะวาร์ปไป', s.tiles.filter(function (x) { return x.id !== p.pos; }).map(function (x) { return x.id; })); if (w2 === null || w2 === undefined) { sl.used = false; return false; } s.warpTo = w2; this.log('👑 ' + p.name + ' ใช้การ์ดรอยัลวาร์ป'); break; }
       case 'eq_event': await this.drawChance(p); break;
       case 'eq_clock': p.flags.timeStopUntil = s.round + 1; this.log('⏱️ ' + p.name + ' หยุดเวลา — บ้านพิเศษไม่มีผลรอบนี้'); break;
       case 'eq_charm': p.flags.charmLuck = 1; this.log('🧧 เครื่องรางโชค: โชคดีขึ้นตลอดเกม'); break;
@@ -603,6 +607,7 @@
     var s = this.s, p = this.cp(), io = this.io;
     if (s.over) return;
     if (p.bankrupt) { await this.nextPlayer(); return; }
+    if (p.flags.skipTurn) { p.flags.skipTurn = 0; this.log('🚗 ' + p.name + ' ติดอยู่ในรถติด — ข้ามตานี้'); if (io.toast) io.toast('🚗 ' + p.name + ' รถติด! ข้าม 1 ตา'); p.turns++; await this.nextPlayer(); return; }
     s.phase = 'preRoll'; p.flags.rollOn = 0; s.forcedDice = null; s.teleportBank = false; s.warpTo = null; p.flags.stockFeeZero = false; p.flags.investedTurn = 0; p.flags.stockBuyDone = 0;
     if (io.autosave) io.autosave(s);
     if (io.turnStart) await io.turnStart(p);
@@ -837,7 +842,85 @@
         else { var others = this.alive().filter(function (q) { return q.id !== p.id; }); var each = 100; this.log('🎏 ' + p.name + ' เป็นเจ้าภาพงานเทศกาล จ่ายคนละ 100 G'); var paid = await this.lose(p, each * others.length, 'เจ้าภาพเทศกาล', true); if (paid) others.forEach(function (q) { q.cash += each; }); }
         break;
       }
-      case 'event': { var ev = 81 + Math.floor(this.r() * 10); await this.applyCard(p, ev); break; }
+      case 'event': { if (s.bkk || MAPB(s)) { await this.bkkEvent(p); break; } var ev = 81 + Math.floor(this.r() * 10); await this.applyCard(p, ev); break; }
+      case 'manhole': await this.bkManhole(p, false); break;
+      case 'cross': await this.bkCross(p); break;
+      case 'bts': case 'mrt': await this.bkStation(p, [t.type], (t.type === 'bts' ? '🚈 สถานี BTS' : 'Ⓜ️ สถานี MRT') + ' — นั่งไปลงสถานีไหน?'); break;
+      case 'tuktuk': await this.bkTuktuk(p); break;
+      case 'pier': await this.bkPier(p); break;
+    }
+  };
+  // ---------- BANGKOK CITY ----------
+  function MAPB(s) { return D.MAPS[s.mapIdx] && D.MAPS[s.mapIdx].bkk; }
+  P.bk = function (p, k) { return this.s.bkk || MAPB(this.s) ? this.cs(p, k) : 0; };
+  P.bkGo = async function (p, to, msg) { if (to === null || to === undefined || to < 0 || to === p.pos) return false; var from = p.pos; p.pos = to; p.prev = null; this.log(msg); if (this.io.toast) this.io.toast(msg); if (this.io.teleport) await this.io.teleport(p, from, to); var tb = this.bk(p, 'bkTravel'); if (tb) await this.gain(p, tb, 'สกิลเที่ยวกรุงเทพฯ', false); return true; };
+  P.bkWalk = async function (p, n, why) { p.flags.boostChain = (p.flags.boostChain || 0) + 1; if (p.flags.boostChain > 3) { p.flags.boostChain = 0; return; } this.log(why + ' ' + p.name + ' เดินหน้า ' + n + ' ช่อง'); if (this.io.toast) this.io.toast(why + ' เดินหน้า ' + n + ' ช่อง!'); await this.move(p, n); if (!this.s.over && !p.bankrupt) await this.land(p); p.flags.boostChain = 0; };
+  P.bkStation = async function (p, types, title) {
+    var s = this.s, self = this, cur = p.pos, list = s.tiles.filter(function (x) { return types.indexOf(x.type) >= 0 && x.id !== cur; });
+    if (!list.length) return;
+    var opts = list.map(function (x) { var d = self.nearDistrict(x); return { value: x.id, label: (x.type === 'bts' ? '🚈 BTS ' : x.type === 'mrt' ? 'Ⓜ️ MRT ' : x.type === 'pier' ? '⛴️ ท่าเรือ ' : '🕳️ ท่อ ') + (d >= 0 ? s.districts[d].th : '#' + x.id), sub: d >= 0 ? 'ใกล้' + s.districts[d].th : '' }; });
+    opts.push({ value: -1, label: '🚶 ไม่ไป อยู่ที่เดิม' });
+    var to = await this.choose(p, { title: title, kind: 'tile', options: opts, ai: 'random' });
+    return this.bkGo(p, to, '🚈 ' + p.name + ' นั่งรถไฟฟ้าไป' + (to >= 0 ? this.tile(to).name : ''));
+  };
+  P.bkManhole = async function (p, pick) {
+    var s = this.s, cur = p.pos, list = s.tiles.filter(function (x) { return x.type === 'manhole' && x.id !== cur; }); if (!list.length) return;
+    var to;
+    if (pick) { var self = this; to = await this.choose(p, { title: '🕳️ ท่อระบายน้ำลับ — วาร์ปไปท่อไหน?', kind: 'tile', ai: 'random', options: list.map(function (x) { var d = self.nearDistrict(x); return { value: x.id, label: '🕳️ ท่อ' + (d >= 0 ? 'ย่าน' + s.districts[d].th : ''), sub: '' }; }).concat([{ value: -1, label: 'ไม่ลงท่อ' }]) }); if (to === null || to === undefined || to < 0) return; }
+    else to = list[Math.floor(this.r() * list.length)].id;
+    await this.bkGo(p, to, '🕳️ ' + p.name + ' ตกท่อ! โผล่อีกฝั่งเมือง');
+    if (this.r() < 0.5) { if (this.bk(p, 'bkDodge') && this.r() < this.bk(p, 'bkDodge')) this.log('🛡️ ' + p.name + ' หลบค่าลอดท่อได้'); else await this.lose(p, 100, 'ค่าลอดท่อ'); } else await this.gain(p, 200, 'เจอเงินในท่อ', true);
+  };
+  P.bkCross = async function (p) {
+    var st = 1 + Math.floor(this.r() * 3) + Math.round(this.bk(p, 'bkStep'));
+    var c = await this.choose(p, { title: '🚸 ทางม้าลาย — เลือก 1 อย่าง', kind: 'list', options: [{ value: 'cash', label: '💰 รับเงินสนับสนุน ' + fmt(Math.round(200 * (1 + this.bk(p, 'bkEvt')))) + ' G', score: 2 }, { value: 'walk', label: '🚶 เดินต่อ +' + st + ' ช่อง', score: 1 }] });
+    if (c === 'walk') await this.bkWalk(p, st, '🚸'); else await this.gain(p, Math.round(200 * (1 + this.bk(p, 'bkEvt'))), 'ทางม้าลาย', true);
+  };
+  P.bkTuktuk = async function (p) {
+    var n = 1 + Math.floor(this.r() * 6) + Math.round(this.bk(p, 'bkStep'));
+    if (this.io.toast) this.io.toast('🛺 ' + p.name + ' ขึ้นตุ๊กตุ๊ก! พุ่งไป ' + n + ' ช่อง');
+    var lot = this.r();
+    if (lot < 0.35) this.bkItem(p); else if (lot < 0.7) await this.gain(p, Math.round((200 + Math.floor(this.r() * 7) * 100) * (1 + this.bk(p, 'bkEvt'))), 'ลุ้นรางวัลตุ๊กตุ๊ก', true);
+    var tb = this.bk(p, 'bkTravel'); if (tb) await this.gain(p, tb, 'สกิลเที่ยวกรุงเทพฯ', false);
+    await this.bkWalk(p, n, '🛺');
+  };
+  P.bkPier = async function (p) {
+    var st = 1 + Math.floor(this.r() * 3) + Math.round(this.bk(p, 'bkStep')), cur = p.pos, other = this.s.tiles.filter(function (x) { return x.type === 'pier' && x.id !== cur; });
+    var opts = other.map(function (x) { return { value: 'p' + x.id, label: '⛴️ ล่องเรือไปท่าเรืออีกฝั่ง (+300 G)', score: 2 }; }); opts.push({ value: 'walk', label: '🚶 เดินต่อ +' + st + ' ช่อง', score: 1 }); opts.push({ value: 'stay', label: 'อยู่ที่ท่าเรือ', score: 0 });
+    var c = await this.choose(p, { title: '⛴️ เรือด่วนเจ้าพระยา', kind: 'list', options: opts });
+    if (c === 'walk') await this.bkWalk(p, st, '⛴️');
+    else if (c && c[0] === 'p') { if (await this.bkGo(p, +c.slice(1), '⛴️ ' + p.name + ' ล่องเรือข้ามฟาก')) await this.gain(p, 300, 'โบนัสเรือด่วน', true); }
+  };
+  P.bkItem = function (p) { var pool = ['rentShield', 'insurance', 'rentHalf', 'taxHalf', 'buyoutDisc', 'winterSale', 'builderDisc', 'freeRide'], k = pool[Math.floor(this.r() * pool.length)]; buff(this, p, k); if (this.io.toast) { var b = (D.BUFFS || []).find(function (x) { return x[0] === k; }) || [k, '✨', k]; this.io.toast('🎁 ' + p.name + ' ได้ไอเทม ' + b[1] + ' ' + b[2]); } return k; };
+  P.bkkEvent = async function (p) {
+    var s = this.s, io = this.io, idx = Math.floor(this.r() * D.BKK_EVENTS.length), ev = D.BKK_EVENTS[idx], mul = 1 + this.bk(p, 'bkEvt'), self = this;
+    var dodged = !!ev.bad && this.bk(p, 'bkDodge') > 0 && this.r() < this.bk(p, 'bkDodge');
+    this.log('🏙️ ' + p.name + ' เจออีเวนต์: ' + ev.name, 'card');
+    if (io.bkEvent) await io.bkEvent(p, idx, dodged);
+    if (dodged) { this.log('🛡️ สกิลของ ' + p.name + ' หลบอีเวนต์ร้ายได้!'); return; }
+    var money = function (a, b) { return Math.round((a + Math.floor(self.r() * ((b - a) / 100 + 1)) * 100) * mul); };
+    switch (idx) {
+      case 0: p.flags.skipTurn = 1; await this.lose(p, 200, 'ค่าเดินทางรถติด'); break;
+      case 1: this.addEffect({ kind: 'rentMult', mult: 0.5, rounds: 1, name: 'ฝนตกกรุงเทพฯ' }); break;
+      case 2: this.addEffect({ kind: 'rentMult', mult: 1.5, rounds: 1, name: 'สงกรานต์' }); break;
+      case 3: if (this.r() < 0.5) await this.gain(p, money(300, 1000), 'ลอยกระทง', true); else this.bkItem(p); break;
+      case 4: this.addEffect({ kind: 'rentMult', mult: 2, rounds: 1, biz: FOOD_BIZ, name: 'เยาวราชคึกคัก' }); break;
+      case 5: {
+        var pool = ['rentShield', 'insurance', 'rentHalf', 'buyoutDisc', 'builderDisc'], k = pool[Math.floor(this.r() * pool.length)], bb = (D.BUFFS || []).find(function (x) { return x[0] === k; }) || [k, '✨', k], price = Math.round(1500 * (0.3 + this.r() * 0.4) / 10) * 10;
+        var c5 = await this.choose(p, { title: '🛍️ ตลาดนัดจตุจักร', kind: 'list', options: [{ value: 'buy', label: '🏷️ ซื้อ ' + bb[1] + ' ' + bb[2] + ' ราคาพิเศษ ' + fmt(price) + ' G (ปกติ 1,500)', sub: bb[3], score: p.cash > price * 3 ? 2 : 0 }, { value: 'rand', label: '🎁 สุ่มรับไอเทมฟรี 1 ชิ้น (อาจได้เงินแทน)', score: 1 }] });
+        if (c5 === 'buy' && p.cash >= price) { p.cash -= price; buff(this, p, k); } else if (this.r() < 0.6) this.bkItem(p); else await this.gain(p, money(200, 600), 'ตลาดนัด', true);
+        break;
+      }
+      case 6: await this.bkStation(p, ['bts'], '🚈 BTS พาเที่ยว — เลือกสถานี'); break;
+      case 7: await this.bkStation(p, ['mrt'], 'Ⓜ️ MRT ลอดเมือง — เลือกสถานี'); break;
+      case 8: await this.bkPier(p); break;
+      case 9: await this.bkManhole(p, true); break;
+      case 10: { var c10 = await this.choose(p, { title: '🚸 ทางม้าลาย', kind: 'list', options: [{ value: 'cash', label: '💰 รับเงินสนับสนุน ' + fmt(Math.round(200 * mul)) + ' G', score: 2 }, { value: 'walk', label: '🚶 เดินหน้า 1 ช่อง', score: 1 }] }); if (c10 === 'walk') await this.bkWalk(p, 1, '🚸'); else await this.gain(p, Math.round(200 * mul), 'ทางม้าลาย', true); break; }
+      case 11: if (this.r() < 0.5) await this.gain(p, money(300, 1000), 'ทำบุญไหว้พระ', true); else buff(this, p, 'rentShield'); break;
+      case 12: p.flags.saleUntil = s.round; this.log('🛍️ ' + p.name + ' ซื้อร้าน/อัปเกรดลด 30% ในรอบนี้'); break;
+      case 13: this.addEffect({ kind: 'rentMult', mult: 1.5, rounds: 2, owner: p.id, biz: FOOD_BIZ, name: 'สตรีทฟู้ด' }); break;
+      case 14: { var W = [[20, 0], [30, 300], [25, 800], [15, 1500], [7, 2200], [3, 3000]], tot = 100, rr = this.r() * tot, pz = 0; for (var wi = 0; wi < W.length; wi++) { rr -= W[wi][0]; if (rr <= 0) { pz = W[wi][1]; break; } } if (io.toast) io.toast('🎡 งานวัด: ' + (pz ? 'ได้ ' + fmt(Math.round(pz * mul)) + ' G!' : 'ไม่ถูกรางวัล')); if (pz) await this.gain(p, Math.round(pz * mul), 'มินิเกมงานวัด', true); else this.log('🎡 ' + p.name + ' เล่นงานวัดไม่ถูกรางวัล'); break; }
+      case 15: { var c15 = await this.choose(p, { title: '🗳️ เลือกตั้ง กทม. — เลือกนโยบาย', kind: 'list', options: [{ value: 'half', label: '🏪 ลดค่าเช่าที่ต้องจ่าย 50% (1 รอบ)', score: 1 }, { value: 'cash', label: '💰 รับเงิน ' + fmt(Math.round(1000 * mul)) + ' G', score: 3 }, { value: 'walk', label: '🚶 เดินหน้า 2 ช่อง', score: 0 }] }); if (c15 === 'half') p.flags.payHalfUntil = s.round + 1; else if (c15 === 'walk') await this.bkWalk(p, 2, '🗳️'); else await this.gain(p, Math.round(1000 * mul), 'นโยบายเลือกตั้ง', true); break; }
     }
   };
   P.landShop = async function (p, t) {
@@ -847,6 +930,7 @@
       if (p.flags.newBranch) { price = Math.max(0, price - 500); disc.push('New Branch -500'); }
       if (p.flags.winterSale) { price = Math.round(price * 0.9); disc.push('Winter Sale -10%'); }
       if (p.flags.buyHalf) { price = Math.round(price * 0.5); disc.push('ซื้อด่วน -50%'); }
+      if (p.flags.saleUntil >= s.round) { price = Math.round(price * 0.7); disc.push('มหกรรมช้อปปิ้ง -30%'); }
       var bf = this.cs(p, 'bizFree'), bd = this.cs(p, 'bizDisc'), bdi = this.cs(p, 'buyDisc');
       if (bf && bf.indexOf(t.biz) >= 0) { price = 0; disc.push('สกิลตัวละคร: เปิดร้านนี้ฟรี!'); }
       else { if (bd && bd.biz.indexOf(t.biz) >= 0) { price = Math.round(price * (1 - bd.v)); disc.push('สกิลตัวละคร -' + Math.round(bd.v * 100) + '%'); } if (bdi) { price = Math.round(price * (1 - bdi)); disc.push('สกิลตัวละคร -' + Math.round(bdi * 100) + '%'); } }
@@ -875,6 +959,7 @@
         if (p.flags.rentHalf) { rent = Math.round(rent / 2); p.flags.rentHalf = 0; this.log('⚖️ Rent Dispute ลดค่าเช่า 50%'); }
         if (this.cs(p, 'rentDodge') && this.r() < this.cs(p, 'rentDodge')) { this.log('💨 สกิล ' + p.name + ': หลบค่าเช่าได้!'); if (this.io.toast) this.io.toast('💨 ' + p.name + ' ใช้สกิลหลบค่าเช่า!'); rent = 0; }
         if (rent && this.cs(p, 'rentDisc')) rent = Math.round(rent * (1 - this.cs(p, 'rentDisc')));
+        if (rent && p.flags.payHalfUntil >= s.round) { rent = Math.round(rent / 2); this.log('🗳️ นโยบายลดค่าเช่า 50% ของ ' + p.name); }
         if (rent > 0) await this.payRent(p, owner, t, rent);
       }
     }
@@ -930,7 +1015,7 @@
     });
     return { list: list, turnLeft: left, cash: p.cash, disc: this.investDiscount(p), free: p.flags.freeUpgrade ? 1000 : 0, hotel: p.flags.hotelDisc ? 500 : 0 };
   };
-  P.investCost = function (p, amount) { var c = amount * this.investDiscount(p) * (1 - this.cs(p, 'investDisc')); if (p.flags.freeUpgrade) c -= 1000; if (p.flags.hotelDisc) c -= 500; return Math.max(0, Math.round(c)); };
+  P.investCost = function (p, amount) { var c = amount * this.investDiscount(p) * (1 - this.cs(p, 'investDisc')); if (p.flags.saleUntil >= this.s.round) c *= 0.7; if (p.flags.freeUpgrade) c -= 1000; if (p.flags.hotelDisc) c -= 500; return Math.max(0, Math.round(c)); };
   P.levelStep = function (t) { // capital needed to raise the building by exactly one level
     var cur = t.base + (t.invest || 0), r = cur / t.base, L = 1;
     C.levelRatio.forEach(function (x, i) { if (r >= x) L = i + 1; });
@@ -1054,18 +1139,19 @@
     if (fee) { var paid = await this.lose(p, fee, 'ค่าบริการ ' + t.special + ' ของ ' + owner.name); if (!owner.bankrupt) owner.cash += paid; }
   };
   P.casino = async function (p) {
-    var bet = await this.io.casinoBet(p, C.casino.bets.filter(function (b) { return b <= p.cash; }));
-    if (!bet) return;
-    var syms = ['🍒', '🔔', '⭐', '🐻', '7'], reels = [0, 0, 0].map(function () { return syms[Math.floor(this.r() * syms.length)]; }, this);
-    var win = 0;
-    if (reels[0] === reels[1] && reels[1] === reels[2]) win = bet * (reels[0] === '7' ? 5 : reels[0] === '🐻' ? 4 : 3);
-    else if (reels[0] === reels[1] || reels[1] === reels[2] || reels[0] === reels[2]) win = Math.round(bet * 1.5);
-    if (win && this.cs(p, 'casinoLuck')) win = Math.round(win * (1 + this.cs(p, 'casinoLuck')));
-    else if (!win && this.cs(p, 'casinoLuck') && this.r() < this.cs(p, 'casinoLuck') / 2) win = bet;
-    win = Math.min(win, C.casino.maxWin);
-    p.cash -= bet; this.s.taxPool += Math.round(bet * 0.2); this.txid('casino');
-    if (this.io.casinoShow) await this.io.casinoShow(p, reels, bet, win);
-    if (win) { p.cash += win; this.log('🎰 ' + p.name + ' ชนะคาสิโน +' + fmt(win) + ' G', 'gain'); } else this.log('🎰 ' + p.name + ' เสียเดิมพัน ' + bet + ' G');
+    var C2 = C.casino, bets = C2.bets.filter(function (b) { return b <= p.cash; });
+    if (!bets.length) return;
+    var pick = await this.io.casinoBet(p, bets);
+    if (!pick || !pick.bet || bets.indexOf(pick.bet) < 0) return;
+    var bet = pick.bet, side = pick.side === 'lo' ? 'lo' : 'hi';
+    var dice = [this.dice(), this.dice(), this.dice()], sum = dice[0] + dice[1] + dice[2], triple = dice[0] === dice[1] && dice[1] === dice[2];
+    var res = sum >= 11 ? 'hi' : 'lo', won = res === side && !triple, win = 0, refund = false;
+    if (won) { win = bet * 2; if (this.cs(p, 'casinoLuck')) win += Math.round(bet * this.cs(p, 'casinoLuck')); win = Math.min(win, C2.maxWin); }
+    else if (this.cs(p, 'casinoLuck') && this.r() < this.cs(p, 'casinoLuck') / 2) { win = bet; refund = true; }
+    p.cash -= bet; this.s.taxPool += Math.round(bet * 0.1); this.txid('casino');
+    if (this.io.casinoShow) await this.io.casinoShow(p, dice, bet, win, side, refund);
+    if (win) p.cash += win;
+    this.log('🎲 ' + p.name + ' แทง' + (side === 'hi' ? 'สูง' : 'ต่ำ') + ' ' + fmt(bet) + ' G • ออก ' + dice.join('-') + ' = ' + sum + (triple ? ' (ตอง)' : '') + (won ? ' ชนะ +' + fmt(win - bet) + ' G' : refund ? ' (สกิลคืนทุน)' : ' เสียเดิมพัน'), won ? 'gain' : undefined);
   };
 
   // ---------- CHANCE CARDS ----------

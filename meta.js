@@ -16,7 +16,7 @@ var Meta = (function () {
   function load() { try { P = JSON.parse(localStorage.getItem(KEY)); } catch (e) { P = null; } if (!P || P.v !== 1) P = fresh();
     Object.keys(P.deco).forEach(function (k) { if (!item(k)) delete P.deco[k]; }); P.town = P.town.filter(function (x) { return item(x.id); });
     // characters that were wrongly stored as items (steam/royal/easter) → move into the character collection
-    Object.keys(P.inv).forEach(function (k) { if (/^[bxjgers]\d+$/.test(k)) { if (P.inv[k] > 0) P.chars[k] = 1; delete P.inv[k]; } });
+    Object.keys(P.inv).forEach(function (k) { if (/^[bxjgersk]\d+$/.test(k)) { if (P.inv[k] > 0) P.chars[k] = 1; delete P.inv[k]; } });
     Object.keys(P.inv).forEach(function (k) { if (!item(k)) delete P.inv[k]; });
     // costumes were removed: refund what was paid
     var cz = Object.keys(P.costumes || {}); if (cz.length) { var ref = cz.reduce(function (a, k) { return a + 2000 + (+k.slice(2) || 0) * 250; }, 0); P.gold += ref; P.costumeRefund = ref; P.costumes = {}; save(); }
@@ -40,6 +40,7 @@ var Meta = (function () {
     EASTER_CHARS.forEach(function (c, i) { out.push({ id: 'e' + i, cat: 'chars', type: 'Characters', name: c.name, desc: '🥚 หายาก — ได้จากไข่อีสเตอร์สุ่มเท่านั้น • ' + skillDesc('e' + i), price: 0, cur: 'egg', spr: ['easter', i], uniq: true, eggOnly: true }); });
     STEAM_CHARS.forEach(function (c, i) { out.push({ id: 's' + i, cat: 'chars', type: 'Characters', name: c.name, desc: '🚂 ชุดรถจักรไอน้ำ • ' + skillDesc('s' + i), price: c.d, cur: 'diamond', spr: ['steam', i], uniq: true }); });
     ROYAL_CHARS.forEach(function (c, i) { out.push({ id: 'r' + i, cat: 'chars', type: 'Characters', name: c.name, desc: '🎫 ชุดรอยัลทอง — แลกด้วยตั๋วรถไฟทอง ' + c.t + ' ใบเท่านั้น • ' + skillDesc('r' + i), price: c.t, cur: 'ticket', spr: ['royal', i], uniq: true, eggOnly: true, gold: true }); });
+    BKK_CHARS.forEach(function (c, i) { out.push({ id: 'k' + i, cat: 'chars', type: 'Characters', name: c.name, desc: '🛺 ชุดกรุงเทพฯ (ใช้เข้าแมพ Bangkok City ได้) • ' + skillDesc('k' + i), price: c.price, cur: c.cur, spr: ['bkk', i], uniq: true, bkk: true }); });
     DICE_SKINS.forEach(function (d) { if (d.price) out.push({ id: d.id, cat: 'equip', type: 'Dice Skins', name: d.name, desc: d.desc ? '✨ ' + d.desc : 'สกินลูกเต๋า (Cosmetic)', price: d.price, cur: d.cur, spr: d.spr, uniq: true }); });
     return out;
   }
@@ -53,14 +54,14 @@ var Meta = (function () {
   function priceOf(it) { return tags(it.id).indexOf('sale') >= 0 ? Math.round(it.price * 0.8) : it.price; }
 
   function owned(id) {
-    if (/^[bxjgers]\d+$/.test(id)) return P.chars[id] ? 1 : 0;
+    if (/^[bxjgersk]\d+$/.test(id)) return P.chars[id] ? 1 : 0;
     if (/^dice_/.test(id)) return P.dice[id] ? 1 : 0;
     if (/^deco_/.test(id)) return P.deco[id] || 0;
     return P.inv[id] || 0;
   }
   function addItem(id, n) {
     n = n || 1;
-    if (/^[bxjgers]\d+$/.test(id)) P.chars[id] = 1;
+    if (/^[bxjgersk]\d+$/.test(id)) P.chars[id] = 1;
     else if (/^dice_/.test(id)) P.dice[id] = 1;
     else if (/^deco_/.test(id)) P.deco[id] = (P.deco[id] || 0) + n;
     else P.inv[id] = (P.inv[id] || 0) + n;
@@ -143,9 +144,31 @@ var Meta = (function () {
     save(); return { kind: kind, items: out };
   }
   function fmtN(n) { return Math.round(n).toLocaleString('en-US'); }
-  var SHEET = { b: 'chars', x: 'extra', j: 'jobs', g: 'gold', e: 'easter', r: 'royal', s: 'steam' }, NAMES = { b: CHARACTERS, x: EXTRA_CHARS, j: JOB_CHARS, g: GOLD_CHARS, e: EASTER_CHARS, r: ROYAL_CHARS, s: STEAM_CHARS };
+  var SHEET = { b: 'chars', x: 'extra', j: 'jobs', g: 'gold', e: 'easter', r: 'royal', s: 'steam', k: 'bkk' }, NAMES = { b: CHARACTERS, x: EXTRA_CHARS, j: JOB_CHARS, g: GOLD_CHARS, e: EASTER_CHARS, r: ROYAL_CHARS, s: STEAM_CHARS, k: BKK_CHARS };
   function addTickets(n) { P.tickets = (P.tickets || 0) + n; save(); }
   function redeemRoyal(k) { var c = ROYAL_CHARS[+k.slice(1)]; if (!c) return { ok: false, msg: 'ไม่พบตัวละคร' }; if (P.chars[k]) return { ok: false, msg: 'มีตัวละครนี้แล้ว' }; if ((P.tickets || 0) < c.t) return { ok: false, msg: 'ตั๋วรถไฟทองไม่พอ (ต้องใช้ ' + c.t + ' ใบ)' }; P.tickets -= c.t; P.chars[k] = 1; P.hist.unshift({ tx: txid(), t: Date.now(), kind: 'buy', id: k, name: c.name + ' (แลกตั๋วทอง ' + c.t + ' ใบ)', cur: '-', amt: 0 }); save(); return { ok: true, msg: '👑 ได้ ' + c.name + ' แล้ว!' }; }
+  // ---- Bangkok lucky bags (blue 50k / purple 70k / red 100k) ----
+  var BAG = {
+    blue: { w: [[38, 'gold'], [22, 'diamond'], [20, 'equip'], [14, 'card'], [6, 'char']], gold: [1500, 2000, 2500, 3000, 4000], dia: [8, 10, 12, 15, 20], n: [2, 3], bonus: [300, 800], chars: function (k) { return BKK_CHARS[+k.slice(1)].cur === 'gold'; } },
+    purple: { w: [[32, 'gold'], [25, 'diamond'], [16, 'equip'], [13, 'card'], [11, 'char'], [3, 'boxes']], gold: [3000, 4000, 5000, 6000, 7000], dia: [15, 20, 25, 30, 35], n: [3, 4], bonus: [800, 1500], chars: function () { return true; } },
+    red: { w: [[26, 'gold'], [25, 'diamond'], [12, 'equip'], [10, 'card'], [19, 'char'], [8, 'boxes']], gold: [6000, 8000, 10000, 12000, 15000], dia: [30, 40, 50, 60, 80], n: [4, 5], bonus: [1500, 3000], chars: function () { return true; } },
+  };
+  function addBags(tier, n) { P.bags = P.bags || {}; P.bags[tier] = (P.bags[tier] || 0) + n; save(); }
+  function bagCount(tier) { return (P.bags && P.bags[tier]) || 0; }
+  function openBag(tier) {
+    var B = BAG[tier]; if (!B || !(bagCount(tier) > 0)) return null;
+    P.bags[tier]--;
+    var kind = pickW(B.w), out = [], locked = BKK_CHARS.map(function (c, i) { return 'k' + i; }).filter(function (k) { return !P.chars[k] && B.chars(k); });
+    if (kind === 'char' && !locked.length) kind = 'diamond';
+    if (kind === 'char') { var k = rnd(locked); P.chars[k] = 1; out.push({ spr: ['bkk', +k.slice(1)], name: charName(k), big: true, tag: 'ตัวละครกรุงเทพฯ' }); }
+    if (kind === 'gold') { var g = rnd(B.gold); P.gold += g; out.push({ ic: '🪙', name: fmtN(g) + ' Gold', big: g >= B.gold[3] }); }
+    if (kind === 'diamond') { var d = rnd(B.dia); P.diamond += d; out.push({ ic: '💎', name: d + ' Diamond', big: d >= B.dia[3] }); }
+    if (kind === 'equip' || kind === 'card') { var pool = all().filter(function (x) { return x.cat === (kind === 'equip' ? 'equip' : 'cards') && !x.uniq; }), it = rnd(pool), n = rnd(B.n); addItem(it.id, n); out.push({ spr: it.spr, name: it.name + ' ×' + n }); }
+    if (kind === 'boxes') { var nb = tier === 'red' ? 5 : 3; P.boxes = (P.boxes || 0) + nb; out.push({ ic: '🎁', name: 'กล่องสุ่ม ×' + nb, big: true }); }
+    var bonus = B.bonus[0] + Math.floor(Math.random() * ((B.bonus[1] - B.bonus[0]) / 100 + 1)) * 100; P.gold += bonus; out.push({ ic: '🪙', name: '+' + fmtN(bonus) + ' Gold โบนัส', small: true });
+    P.hist.unshift({ tx: txid(), t: Date.now(), kind: 'box', name: 'ถุงโชคดี: ' + out.map(function (o) { return o.name; }).join(', '), cur: '-', amt: 0 }); P.hist = P.hist.slice(0, 80);
+    save(); return { kind: kind, items: out };
+  }
   // ---- Easter mystery eggs (event reward; the only source of the 8 Easter characters) ----
   function addEggs(n) { P.eeggs = (P.eeggs || 0) + n; save(); }
   function openEgg() {
@@ -166,5 +189,5 @@ var Meta = (function () {
   function charSprite(key) { key = key || 'b0'; return [SHEET[key[0]] || 'chars', +key.slice(1) || 0]; }
   function charName(key) { key = key || 'b0'; var L = NAMES[key[0]] || CHARACTERS, c = L[+key.slice(1)]; return c ? c.name : ''; }
   function charSkill(key) { return CHAR_SKILLS[key] || null; }
-  return { addTickets: addTickets, redeemRoyal: redeemRoyal, addEggs: addEggs, openEgg: openEgg, load: load, save: save, reset: reset, get p() { return P; }, all: all, item: item, tags: tags, priceOf: priceOf, owned: owned, buy: buy, exchange: exchange, consume: consume, validLoadout: validLoadout, loginState: loginState, claimLogin: claimLogin, matchReward: matchReward, addBoxes: addBoxes, charSkill: charSkill, skillDesc: skillDesc, openBox: openBox, BOX_BY_RANK: BOX_BY_RANK, charSprite: charSprite, charName: charName, addItem: addItem };
+  return { addBags: addBags, bagCount: bagCount, openBag: openBag, BAG: BAG, addTickets: addTickets, redeemRoyal: redeemRoyal, addEggs: addEggs, openEgg: openEgg, load: load, save: save, reset: reset, get p() { return P; }, all: all, item: item, tags: tags, priceOf: priceOf, owned: owned, buy: buy, exchange: exchange, consume: consume, validLoadout: validLoadout, loginState: loginState, claimLogin: claimLogin, matchReward: matchReward, addBoxes: addBoxes, charSkill: charSkill, skillDesc: skillDesc, openBox: openBox, BOX_BY_RANK: BOX_BY_RANK, charSprite: charSprite, charName: charName, addItem: addItem };
 })();

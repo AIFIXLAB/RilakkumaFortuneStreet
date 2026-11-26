@@ -164,7 +164,7 @@
     },
     confirmDeal: function (g, q, text, gainForQ) { return gainForQ >= 0 ? g.r() < 0.7 : (q.cash > 4000 && g.r() < 0.4); },
     auctionBid: function (g, q, t, current) { var v = g.shopValue(t), want = v * (g.ownedIn(q.id, t.district) ? 1.4 : 1.05); var bid = Math.round(Math.min(want, q.cash - reserve(g, q)) / 10) * 10; return bid > current ? bid : 0; },
-    casinoBet: function (g, p, bets) { if (!bets.length || p.ai.persona === 'Defensive' || p.cash < 3000) return 0; return g.r() < 0.5 ? bets[0] : 0; },
+    casinoBet: function (g, p, bets) { if (!bets.length || p.ai.persona === 'Defensive' || p.cash < 3000 || g.r() < 0.45) return 0; var cap = p.cash * (p.ai.persona === 'Aggressive' ? 0.15 : 0.08), ok = bets.filter(function (b) { return b <= cap; }); return { bet: ok.length ? ok[ok.length - 1] : bets[0], side: g.r() < 0.5 ? 'hi' : 'lo' }; },
     chooseSpecialHouse: function (g, p, t, opts) {
       var r = reserve(g, p), aff = opts.filter(function (o) { return p.cash - o.cost >= r * 0.8; });
       if (!aff.length) return null;

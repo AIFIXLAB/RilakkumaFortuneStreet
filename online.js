@@ -235,7 +235,7 @@ var Online = (function () {
     var c = code(), P = Meta.p, tour = opt && opt.tour, mc = P.color || 0;
     room = { code: c, role: 'host', started: false, players: [{ peer: null, name: P.name, char: P.equip.char, costume: P.equip.costume, dice: P.equip.dice, loadout: Meta.validLoadout(), color: mc }], settings: { map: 0, target: 40000, fillAI: true, tax: false, teams: !!tour, teamCol: [mc, mc === 1 ? 0 : 1], startCash: 10000, rounds: 100, aiLv: ['normal', 'normal', 'normal', 'normal'], teamOf: tour ? [0, 0, 1, 1] : [0, 1, 0, 1] } };
     if (tour) room.settings.tour = { world: 0 };
-    if (opt && opt.train) { room.settings.train = true; room.settings.fillAI = true; }
+    if (opt && opt.train) { room.settings.train = true; room.settings.trainBoard = opt.board || 0; room.settings.fillAI = true; }
     if (opt && opt.easter) { room.settings.easter = { stage: 0, totals: {}, mission: A.pickMission([]), used: [], aiLv: 'normal' }; room.settings.fillAI = true; }
     loadPeer().then(function (ok) {
       if (!ok && !localMode()) { done('โหลดระบบออนไลน์ไม่ได้ — ตรวจอินเทอร์เน็ตแล้วลองใหม่'); return; }
@@ -254,9 +254,9 @@ var Online = (function () {
     if (players.length < 2) { A.toast('ต้องมีผู้เล่นอย่างน้อย 2 คน (เปิด “เติม AI” ได้)'); return; }
     if (R.teams) { var c0 = players.filter(function (q) { return q.team === 0; }).length; if (c0 !== 2) { A.toast('⚠️ โหมดทีมต้องแบ่ง ทีมชมพู 2 คน / ทีมฟ้า 2 คน — แตะป้ายทีมเพื่อสลับ', 3500); return; } }
     var tot = (R.easter && R.easter.totals) || {};
-    var tc = R.teamCol || [0, 1], s = Game.create({ train: TR, easter: ES ? { stage: R.easter.stage, kind: 'online', mission: R.easter.mission, prev: players.map(function (q) { return tot[q.name] || 0; }) } : undefined, mapIdx: TR ? MAPS.indexOf(TRAIN_MAP) : ES ? ES.map : TW ? TW.map : R.map, players: players, teams: !!R.teams, teamInfo: [TEAM_PAL[tc[0]], TEAM_PAL[tc[1]]], target: TR ? TRAIN.target : ES ? ES.target : TW ? TW.target * 2 : R.target, startCash: TR ? TRAIN.startCash : (TW || ES) ? 10000 : (R.startCash || 10000), maxRounds: TR ? TRAIN.rounds : ES ? ES.rounds : TW ? TW.rounds : (R.rounds > 0 ? R.rounds : 9999), rules: { tax: (TW || ES || TR) ? false : R.tax, endOnBankrupt: true }, seed: Math.floor(Math.random() * 1e9) });
+    var tc = R.teamCol || [0, 1], s = Game.create({ train: TR, easter: ES ? { stage: R.easter.stage, kind: 'online', mission: R.easter.mission, prev: players.map(function (q) { return tot[q.name] || 0; }) } : undefined, mapIdx: TR ? MAPS.findIndex(function (m) { return m.id === TRAIN.boards[R.trainBoard || 0].key; }) : ES ? ES.map : TW ? TW.map : R.map, players: players, teams: !!R.teams, teamInfo: [TEAM_PAL[tc[0]], TEAM_PAL[tc[1]]], target: TR ? TRAIN.boards[R.trainBoard || 0].target : ES ? ES.target : TW ? TW.target * 2 : R.target, startCash: TR ? TRAIN.startCash : (TW || ES) ? 10000 : (R.startCash || 10000), maxRounds: TR ? TRAIN.rounds : ES ? ES.rounds : TW ? TW.rounds : (R.rounds > 0 ? R.rounds : 9999), rules: { tax: (TW || ES || TR) ? false : R.tax, endOnBankrupt: true }, seed: Math.floor(Math.random() * 1e9) });
     if (TW) { s.tour = { kind: 'team', world: R.tour.world }; s.lenName = 'World ' + (R.tour.world + 1); }
-    if (TR) { s.train.kind = 'online'; s.lenName = 'อีเวนต์รถจักรไอน้ำ'; }
+    if (TR) { s.train.kind = 'online'; s.train.board = R.trainBoard || 0; s.lenName = 'อีเวนต์รถไฟ • ' + TRAIN.boards[R.trainBoard || 0].th; }
     if (ES) { s.lenName = 'อีสเตอร์ ด่าน ' + (R.easter.stage + 1); R.easter.ai = s.players.filter(function (p) { return p.isAI; }).map(function (p) { return { name: p.name, char: p.char, isAI: true, aiLevel: p.ai.level, persona: p.ai.persona, team: -1 }; }); }
     s.players.forEach(function (p, i) { p.remote = players[i].remote || null; p.seat = players[i].seat || null; });
     s.ownerIdx = 0; s.dice = Meta.p.equip.dice; s.online = true;

@@ -1745,15 +1745,17 @@
   // STEAM TRAIN EVENT — one big board, 200 rounds, everyone drives the train every 5 rounds
   // =====================================================================
   var Train = (function () {
-    function mapIdx() { return MAPS.indexOf(TRAIN_MAP); }
+    var TB = 0;
+    function cfg(i) { return TRAIN.boards[i === undefined ? TB : i] || TRAIN.boards[0]; }
+    function mapIdx(i) { var k = cfg(i).key; return MAPS.findIndex(function (m) { return m.id === k; }); }
     function saved() { try { var s = JSON.parse(localStorage.getItem('rfs_save_train') || 'null'); return s && !s.over && s.train ? s : null; } catch (e) { return null; } }
     function rules() {
       return modal({ title: '📜 กติกาอีเวนต์รถจักรไอน้ำ', width: 900, body: '<div class="erules">' +
-        '<p>🗺️ สนามเดียว <b>สถานีรถจักรไอน้ำ</b> • ' + TRAIN.rounds + ' รอบ • เงินเริ่มต้น ' + fmt(TRAIN.startCash) + ' G • เป้าหมายทรัพย์สิน ' + fmt(TRAIN.target) + ' G (ถึงก่อนชนะทันที)</p>' +
+        '<p>🗺️ มี 2 สนาม: <b>สถานีรถจักรไอน้ำ</b> (เป้า ' + fmt(cfg(0).target) + ' G) และ <b>สะพานโค้งไอน้ำ</b> (เป้า ' + fmt(cfg(1).target) + ' G) • สนามนี้: <b>' + cfg().th + '</b> • ' + TRAIN.rounds + ' รอบ • เงินเริ่มต้น ' + fmt(TRAIN.startCash) + ' G • เป้าหมายทรัพย์สิน ' + fmt(cfg().target) + ' G (ถึงก่อนชนะทันที)</p>' +
         '<p>🚂 <b>ทุก ๆ ' + TRAIN.every + ' รอบ</b> จะเป็น “รอบขับรถไฟ” — ทุกคนได้ขับรถไฟคนละ 1 ตา ทอย <b>ลูกเต๋า 2 ลูก</b> ขับครบ 4 คนแล้วกลับมาเล่นปกติ</p>' +
         '<p>💥 ขับผ่านใคร = <b>ชน!</b> คนโดนชนจะสุ่มเสีย 1 อย่าง: เงินหล่น ' + Math.round(TRAIN.crashCashPct * 100) + '% (ตกกองภาษีเมือง) • ดอก(สัญลักษณ์) 1 ดอก • การ์ด/ไอเทมติดตัว 1 อย่าง • สกิลตัวละครใช้ไม่ได้ ' + TRAIN.noSkillRounds + ' รอบ — แล้ว<b>กระเด็นกลับสถานี</b> (ธนาคาร)</p>' +
         '<p>🚉 <b>ชานชาลา</b>: หยุดแล้วนั่งรถไฟไปชานชาลาอื่นได้ฟรี • 🎁 <b>กล่องแกล้ง</b>: สุ่มแกล้ง — สลับตำแหน่ง / ส่งกลับสถานี / แอบหยิบเงิน 5% • 🔄 ช่องสลับทิศ</p>' +
-        '<p>🎫 เปิดการ์ดทุกใบมีโอกาส 1% ได้ <b>ตั๋วรถไฟทอง</b> • <b>อันดับ 1/2/3/4 รับ ' + TRAIN.winTickets.join('/') + ' ใบ • กล่องสุ่ม ' + TRAIN.rankBoxes.join('/') + ' กล่อง</b> • ตั๋วใช้แลก <b>ตัวละครชุดรอยัลทอง</b> 8 ตัว (20–50 ใบ/ตัว)</p>' +
+        '<p>🎫 เปิดการ์ดทุกใบมีโอกาส 1% ได้ <b>ตั๋วรถไฟทอง</b> • <b>อันดับ 1/2/3/4 รับ ' + cfg().winTickets.join('/') + ' ใบ • กล่องสุ่ม ' + TRAIN.rankBoxes.join('/') + ' กล่อง</b> • ตั๋วใช้แลก <b>ตัวละครชุดรอยัลทอง</b> 8 ตัว (20–50 ใบ/ตัว)</p>' +
         '<p>👫 สร้างห้องออนไลน์ชวนเพื่อนได้ (แข่งเดี่ยว) • AI สุ่มตัวละครและสุ่มความเก่ง</p></div>', buttons: [{ t: 'เข้าใจแล้ว', v: 1, cls: 'green' }] });
     }
     function royalGrid() {
@@ -1765,24 +1767,25 @@
       $('#trainev').innerHTML = '<div class="scrhead"><div class="uibtn backbtn" id="tvBack">' + spr(['ui', 'prev'], 70, 70) + '</div><div class="title"><span class="ttl">🚂 อีเวนต์รถจักรไอน้ำ</span></div><button class="small" id="tvRules" style="margin-left:auto">📜 กติกา</button></div>' +
         '<div class="scrbody"><div class="ebanner"><img src="assets/train_banner.webp" draggable="false"></div>' +
         '<div class="row" style="gap:14px;align-items:stretch;margin-top:12px">' +
-        '<div class="panel" style="padding:12px;width:470px"><div class="tvmap" id="tvMap" style="background-image:url(assets/bg_train.webp)"><span>🔍 แตะเพื่อดูแผนที่</span></div>' +
-        '<div style="font-weight:800;margin-top:8px;line-height:1.6">🗺️ สถานีรถจักรไอน้ำ • ' + TRAIN.rounds + ' รอบ • เริ่ม ' + fmt(TRAIN.startCash) + ' G • เป้าหมาย ' + fmt(TRAIN.target) + ' G<br>🚂 ทุก ' + TRAIN.every + ' รอบ ทุกคนขับรถไฟ (ลูกเต๋า 2 ลูก) ชนใครคนนั้นเสียของ!</div>' +
+        '<div class="panel" style="padding:12px;width:470px"><div class="tbpick">' + TRAIN.boards.map(function (b, i) { return '<div class="tbcard' + (TB === i ? ' on' : '') + '" data-tb="' + i + '"><div class="tbimg" style="background-image:url(assets/' + b.bg + '.webp)"></div><b>' + b.th + '</b><span>เป้า ' + fmt(b.target) + ' G • 🎫 ' + b.winTickets.join('/') + '</span></div>'; }).join('') + '</div><div class="tvmap" id="tvMap" style="background-image:url(assets/' + cfg().bg + '.webp);height:170px;margin-top:8px"><span>🔍 แตะเพื่อดูแผนที่</span></div>' +
+        '<div style="font-weight:800;margin-top:8px;line-height:1.6">🗺️ ' + cfg().th + ' • ' + TRAIN.rounds + ' รอบ • เริ่ม ' + fmt(TRAIN.startCash) + ' G • เป้าหมาย ' + fmt(cfg().target) + ' G<br>🚂 ทุก ' + TRAIN.every + ' รอบ ทุกคนขับรถไฟ (ลูกเต๋า 2 ลูก) ชนใครคนนั้นเสียของ!</div>' +
         '<div class="row" style="gap:4px;margin-top:6px;align-items:center"><b>สีของคุณ:</b>' + colorDots(P.color || 0, 'tvcol') + '</div>' +
         '<div class="muted" style="font-size:12px;font-weight:700;margin-top:4px">AI 3 ตัว สุ่มตัวละครและสุ่มความเก่ง • ใช้ตัวละคร/ไอเทมที่ติดตั้งไว้</div>' +
         '<div class="row" style="gap:8px;margin-top:10px;flex-wrap:wrap">' + (sv ? '<button class="green" id="tvResume" style="font-size:19px">▶ เล่นต่อ (รอบ ' + sv.round + ')</button><button class="small" id="tvGo">🔄 เริ่มเกมใหม่</button>' : '<button class="pink" id="tvGo" style="font-size:20px">▶ เล่นกับ AI</button>') + '<button id="tvOnline">👫 สร้างห้องเล่นกับเพื่อน</button></div></div>' +
-        '<div class="panel grow" style="padding:12px"><div class="row" style="gap:10px;align-items:center"><img src="assets/ticket.webp" style="height:64px" draggable="false"><div><b style="font-size:22px">ตั๋วรถไฟทอง × ' + (P.tickets || 0) + '</b><div class="muted" style="font-size:12px;font-weight:700">ได้จากเปิดการ์ดในสนามนี้ (1%) • อันดับ 1–4 รับ ' + TRAIN.winTickets.join('/') + ' ใบ • กล่องสุ่ม ' + TRAIN.rankBoxes.join('/') + '</div></div></div>' +
+        '<div class="panel grow" style="padding:12px"><div class="row" style="gap:10px;align-items:center"><img src="assets/ticket.webp" style="height:64px" draggable="false"><div><b style="font-size:22px">ตั๋วรถไฟทอง × ' + (P.tickets || 0) + '</b><div class="muted" style="font-size:12px;font-weight:700">ได้จากเปิดการ์ดในสนามนี้ (1%) • อันดับ 1–4 รับ ' + cfg().winTickets.join('/') + ' ใบ • กล่องสุ่ม ' + TRAIN.rankBoxes.join('/') + '</div></div></div>' +
         '<div style="margin-top:8px;font-weight:900">👑 แลกตัวละครชุดรอยัลทอง (หายาก)</div><div class="rgrid">' + royalGrid() + '</div><div id="tvInfo">' + itemInfoBox(null) + '</div>' +
         '<div class="muted" style="font-size:12px;font-weight:700;margin-top:4px">🚂 ชุดรถจักรไอน้ำ 8 ตัว (สกิลเกี่ยวกับรถไฟ) ซื้อได้ที่ร้านค้า → Characters</div></div></div></div>';
       show('trainev');
       $('#tvBack').onclick = function () { show('menu'); };
       $('#tvRules').onclick = function () { rules(); };
       $('#tvMap').onclick = function () { mapViewer(mapIdx(), null); };
+      $('#trainev').querySelectorAll('[data-tb]').forEach(function (e) { e.onclick = function () { TB = +e.dataset.tb; sfx('tap'); hub(); }; });
       $('#trainev').querySelectorAll('[data-tvcol]').forEach(function (e) { e.onclick = function () { P.color = +e.dataset.tvcol; Meta.save(); hub(); }; });
       $('#trainev').querySelectorAll('[data-rk]').forEach(function (e) { e.onclick = function (ev) { if (ev.target.closest('[data-rx]')) return; $('#tvInfo').innerHTML = itemInfoBox(e.dataset.rk); }; });
       $('#trainev').querySelectorAll('[data-rx]').forEach(function (e) { e.onclick = function () { var k = e.dataset.rx, c = ROYAL_CHARS[+k.slice(1)]; $('#tvInfo').innerHTML = itemInfoBox(k);
         modal({ title: '👑 แลกตัวละครรอยัล', body: '<div style="text-align:center">' + spr(['royal', +k.slice(1)], 160, 170) + '<div style="font-weight:900;font-size:20px">' + esc(c.name) + '</div>' + skillChip(k, true) + '<div style="margin-top:8px;font-weight:800">ใช้ตั๋วรถไฟทอง ' + c.t + ' ใบ (มี ' + (P.tickets || 0) + ')</div></div>', buttons: [{ t: '🎫 แลกเลย', v: 1, cls: 'pink' }, { t: 'ยกเลิก', v: 0 }] })
           .then(function (v) { if (!v) return; var r = Meta.redeemRoyal(k); toast(r.msg, 2800); if (r.ok) sfx('win'); hub(); }); }; });
-      $('#tvOnline').onclick = function () { Online.host({ train: true }); };
+      $('#tvOnline').onclick = function () { Online.host({ train: true, board: TB }); };
       if (sv) $('#tvResume').onclick = function () { startGame(sv, false); };
       $('#tvGo').onclick = function () { if (sv && !hub._c) { hub._c = 1; toast('กดอีกครั้งเพื่อเริ่มใหม่ (เกมที่ค้างไว้จะหายไป)', 2500); setTimeout(function () { hub._c = 0; }, 2500); return; } hub._c = 0; start(); };
     }
@@ -1793,20 +1796,20 @@
       var players = [{ name: P.name, char: P.equip.char, isAI: false, loadout: { eq: v.eq, sc: v.sc }, dice: P.equip.dice }];
       for (var i = 0; i < 3; i++) { var ch = pool.splice(Math.floor(Math.random() * pool.length), 1)[0]; players.push({ name: Meta.charName(ch) + ' AI', char: ch, isAI: true, aiLevel: randLv(), persona: AI_PERSONAS[Math.floor(Math.random() * AI_PERSONAS.length)] }); }
       var cols = assignColors(players.map(function (q, k) { return k === 0 ? (P.color || 0) : -1; })); players.forEach(function (q, k) { q.color = cols[k]; });
-      var s = Game.create({ train: true, mapIdx: mapIdx(), players: players, target: TRAIN.target, startCash: TRAIN.startCash, maxRounds: TRAIN.rounds, rules: { tax: false, endOnBankrupt: true }, seed: Math.floor(Math.random() * 1e9) });
-      s.ownerIdx = 0; s.dice = P.equip.dice; s.lenName = 'อีเวนต์รถจักรไอน้ำ'; s.train.kind = 'solo';
+      var s = Game.create({ train: true, mapIdx: mapIdx(), players: players, target: cfg().target, startCash: TRAIN.startCash, maxRounds: TRAIN.rounds, rules: { tax: false, endOnBankrupt: true }, seed: Math.floor(Math.random() * 1e9) });
+      s.ownerIdx = 0; s.dice = P.equip.dice; s.lenName = 'อีเวนต์รถไฟ • ' + cfg().th; s.train.kind = 'solo'; s.train.board = TB;
       rules().then(function () { startGame(s, true); });
     }
     // tickets earned this game + 3 for the winner — shown before the normal result page
     function award(g) {
       var s = g.s, me = s.players[s.ownerIdx || 0]; if (g._tk) return Promise.resolve(); g._tk = 1;
-      var rk = s.ranking || [], myR = Math.max(0, rk.findIndex(function (r) { return r.id === me.id; })), bonus = TRAIN.winTickets[myR] || 0, first = bonus > 0, n = (me.tickets || 0) + bonus;
+      var rk = s.ranking || [], myR = Math.max(0, rk.findIndex(function (r) { return r.id === me.id; })), bonus = cfg(s.train.board || 0).winTickets[myR] || 0, first = bonus > 0, n = (me.tickets || 0) + bonus;
       if (s.train.kind === 'solo') { try { localStorage.removeItem('rfs_save_train'); } catch (e) { } }
       if (!n) return Promise.resolve();
       Meta.addTickets(n);
       return modal({ title: '🎫 ตั๋วรถไฟทอง', width: 560, body: '<div style="text-align:center"><img src="assets/ticket.webp" class="tkpop" draggable="false"><div style="font-size:28px;font-weight:900;color:#c48a00">+' + n + ' ใบ</div><div style="font-weight:800;margin-top:6px">' + ((me.tickets || 0) ? 'จากการเปิดการ์ด ' + me.tickets + ' ใบ' : '') + (first ? ((me.tickets || 0) ? ' • ' : '') + (myR === 0 ? '👑 ' : '🏅 ') + 'อันดับ ' + (myR + 1) + ' รับ ' + bonus + ' ใบ' : '') + '</div><div class="muted" style="font-weight:700;margin-top:4px">รวมมีตั๋ว ' + (Meta.p.tickets || 0) + ' ใบ — แลกตัวละครรอยัลได้ที่หน้าอีเวนต์</div></div>', buttons: [{ t: 'เยี่ยมเลย!', v: 1, cls: 'green' }] });
     }
-    return { open: hub, hub: hub, saved: saved, award: award, rules: rules, mapIdx: mapIdx };
+    return { open: hub, hub: hub, saved: saved, award: award, rules: rules, mapIdx: mapIdx, cfg: cfg };
   })();
   U.Train = Train;
   // =====================================================================
@@ -2409,7 +2412,7 @@
     B.innerHTML = '<div class="row" style="justify-content:center;gap:16px"><span style="font-weight:700">🚂 อีเวนต์รถจักรไอน้ำ • รหัสห้อง</span><span class="roomcode">' + R.code + '</span><span class="chip">' + (Online.kind === 'p2p' ? '🌐 ออนไลน์ P2P' : '📱 โหมดทดสอบเครื่องเดียว') + '</span></div>' +
       '<div style="text-align:center;font-weight:700;margin:6px 0">' + (host ? 'ส่งรหัสให้เพื่อน (สูงสุด 4 คน) — แข่งเดี่ยวทุกคน ที่ว่างเติม AI' : 'เข้าห้องแล้ว! รอโฮสต์เริ่มเกม...') + '</div>' +
       '<div class="lobbyP">' + slots + '</div>' +
-      '<div style="text-align:center;font-weight:700;margin-top:10px;line-height:1.7">🗺️ สถานีรถจักรไอน้ำ • ' + TRAIN.rounds + ' รอบ • เริ่ม ' + fmt(TRAIN.startCash) + ' G • เป้าหมาย ' + fmt(TRAIN.target) + ' G<br>🚂 ทุก ' + TRAIN.every + ' รอบทุกคนขับรถไฟ • 🎫 ตั๋วทอง ' + TRAIN.winTickets.join('/') + ' ใบ • 🎁 กล่องสุ่ม ' + TRAIN.rankBoxes.join('/') + ' ตามอันดับ</div>' +
+      '<div style="text-align:center;font-weight:700;margin-top:10px;line-height:1.7">🗺️ ' + Train.cfg(S.trainBoard || 0).th + ' • ' + TRAIN.rounds + ' รอบ • เริ่ม ' + fmt(TRAIN.startCash) + ' G • เป้าหมาย ' + fmt(Train.cfg(S.trainBoard || 0).target) + ' G<br>🚂 ทุก ' + TRAIN.every + ' รอบทุกคนขับรถไฟ • 🎫 ตั๋วทอง ' + Train.cfg(S.trainBoard || 0).winTickets.join('/') + ' ใบ • 🎁 กล่องสุ่ม ' + TRAIN.rankBoxes.join('/') + ' ตามอันดับ</div>' +
       (host ? '<div class="row" style="gap:4px;align-items:center;justify-content:center;margin-top:8px"><b>สีของคุณ:</b>' + colorDots(ps[0] && typeof ps[0].color === 'number' ? ps[0].color : (Meta.p.color || 0), 'myc') + '</div><div style="text-align:center;margin-top:12px"><button class="pink" id="lobStart" style="font-size:22px">▶ เริ่มเกม</button></div>' : '');
     if (!host) return;
     B.querySelectorAll('[data-myc]').forEach(function (e) { e.onclick = function () { Meta.p.color = +e.dataset.myc; Meta.save(); if (Online.room.players[0]) Online.room.players[0].color = Meta.p.color; Online.setSetting('_c', Date.now()); renderLobby(); }; });

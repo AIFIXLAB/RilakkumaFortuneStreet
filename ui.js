@@ -147,7 +147,7 @@
   // =====================================================================
   var Sync = (function () {
     var SKIP = /^rfs_(online_|cloud)/;
-    function collect() { var d = {}; for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (/^rfs_/.test(k) && !SKIP.test(k)) d[k] = localStorage.getItem(k); } return { app: 'rfs', v: 1, t: Date.now(), d: d }; }
+    function collect() { try { Meta.save(); } catch (e) { } var d = {}; for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); if (/^rfs_/.test(k) && !SKIP.test(k)) d[k] = localStorage.getItem(k); } return { app: 'rfs', v: 1, t: Date.now(), d: d }; }
     function summary(pkg) { var p = null; try { p = JSON.parse(pkg.d.rfs_profile_v1); } catch (e) { } return p ? 'ชื่อ <b>' + esc(p.name) + '</b> • Lv ' + p.level + ' • ' + fmt(p.gold) + ' G • ' + p.diamond + ' 💎 • ตัวละคร ' + Object.keys(p.chars || {}).length + ' ตัว' + (p.tickets ? ' • 🎫 ' + p.tickets : '') : 'ไม่มีโปรไฟล์'; }
     function apply(pkg) {
       if (!pkg || pkg.app !== 'rfs' || !pkg.d || !pkg.d.rfs_profile_v1) { toast('⚠️ ข้อมูลเซฟไม่ถูกต้อง', 3000); return Promise.resolve(false); }
@@ -407,8 +407,8 @@
   // PRE-MATCH LOADOUT (Character • Costume • Equipment x2 • Special Card x1 • Inventory • Map Preview • Ready)
   // =====================================================================
   var LO = { slot: 0 };
-  function allCharKeys() { var k = []; CHARACTERS.forEach(function (c, i) { k.push('b' + i); }); EXTRA_CHARS.forEach(function (c, i) { k.push('x' + i); }); JOB_CHARS.forEach(function (c, i) { k.push('j' + i); }); GOLD_CHARS.forEach(function (c, i) { k.push('g' + i); }); EASTER_CHARS.forEach(function (c, i) { k.push('e' + i); }); return k; }
-  function aiCharKeys() { return allCharKeys().filter(function (k) { return k[0] !== 'e'; }); }
+  function allCharKeys() { var k = []; CHARACTERS.forEach(function (c, i) { k.push('b' + i); }); EXTRA_CHARS.forEach(function (c, i) { k.push('x' + i); }); JOB_CHARS.forEach(function (c, i) { k.push('j' + i); }); GOLD_CHARS.forEach(function (c, i) { k.push('g' + i); }); EASTER_CHARS.forEach(function (c, i) { k.push('e' + i); }); STEAM_CHARS.forEach(function (c, i) { k.push('s' + i); }); ROYAL_CHARS.forEach(function (c, i) { k.push('r' + i); }); return k; }
+  function aiCharKeys() { return allCharKeys().filter(function (k) { return k[0] !== 'e' && k[0] !== 'r'; }); }
   function skillChip(k, big) { var s = Meta.charSkill(k); if (!s) return ''; return '<div class="skillchip' + (k[0] === 'g' ? ' gold' : k[0] === 'e' ? ' easter' : k[0] === 'r' ? ' royal' : '') + (big ? ' big' : '') + '"><b>⭐ ' + esc(s.name) + '</b><span>' + esc(s.desc) + '</span>' + (s.ename ? '<b style="margin-top:3px">' + (s.etag || '🥚') + ' ' + esc(s.ename) + ' <small>(โบนัส' + (s.elabel || 'อีเวนต์อีสเตอร์') + ')</small></b><span>' + esc(s.edesc) + '</span>' : '') + '</div>'; }
   U.skillChip = skillChip;
   function openLoadout() { var e = Meta.p.equip, v = Meta.validLoadout(); e.eq = v.eq; e.sc = v.sc; renderLoadout(); show('loadout'); }
@@ -423,8 +423,8 @@
     }).join('');
     var slot = function (idx, kind) {
       var id = kind === 'sc' ? e.sc : e.eq[idx], it = id && Meta.item(id);
-      return '<div class="eqslot ' + (it ? 'filled' : '') + '" data-slot="' + (kind === 'sc' ? 'sc' : idx) + '" style="' + (LO.slot === (kind === 'sc' ? 'sc' : idx) ? 'outline:5px solid #ff7aa8' : '') + '">' +
-        (it ? spr(it.spr, 84, 70) + '<div>' + it.name + '</div><div style="font-size:11px;font-weight:700">' + it.desc + '</div>' : '<div style="font-size:30px">＋</div>' + (kind === 'sc' ? 'Special Card Slot' : 'Equipment Slot ' + (idx + 1))) + '</div>';
+      return '<div class="eqslot ' + (it ? 'filled' : '') + '" data-slot="' + (kind === 'sc' ? 'sc' : idx) + '" style="width:100px;min-height:120px;font-size:12px;' + (LO.slot === (kind === 'sc' ? 'sc' : idx) ? 'outline:5px solid #ff7aa8' : '') + '">' +
+        (it ? spr(it.spr, 60, 52) + '<div>' + it.name + '</div><div style="font-size:10px;font-weight:700;line-height:1.2">' + it.desc + '</div>' : '<div style="font-size:30px">＋</div>' + (kind === 'sc' ? 'การ์ดพิเศษ' : 'อุปกรณ์ ' + (idx + 1))) + '</div>';
     };
     var inv = EQUIPMENT.concat(SPECIAL_CARDS).map(function (it) {
       var q = Meta.owned(it.id), isSC = /^SC_/.test(it.id), eqd = isSC ? e.sc === it.id : e.eq.indexOf(it.id) >= 0;
@@ -435,9 +435,9 @@
       '<div style="margin-top:8px"><b>2) สกิลติดตัว</b> ' + skillChip(e.char) + '</div></div>' +
       '<div class="panel" style="padding:10px"><b>6) Inventory — แตะเพื่อใส่ช่องที่เลือก</b> <span class="muted" style="font-size:13px">(ใช้ได้เมื่อมีใน Inventory • ไอเทมจะถูกหักเมื่อใช้งานจริงในเกม)</span><div class="invgrid" style="margin-top:6px;max-height:230px;overflow:auto">' + inv + '</div>' + itemInfoBox(LO.info) + '</div></div>' +
       '<div class="col" style="width:330px;align-items:center"><div class="panel" style="padding:12px;width:100%;text-align:center">' + spr(Meta.charSprite(e.char), 200, 190) + '<div style="font-weight:900;font-size:20px">' + Meta.charName(e.char) + '</div>' + skillChip(e.char, true) + '</div>' +
-      '<div class="row" style="gap:10px">' + slot(0) + slot(1) + '</div>' + slot(0, 'sc') + '</div>' +
+      '<div class="row" style="gap:8px">' + slot(0) + slot(1) + slot(2) + '</div>' + slot(0, 'sc') + '</div>' +
       '<div class="col" style="width:300px"><div class="panel" style="padding:10px"><b>7) Map Preview</b><div style="height:170px;border-radius:14px;border:3px solid #6b4226;margin-top:6px;background:url(assets/' + m.bg + '.webp) center/cover"></div><div style="font-weight:900;font-size:18px;margin-top:4px">' + m.th + '</div>' + m.districts.map(function (d) { return '<div class="row" style="font-size:13px;font-weight:800;gap:6px"><span style="width:16px;height:12px;border-radius:4px;background:' + d.color + ';border:2px solid #6b4226"></span>' + d.th + '</div>'; }).join('') + '</div>' +
-      '<div class="panel" style="padding:10px;font-weight:800;font-size:14px"><b>5) ตรวจสอบความพร้อม</b><div>ตัวละคร: ' + Meta.charName(e.char) + '</div><div>อุปกรณ์: ' + (e.eq.map(function (id) { return Meta.item(id).name; }).join(', ') || '-') + ' (' + e.eq.length + '/2)</div><div>การ์ดพิเศษ: ' + (e.sc ? Meta.item(e.sc).name : '-') + ' (' + (e.sc ? 1 : 0) + '/1)</div><div>โหมด: ' + LENGTHS[U.sel.len].n + '</div></div></div></div>';
+      '<div class="panel" style="padding:10px;font-weight:800;font-size:14px"><b>5) ตรวจสอบความพร้อม</b><div>ตัวละคร: ' + Meta.charName(e.char) + '</div><div>อุปกรณ์: ' + (e.eq.map(function (id) { return Meta.item(id).name; }).join(', ') || '-') + ' (' + e.eq.length + '/3)</div><div>การ์ดพิเศษ: ' + (e.sc ? Meta.item(e.sc).name : '-') + ' (' + (e.sc ? 1 : 0) + '/1)</div><div>โหมด: ' + LENGTHS[U.sel.len].n + '</div></div></div></div>';
     $('#loadoutBody').innerHTML = html;
     var B = $('#loadoutBody');
     B.querySelectorAll('[data-c]').forEach(function (x) { x.onclick = function () { if (x.classList.contains('lock')) { LO.info = x.dataset.c; renderLoadout(); toast(Meta.p.chars[x.dataset.c] ? 'ตัวละครนี้ถูกเลือกแล้ว' : x.dataset.c[0] === 'e' ? '🥚 ตัวละครอีสเตอร์ได้จากไข่อีสเตอร์สุ่มเท่านั้น' : '🔒 ปลดล็อกตัวละครนี้ได้ที่ร้านค้า'); return; } e.char = x.dataset.c; LO.info = x.dataset.c; Meta.save(); renderLoadout(); }; });
@@ -450,7 +450,7 @@
         else {
           var at = e.eq.indexOf(id);
           if (at >= 0) e.eq.splice(at, 1); // tap again = remove
-          else { var s = typeof LO.slot === 'number' ? LO.slot : (e.eq.length < 2 ? e.eq.length : 1); if (s > e.eq.length) s = e.eq.length; e.eq[s] = id; e.eq = e.eq.slice(0, 2); LO.slot = e.eq.length < 2 ? e.eq.length : s; }
+          else { var s = typeof LO.slot === 'number' ? LO.slot : (e.eq.length < 3 ? e.eq.length : 2); if (s > e.eq.length) s = e.eq.length; e.eq[s] = id; e.eq = e.eq.slice(0, 3); LO.slot = e.eq.length < 2 ? e.eq.length : s; }
         }
         Meta.save(); renderLoadout();
       };
@@ -799,7 +799,7 @@
       .then(function (v) {
         if (v !== 'use') return;
         return modal({ title: 'ยืนยันการใช้ ' + d.name + '?', body: '<div style="text-align:center;font-weight:800">' + d.th + '</div>', buttons: [{ t: 'ใช้เลย', v: 1, cls: 'green' }, { t: 'ยกเลิก', v: 0 }] })
-          .then(async function (ok) { if (ok) { await g.usePreRoll(p, sl); consumeUsed(g); sfx('coin'); refresh(); if (g.s.teleportBank && U.preRollResolve) U.preRollResolve(); else if (U.preRollRender) U.preRollRender(); } });
+          .then(async function (ok) { if (ok) { await g.usePreRoll(p, sl); consumeUsed(g); sfx('coin'); refresh(); if ((g.s.teleportBank || g.s.warpTo != null) && U.preRollResolve) U.preRollResolve(); else if (U.preRollRender) U.preRollRender(); } });
       });
   };
   var LOG_ICON = { gain: ['ui', 'i_money'], lose: ['ui', 'c_warn'], rent: ['ui', 'i_shop'], buy: ['ui', 'buy'], card: ['ui', 'i_card'], div: ['ui', 'i_stock'], bad: ['ui', 'c_x'], win: ['ui', 'achv'] };
@@ -1322,19 +1322,19 @@
         return modal({ title: '🏰 สร้างบ้านพิเศษ', width: 1000, xValue: null, body: '<div style="text-align:center;font-weight:700;margin-bottom:8px">เลือก 1 แบบ — ใครมาตก/เดินผ่านจะโดนเอฟเฟกต์ของบ้าน • เงินสด ' + fmt(p.cash) + ' G</div><div class="sphgrid">' + opts.map(function (o) { var ok = o.cost <= p.cash; return '<div class="sphopt ' + (ok ? '' : 'dimo') + '" data-sb="' + o.b.id + '">' + spr(o.b.spr, 170, 160) + '<b>' + o.b.th + '</b><span>' + o.b.desc + '</span><div class="coin" style="font-size:18px">' + fmt(o.cost) + '</div></div>'; }).join('') + '</div>', buttons: [{ t: 'ยังไม่สร้าง', v: null, cls: 'gray' }],
           mount: function (box, close) { box.querySelectorAll('[data-sb]').forEach(function (e) { e.onclick = function () { if (e.classList.contains('dimo')) { toast('เงินไม่พอ'); return; } close(e.dataset.sb); }; }); } });
       },
-      portalChoice: function (p, owner, t, big, small) {
+      portalChoice: function (p, owner, t, big, small, buyCost) {
         if (owner.id === p.id) {
           if (p.isAI) return aiWait(400).then(function () { var r = A.portalChoice(g, p, owner, t, 0, 0); if (r) toast('🌀 ' + esc(p.name) + ' วาร์ปฟรีด้วยประตูของตัวเอง!'); return r; });
           return modal({ title: '🌀 ประตูทะลุมิติของคุณเอง', width: 640, close: false, body: '<div class="row" style="gap:16px;align-items:center">' + spr(['sph', 0], 160, 160) + '<div style="font-weight:700;font-size:17px;line-height:1.7">เจ้าของประตูวาร์ปได้ <b style="color:#2c8a2c">ฟรี!</b><br>วาร์ปไปช่องไหนก็ได้ในแผนที่ แล้วได้ผลของช่องนั้นตามปกติ</div></div>', buttons: [{ t: '🌀 วาร์ปฟรี', v: true, cls: 'purple' }, { t: 'อยู่ที่นี่', v: false }] });
         }
-        if (p.isAI) return aiWait(400).then(function () { var r = A.portalChoice(g, p, owner, t, big, small); toast('🌀 ' + esc(p.name) + (r ? ' จ่าย ' + fmt(big) + ' G แล้ววาร์ป!' : ' จ่าย ' + fmt(small) + ' G (ไม่วาร์ป)')); return r; });
-        return modal({ title: '🌀 ประตูทะลุมิติของ ' + esc(owner.name), width: 680, close: false, body: '<div class="row" style="gap:16px;align-items:center">' + spr(['sph', 0], 160, 160) + '<div style="font-weight:700;font-size:17px;line-height:1.7">วาร์ปไปช่องไหนก็ได้ในแผนที่!<br>• วาร์ป: จ่าย <b style="color:#d0342c">' + fmt(big) + ' G</b> (10% ของทรัพย์สิน)<br>• ไม่วาร์ป: จ่าย <b style="color:#d0342c">' + fmt(small) + ' G</b> (5%)</div></div>', buttons: [{ t: '🌀 วาร์ป (' + fmt(big) + ' G)', v: true, cls: 'purple' }, { t: 'ไม่วาร์ป (' + fmt(small) + ' G)', v: false }] });
+        if (p.isAI) return aiWait(400).then(function () { var r = A.portalChoice(g, p, owner, t, big, small, buyCost); toast('🌀 ' + esc(p.name) + (r === 'buy' ? ' ซื้อบ้านประตูทะลุมิติ ' + fmt(buyCost) + ' G!' : r ? ' จ่าย ' + fmt(big) + ' G แล้ววาร์ป!' : ' จ่าย ' + fmt(small) + ' G (ไม่วาร์ป)')); return r; });
+        return modal({ title: '🌀 ประตูทะลุมิติของ ' + esc(owner.name), width: 680, close: false, body: '<div class="row" style="gap:16px;align-items:center">' + spr(['sph', 0], 160, 160) + '<div style="font-weight:700;font-size:17px;line-height:1.7">วาร์ปไปช่องไหนก็ได้ในแผนที่!<br>• วาร์ป: จ่าย <b style="color:#d0342c">' + fmt(big) + ' G</b> (10% ของทรัพย์สิน)<br>• ไม่วาร์ป: จ่าย <b style="color:#d0342c">' + fmt(small) + ' G</b> (5%)<br>• 🏠 ซื้อบ้านนี้: จ่าย <b style="color:#d0342c">' + fmt(buyCost) + ' G</b> (20% ของทรัพย์สิน) ให้เจ้าของ แล้วบ้านเป็นของเรา</div></div>', buttons: [{ t: '🌀 วาร์ป (' + fmt(big) + ' G)', v: true, cls: 'purple' }, { t: '🏠 ซื้อบ้าน (' + fmt(buyCost) + ' G)', v: 'buy', cls: 'pink' }, { t: 'ไม่วาร์ป (' + fmt(small) + ' G)', v: false }] });
       },
       rollTwo: function (p, pre) {
         if (p.isAI) return this.showTwo(p, pre).then(function () { return pre; });
         var self = this;
         return new Promise(function (resolve) {
-          var L = $('#diceLayer'); L.classList.add('on', 'tap'); L.innerHTML = '<div class="two"><div id="spinA"></div><div id="spinB"></div></div><div class="tapmsg">🚂 แตะเพื่อทอยลูกเต๋า 2 ลูก ขับรถไฟ!</div>';
+          var L = $('#diceLayer'); L.classList.add('on', 'tap'); L.innerHTML = '<div class="two"><div id="spinA"></div><div id="spinB"></div></div><div class="tapmsg">' + (g.s.train && g.s.train.phase ? '🚂 แตะเพื่อทอยลูกเต๋า 2 ลูก ขับรถไฟ!' : '🎲🎲 แตะเพื่อทอยลูกเต๋า 2 ลูก!') + '</div>';
           setAct('<div style="font-size:17px">🚂 คุณได้ขับรถไฟ! แตะลูกเต๋า</div>');
           var a = spinner(L.querySelector('#spinA'), 140, diceTint(p)), b = spinner(L.querySelector('#spinB'), 140, diceTint(p)), done = false;
           L.onclick = async function () {
@@ -2074,7 +2074,7 @@
     }).join('');
     var slot = function (k) {
       var id = k === 'sc' ? e.sc : e.eq[k], it = id && Meta.item(id), on = EQS.slot === k;
-      return '<div class="eqslot ' + (it ? 'filled' : '') + '" data-es="' + k + '" style="width:118px;height:132px;' + (on ? 'outline:5px solid #ff7aa8' : '') + '">' + (it ? spr(it.spr, 70, 60) + '<div style="font-size:13px">' + it.name + '</div><div style="font-size:10px;color:#c0392b">แตะซ้ำเพื่อถอด</div>' : '<div style="font-size:28px">＋</div><div style="font-size:12px">' + (k === 'sc' ? 'การ์ดพิเศษ' : 'อุปกรณ์ ' + (k + 1)) + '</div>') + '</div>';
+      return '<div class="eqslot ' + (it ? 'filled' : '') + '" data-es="' + k + '" style="width:90px;height:126px;' + (on ? 'outline:5px solid #ff7aa8' : '') + '">' + (it ? spr(it.spr, 56, 50) + '<div style="font-size:11px">' + it.name + '</div><div style="font-size:10px;color:#c0392b">แตะซ้ำเพื่อถอด</div>' : '<div style="font-size:28px">＋</div><div style="font-size:12px">' + (k === 'sc' ? 'การ์ดพิเศษ' : 'อุปกรณ์ ' + (k + 1)) + '</div>') + '</div>';
     };
     var items = EQUIPMENT.concat(SPECIAL_CARDS).filter(function (it) { return Meta.owned(it.id) > 0; }).map(function (it) {
       var isSC = /^SC_/.test(it.id), eqd = isSC ? e.sc === it.id : e.eq.indexOf(it.id) >= 0;
@@ -2086,7 +2086,7 @@
       '<div class="panel" style="padding:10px"><b>2) สกินลูกเต๋า</b><div class="invgrid" style="grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:6px;margin-top:6px;max-height:190px;overflow:auto">' + dice + '</div></div></div>' +
       '<div class="col" style="width:290px;align-items:center;gap:8px"><div class="panel" style="padding:12px;width:100%;text-align:center">' + spr(Meta.charSprite(e.char), 190, 180) + '<div style="font-weight:900;font-size:20px">' + Meta.charName(e.char) + '</div>' + skillChip(e.char, true) + '<div class="row" style="justify-content:center;gap:6px;margin-top:6px;font-weight:800">' + spr(dk.spr, 46, 44) + dk.name + '</div></div>' +
       '<button class="pink" id="eqSave" style="font-size:20px;width:100%">💾 บันทึกการติดตั้ง</button><div class="muted" style="font-size:12px;font-weight:700;text-align:center">ใช้กับทุกโหมดอัตโนมัติ: เล่นกับ AI • ออนไลน์ • ทัวร์นาเมนต์</div></div>' +
-      '<div class="col" style="width:400px;gap:10px"><div class="panel" style="padding:10px"><b>3) ไอเทมติดตัว (3 ชิ้น)</b><div class="row" style="gap:8px;margin-top:6px;justify-content:center">' + slot(0) + slot(1) + slot('sc') + '</div><div class="muted" style="font-size:11px;font-weight:700;margin-top:4px">อุปกรณ์ 2 ชิ้น + การ์ดพิเศษ 1 ใบ • ไอเทมถูกหักเมื่อใช้จริงในเกม</div></div>' +
+      '<div class="col" style="width:400px;gap:10px"><div class="panel" style="padding:10px"><b>3) ไอเทมติดตัว (อุปกรณ์ 3 + การ์ด 1)</b><div class="row" style="gap:5px;margin-top:6px;justify-content:center">' + slot(0) + slot(1) + slot(2) + slot('sc') + '</div><div class="muted" style="font-size:11px;font-weight:700;margin-top:4px">อุปกรณ์ 3 ชิ้น + การ์ดพิเศษ 1 ใบ • ไอเทมถูกหักเมื่อใช้จริงในเกม</div></div>' +
       '<div class="panel" style="padding:10px"><b>ไอเทมที่มี — แตะเพื่อใส่ช่องที่เลือก</b><div class="invgrid" style="grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:6px;margin-top:6px;max-height:200px;overflow:auto">' + items + '</div>' + itemInfoBox(EQS.info) + '</div></div></div>';
     var re = function () { Meta.save(); renderEquipTab(box); };
     box.querySelectorAll('[data-ec]').forEach(function (x) { x.onclick = function () { e.char = x.dataset.ec; EQS.info = x.dataset.ec; sfx('tap'); re(); }; });
@@ -2100,7 +2100,7 @@
         else {
           var at = e.eq.indexOf(id);
           if (at >= 0) e.eq.splice(at, 1);
-          else { var s = typeof EQS.slot === 'number' ? EQS.slot : (e.eq.length < 2 ? e.eq.length : 1); if (s > e.eq.length) s = e.eq.length; e.eq[s] = id; e.eq = e.eq.slice(0, 2); EQS.slot = e.eq.length < 2 ? e.eq.length : 'sc'; }
+          else { var s = typeof EQS.slot === 'number' ? EQS.slot : (e.eq.length < 3 ? e.eq.length : 2); if (s > e.eq.length) s = e.eq.length; e.eq[s] = id; e.eq = e.eq.slice(0, 3); EQS.slot = e.eq.length < 2 ? e.eq.length : 'sc'; }
         }
         sfx('tap'); re();
       };
@@ -2109,7 +2109,7 @@
   }
   function renderInventory() {
     var P = Meta.p, items = [];
-    if (IV.tab === 'Characters') { allCharKeys().forEach(function (k) { if (P.chars[k]) items.push({ id: k, name: Meta.charName(k), spr: Meta.charSprite(k), q: 1, eq: P.equip.char === k }); }); }
+    if (IV.tab === 'Characters') { allCharKeys().forEach(function (k) { if (P.chars[k]) items.push({ id: k, name: Meta.charName(k), spr: Meta.charSprite(k), q: 1, eq: P.equip.char === k }); }); allCharKeys().forEach(function (k) { if (!P.chars[k] && (k[0] === 'r' || k[0] === 'e' || k[0] === 's')) items.push({ id: k, name: Meta.charName(k), spr: Meta.charSprite(k), q: 0, lockedHow: k[0] === 'r' ? '🎫 แลกตั๋วทอง' : k[0] === 'e' ? '🥚 จากไข่อีสเตอร์' : '💎 ร้านค้า' }); }); }
     else if (IV.tab === 'Dice Skins') { DICE_SKINS.forEach(function (d) { if (P.dice[d.id]) items.push({ id: d.id, name: d.name, spr: d.spr, q: 1, eq: P.equip.dice === d.id }); }); }
     else if (IV.tab === 'Packages') { items = []; }
     else if (IV.tab === 'Other Items') { items = []; }
@@ -2117,7 +2117,7 @@
       Meta.all().forEach(function (it) { if (it.type === IV.tab && Meta.owned(it.id)) items.push({ id: it.id, name: it.name, spr: it.spr, q: Meta.owned(it.id), desc: it.desc, eq: P.equip.eq.indexOf(it.id) >= 0 || P.equip.sc === it.id }); });
     }
     var setupTab = IV.tab === '🎽 ติดตั้ง';
-    var grid = setupTab ? '<div id="eqTab"></div>' : items.length ? '<div class="invgrid">' + items.map(function (i) { return '<div class="invitem ' + (i.eq ? 'eqd' : '') + '" data-iv="' + i.id + '"><span class="q">x' + i.q + '</span>' + spr(i.spr, 90, 84) + '<div>' + i.name + '</div>' + (i.eq ? '<div style="font-size:11px;color:#2c8a2c">ติดตั้ง/ใช้งานอยู่</div>' : '') + '</div>'; }).join('') + '</div>' : '<div class="panel" style="padding:20px;text-align:center;font-weight:800">' + (IV.tab === 'Packages' ? 'แพ็กเกจจะถูกแยกสินค้าเข้า Inventory ตามประเภทอัตโนมัติเมื่อซื้อ' : 'ยังไม่มีไอเทมในหมวดนี้') + '</div>';
+    var grid = setupTab ? '<div id="eqTab"></div>' : items.length ? '<div class="invgrid">' + items.map(function (i) { return '<div class="invitem ' + (i.eq ? 'eqd' : '') + (i.lockedHow ? ' dim' : '') + '" data-iv="' + i.id + '">' + (i.lockedHow ? '<span class="q">🔒</span>' : '<span class="q">x' + i.q + '</span>') + spr(i.spr, 90, 84) + '<div>' + i.name + '</div>' + (i.lockedHow ? '<div style="font-size:11px;color:#a0522d">' + i.lockedHow + '</div>' : '') + (i.eq ? '<div style="font-size:11px;color:#2c8a2c">ติดตั้ง/ใช้งานอยู่</div>' : '') + '</div>'; }).join('') + '</div>' : '<div class="panel" style="padding:20px;text-align:center;font-weight:800">' + (IV.tab === 'Packages' ? 'แพ็กเกจจะถูกแยกสินค้าเข้า Inventory ตามประเภทอัตโนมัติเมื่อซื้อ' : 'ยังไม่มีไอเทมในหมวดนี้') + '</div>';
     $('#inventory').innerHTML = '<div class="scrhead">' + '<div class="uibtn backbtn" id="ivBack">' + spr(['ui', 'prev'], 70, 70) + '</div>' + '<div class="title"><span class="ttl">🎒 คลังไอเทม</span></div><span class="chip coin">' + fmt(P.gold) + '</span><span class="chip">💎 ' + P.diamond + '</span><div class="uibtn" id="ivShop">' + spr(['ui', 'shop'], 100, 72) + '</div></div><div class="scrbody"><div class="tabs" style="margin-bottom:12px">' + INV_TABS.map(function (t) { return '<div class="tab ' + (IV.tab === t ? 'on' : '') + '" data-ivt="' + t + '">' + t + '</div>'; }).join('') + '</div>' + grid + '</div>';
     $('#ivBack').onclick = function () { show('menu'); };
     $('#ivShop').onclick = function () { openShop(); };
@@ -2126,6 +2126,7 @@
     document.querySelectorAll('[data-iv]').forEach(function (e) {
       e.onclick = function () {
         var id = e.dataset.iv;
+        if (IV.tab === 'Characters' && !P.chars[id]) { modal({ title: Meta.charName(id), body: '<div class="col" style="align-items:center;min-width:380px">' + spr(Meta.charSprite(id), 150, 150) + skillChip(id, true) + '<div class="chip">🔒 ' + (id[0] === 'r' ? 'แลกด้วยตั๋วรถไฟทอง ' + ROYAL_CHARS[+id.slice(1)].t + ' ใบ ที่หน้าอีเวนต์รถจักรไอน้ำ' : id[0] === 'e' ? 'ได้จากไข่อีสเตอร์สุ่ม' : 'ซื้อได้ที่ร้านค้า') + '</div></div>', buttons: [{ t: 'ปิด', v: 0 }] }); return; }
         if (IV.tab === 'Characters') { P.equip.char = id; Meta.save(); toast('ตั้ง ' + Meta.charName(id) + ' เป็นตัวละครหลัก'); renderInventory(); }
         else if (IV.tab === 'Dice Skins') { P.equip.dice = id; Meta.save(); toast('เปลี่ยนสกินลูกเต๋าแล้ว'); renderInventory(); }
         else { var it = Meta.item(id); modal({ title: it.name, body: '<div class="col" style="align-items:center;min-width:380px">' + spr(it.spr, 130, 110) + '<div style="font-weight:800">' + it.desc + '</div><div class="chip">มี ' + Meta.owned(id) + ' ชิ้น</div><div class="muted" style="font-size:13px">ติดตั้งได้ที่แท็บ 🎽 ติดตั้ง</div></div>', buttons: [{ t: 'ปิด', v: 1 }] }); }

@@ -68,7 +68,9 @@
           continue;
         }
         if (def.id === 'eq_travel' || def.id === 'SC_home') { if (Game.suitsDone(p) && g.dist(p.pos, g.bankId()) > 6) await g.usePreRoll(p, sl); continue; }
-        if (def.id === 'SC_value' && !g.shopsOf(p).length) continue;
+        if ((def.id === 'SC_value' || def.id === 'SC_plus' || def.id === 'eq_upgt' || def.id === 'SC_boom' || def.id === 'SC_swap') && !g.shopsOf(p).length) continue;
+        if ((def.id === 'SC_x2' || def.id === 'eq_x2t' || def.id === 'SC_half' || def.id === 'eq_halft' || def.id === 'eq_clock') && g.r() < 0.6) continue;
+        if (g.s.warpTo != null || g.s.teleportBank) continue;
         if (def.id === 'eq_stock' && !p.shares.some(Boolean)) continue;
         await g.usePreRoll(p, sl);
       }
@@ -178,9 +180,10 @@
       opts.forEach(function (b) { var c = g.dragonChance(b), ev = c * pot - (1 - c) * (b + 120); if (ev > bv && b <= p.cash * 0.3) { bv = ev; best = b; } });
       return best;
     },
-    portalChoice: function (g, p, owner, t, big, small) {
+    portalChoice: function (g, p, owner, t, big, small, buyCost) {
       var best = -1e9;
       if (owner.id === p.id) { g.s.tiles.forEach(function (x) { if (x.id !== t.id) best = Math.max(best, g.landScore(p, x)); }); return best > 60; }
+      if (buyCost && p.ai.level !== 'beginner' && p.cash > buyCost * 1.6 && g.s.round < g.s.settings.maxRounds * 0.6 && g.r() < 0.35) return 'buy';
       if (p.ai.level === 'beginner') return false;
       best = -1e9; g.s.tiles.forEach(function (x) { if (x.id !== t.id) best = Math.max(best, g.landScore(p, x)); });
       return best - (big - small) / 10 > 250 && p.cash > big + 500;

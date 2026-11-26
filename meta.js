@@ -88,8 +88,8 @@ var Meta = (function () {
   // consume a single-use item that was actually used in a match
   function consume(id) { if (P.inv[id] > 0) { P.inv[id]--; P.hist.unshift({ tx: txid(), t: Date.now(), kind: 'use', id: id, name: (item(id) || {}).name, cur: '-', amt: 0 }); } var e = P.equip; save(); }
   function validLoadout() {
-    var e = P.equip, eq = (e.eq || []).filter(function (id, i, a) { return id && owned(id) > 0 && a.indexOf(id) === i; }).slice(0, 2);
-    var sc = e.sc && owned(e.sc) > 0 ? e.sc : null;
+    var e = P.equip, eq = (e.eq || []).filter(function (id, i, a) { return id && owned(id) > 0 && item(id) && a.indexOf(id) === i; }).slice(0, 3);
+    var sc = e.sc && owned(e.sc) > 0 && item(e.sc) ? e.sc : null;
     return { eq: eq, sc: sc };
   }
   // daily login

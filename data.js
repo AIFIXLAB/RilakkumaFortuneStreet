@@ -783,7 +783,6 @@ var EQUIPMENT = [
   { id: 'eq_sand', name: 'นาฬิกาทราย', th: 'ยืดเวลาเอฟเฟกต์ดีที่ใช้อยู่ +2 รอบ (ถ้าไม่มี: โชคดีขึ้น 2 รอบ)', when: 'preRoll', price: 1800, cur: 'gold', spr: ['items3', 31] },
   { id: 'eq_bomb', name: 'ระเบิด', th: 'ร้านคู่แข่งที่เลือกมูลค่า -25%', when: 'preRoll', price: 2500, cur: 'gold', spr: ['items3', 33] },
   { id: 'eq_flip', name: 'ยาพลิกผล', th: 'การ์ดร้ายใบถัดไปไม่มีผล', when: 'preRoll', price: 1200, cur: 'gold', spr: ['items3', 34] },
-  { id: 'eq_sbox', name: 'กล่องสุ่มระดับ S', th: 'สุ่ม: +6,000 G / หุ้นฟรี 25 / ร้านที่เลือก +25%', when: 'preRoll', price: 4000, cur: 'gold', spr: ['items3', 41] },
   { id: 'eq_map', name: 'แผนที่ลึกลับ', th: 'วาร์ปไปช่องสุ่ม (อาจโชคดีหรือร้าย!)', when: 'preRoll', price: 800, cur: 'gold', spr: ['items3', 43] },
   { id: 'eq_compass', name: 'เข็มทิศนำทาง', th: 'วาร์ปไปช่องดอก(สัญลักษณ์)ที่ยังขาดใกล้ที่สุด', when: 'preRoll', price: 2000, cur: 'gold', spr: ['items3', 44] },
   { id: 'eq_wallet',  name: 'Safe Wallet',    th: 'ป้องกันการเสียเงินจากการ์ด/เทศกาล 1 ครั้ง', when: 'lose', price: 800, cur: 'gold', spr: ['items', 15] },

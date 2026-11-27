@@ -69,16 +69,19 @@ var Meta = (function () {
   function canAfford(cur, amt) { return (cur === 'gold' ? P.gold : P.diamond) >= amt; }
   function txid() { return 'S' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36); }
   // Atomic purchase: verify → deduct → grant → record
-  function buy(id) {
+  function buy(id, qty) {
     var it = item(id); if (!it) return { ok: false, msg: 'ไม่พบสินค้า' };
-    var price = priceOf(it);
+    qty = Math.max(1, Math.floor(qty || 1)); if (it.uniq) qty = 1;
+    var price = priceOf(it), total = price * qty;
     if (it.uniq && owned(id)) return { ok: false, msg: 'มีสินค้านี้แล้ว' };
-    if (!canAfford(it.cur, price)) return { ok: false, msg: it.cur === 'gold' ? 'Gold Coin ไม่พอ' : 'Diamond ไม่พอ' };
-    if (it.cur === 'gold') P.gold -= price; else P.diamond -= price;
-    if (it.pack) { if (it.pack.gold) P.gold += it.pack.gold; if (it.pack.diamond) P.diamond += it.pack.diamond; Object.keys(it.pack.items || {}).forEach(function (k) { addItem(k, it.pack.items[k]); }); }
-    else addItem(id, 1);
-    P.hist.unshift({ tx: txid(), t: Date.now(), kind: 'buy', id: id, name: it.name, cur: it.cur, amt: -price }); P.hist = P.hist.slice(0, 80);
-    save(); return { ok: true, msg: 'ซื้อ ' + it.name + ' สำเร็จ! เพิ่มเข้า Inventory แล้ว' };
+    if (!canAfford(it.cur, total)) return { ok: false, msg: it.cur === 'gold' ? 'Gold Coin ไม่พอ' : 'Diamond ไม่พอ' };
+    if (it.cur === 'gold') P.gold -= total; else P.diamond -= total;
+    for (var i = 0; i < qty; i++) {
+      if (it.pack) { if (it.pack.gold) P.gold += it.pack.gold; if (it.pack.diamond) P.diamond += it.pack.diamond; Object.keys(it.pack.items || {}).forEach(function (k) { addItem(k, it.pack.items[k]); }); }
+      else addItem(id, 1);
+    }
+    P.hist.unshift({ tx: txid(), t: Date.now(), kind: 'buy', id: id, name: it.name + (qty > 1 ? ' ×' + qty : ''), cur: it.cur, amt: -total }); P.hist = P.hist.slice(0, 80);
+    save(); return { ok: true, msg: 'ซื้อ ' + it.name + (qty > 1 ? ' ×' + qty : '') + ' สำเร็จ! เพิ่มเข้า Inventory แล้ว' };
   }
   function exchange(ex) {
     var payCur = ex.pay.gold ? 'gold' : 'diamond', amt = ex.pay.gold || ex.pay.diamond;

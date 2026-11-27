@@ -2167,9 +2167,16 @@
     document.querySelectorAll('#shop [data-buy]').forEach(function (e) {
       e.onclick = function () {
         var it = Meta.item(e.dataset.buy), price = Meta.priceOf(it);
-        var isD = it.type === 'Dice Skins' && it.spr && it.spr[0] === 'cdice';
-        modal({ title: 'ยืนยันการซื้อ', mount: isD ? function (box) { dicePreview(box.querySelector('.diceprev'), it.id); } : null, body: '<div class="col" style="align-items:center;min-width:420px">' + (isD ? '<div class="diceprev"></div><div class="muted" style="font-size:12px;font-weight:700">👀 ตัวอย่างเอฟเฟกต์ตอนทอย</div>' : spr(it.spr, 150, 120)) + '<div style="font-weight:900;font-size:20px">' + it.name + '</div><div style="font-weight:700">' + it.desc + '</div><div class="chip">ราคา ' + fmt(price) + (it.cur === 'gold' ? ' Gold Coin' : ' Diamond') + '</div></div>', buttons: [{ t: 'ซื้อ', v: 1, cls: 'green' }, { t: 'ยกเลิก', v: 0 }] })
-          .then(function (ok) { if (!ok) return; var r = Meta.buy(it.id); toast((r.ok ? '✅ ' : '⚠️ ') + r.msg); if (r.ok) sfx('coin'); renderShop(); });
+        var isD = it.type === 'Dice Skins' && it.spr && it.spr[0] === 'cdice', multi = !it.uniq, bal = it.cur === 'gold' ? P.gold : P.diamond, maxQ = Math.max(1, Math.min(99, Math.floor(bal / Math.max(1, price)))), Q = 1;
+        var qtyUI = multi ? '<div class="qtybox"><button class="qb" data-q="-10">−10</button><button class="qb" data-q="-1">−</button><input id="qIn" type="number" min="1" max="99" value="1" inputmode="numeric"><button class="qb" data-q="1">+</button><button class="qb" data-q="10">+10</button><button class="qb max" data-q="max">สูงสุด</button></div><div class="muted" style="font-size:12px;font-weight:700">มีอยู่ ' + Meta.owned(it.id) + ' • ซื้อได้สูงสุด ' + maxQ + ' ชิ้น</div>' : '';
+        modal({ title: 'ยืนยันการซื้อ', mount: function (box) {
+            if (isD) dicePreview(box.querySelector('.diceprev'), it.id);
+            if (!multi) return; var inp = box.querySelector('#qIn'), tot = box.querySelector('#qTot');
+            var setQ = function (v) { Q = Math.max(1, Math.min(99, Math.floor(+v || 1))); inp.value = Q; var t = price * Q; tot.innerHTML = 'รวม ' + fmt(t) + (it.cur === 'gold' ? ' Gold Coin' : ' Diamond') + (t > bal ? ' <span style="color:#e53935">(ไม่พอ)</span>' : ''); };
+            box.querySelectorAll('[data-q]').forEach(function (e) { e.onclick = function () { sfx('tap'); setQ(e.dataset.q === 'max' ? maxQ : Q + (+e.dataset.q)); }; });
+            inp.oninput = function () { setQ(inp.value); }; setQ(1);
+          }, body: '<div class="col" style="align-items:center;min-width:420px">' + (isD ? '<div class="diceprev"></div><div class="muted" style="font-size:12px;font-weight:700">👀 ตัวอย่างเอฟเฟกต์ตอนทอย</div>' : spr(it.spr, 150, 120)) + '<div style="font-weight:900;font-size:20px">' + it.name + '</div><div style="font-weight:700">' + it.desc + '</div><div class="chip">ราคา ' + fmt(price) + (it.cur === 'gold' ? ' Gold Coin' : ' Diamond') + (multi ? ' / ชิ้น' : '') + '</div>' + qtyUI + (multi ? '<div id="qTot" class="chip" style="background:#fff3c4;font-size:17px"></div>' : '') + '</div>', buttons: [{ t: 'ซื้อ', v: 1, cls: 'green' }, { t: 'ยกเลิก', v: 0 }] })
+          .then(function (ok) { if (!ok) return; var r = Meta.buy(it.id, Q); toast((r.ok ? '✅ ' : '⚠️ ') + r.msg); if (r.ok) sfx('coin'); renderShop(); });
       };
     });
     document.querySelectorAll('#shop [data-ex]').forEach(function (e) { e.onclick = function () { var x = EXCHANGE.find(function (y) { return y.id === e.dataset.ex; }); var r = Meta.exchange(x); toast((r.ok ? '✅ ' : '⚠️ ') + r.msg); renderShop(); }; });

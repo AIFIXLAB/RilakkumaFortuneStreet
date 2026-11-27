@@ -694,7 +694,7 @@
     for (var k = steps; k > 0; k--) { var opts = this.nextOptions(p.pos, null), back = p.prev !== null && opts.indexOf(p.prev) >= 0 ? p.prev : opts[0]; p.prev = p.pos; p.pos = back; if (this.io.step) await this.io.step(p, back, k - 1); }
   };
   P.onPass = async function (p, t, final) {
-    if (p.flags.train) { var hit = this.s.players.filter(function (q) { return q !== p && !q.bankrupt && q.pos === t.id; }); for (var hi = 0; hi < hit.length; hi++) await this.crash(p, hit[hi]); }
+    if (p.flags.train) { var self0 = this, hit = this.s.players.filter(function (q) { return q !== p && !q.bankrupt && q.pos === t.id && !self0.mate(p, q); }); if (this.s.teams) this.s.players.forEach(function (q) { if (q !== p && !q.bankrupt && q.pos === t.id && self0.mate(p, q)) self0.log('🤝 รถไฟของ ' + p.name + ' ผ่าน ' + q.name + ' (ทีมเดียวกัน ไม่ชน)'); }); for (var hi = 0; hi < hit.length; hi++) await this.crash(p, hit[hi]); }
     if (this.s.easter && this.s.easter.eggs[t.id]) await this.eggCheck(p, t);
     if (t.type === 'bank') { await this.arriveBank(p, final); return; }
     if (t.type === 'suit' && !p.suits[t.suit]) { p.suits[t.suit] = true; this.log('🃏 ' + p.name + ' เก็บสัญลักษณ์ ' + D.SUIT_GLYPH[t.suit]); if (this.io.suit) await this.io.suit(p, t.suit); }

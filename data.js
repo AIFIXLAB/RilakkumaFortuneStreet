@@ -607,7 +607,7 @@ Object.assign(CHAR_SKILLS, {
   s6: { name: 'โทรโข่งเรียกลูกค้า', fx: { rentBonus: 0.12, casinoLuck: 0.2, crashLoot: 0.3 }, desc: 'โบนัสค่าเช่าจากธนาคาร +12% • คาสิโนชนะได้เพิ่ม 20%', ename: 'เตือนภัยรถไฟ', etag: '🚂', elabel: 'สนามรถจักรไอน้ำ', edesc: 'ขับชนได้เงินที่หล่น 30%' },
   s7: { name: 'ช่างซ่อมมือทอง', fx: { investDisc: 0.2, sellBonus: 0.15, trainDice: 1 }, desc: 'อัปเกรดร้านถูกลง 20% • ขายร้านคืนธนาคารได้เพิ่ม 15%', ename: 'ซ่อมหัวรถจักร', etag: '🚂', elabel: 'สนามรถจักรไอน้ำ', edesc: 'ขับรถไฟเดิน +1' },
 });
-var TRAIN = { boards: [{ key: 'train', th: 'สถานีรถจักรไอน้ำ', target: 180000, winTickets: [10, 5, 2, 0], bg: 'bg_train' }, { key: 'train2', th: 'สะพานโค้งไอน้ำ', target: 80000, winTickets: [5, 3, 1, 0], bg: 'bg_train2' }], rounds: 200, startCash: 12000, target: 180000, every: 5, ticket: 0.01, winTickets: [10, 5, 2, 0], rankBoxes: [30, 20, 10, 5], crashCashPct: 0.12, crashCashMin: 300, crashCashMax: 4000, noSkillRounds: 10 };
+var TRAIN = { team: { target: 200000, rounds: 300, winTickets: 20, winBoxes: 30, loseTickets: 0, loseBoxes: 5 }, boards: [{ key: 'train', th: 'สถานีรถจักรไอน้ำ', target: 180000, winTickets: [10, 5, 2, 0], bg: 'bg_train' }, { key: 'train2', th: 'สะพานโค้งไอน้ำ', target: 80000, winTickets: [5, 3, 1, 0], bg: 'bg_train2' }], rounds: 200, startCash: 12000, target: 180000, every: 5, ticket: 0.01, winTickets: [10, 5, 2, 0], rankBoxes: [30, 20, 10, 5], crashCashPct: 0.12, crashCashMin: 300, crashCashMax: 4000, noSkillRounds: 10 };
 var EASTER = {
   stages: EASTER_MAPS.map(function (m, i) { return { map: MAPS.indexOf(m), target: [26000, 28000, 30000, 32000][i], rounds: [22, 24, 26, 28][i] }; }),
   bunnyStay: 10, bunnyCool: 4, golden: 0.12,

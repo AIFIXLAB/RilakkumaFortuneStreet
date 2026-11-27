@@ -530,6 +530,14 @@
     galaxy: { pip: '●', parts: ['✦', '✧', '⭐', '✨'] },
     rainbow: { pip: '★', parts: ['✨', '🌈', '⭐', '💫'] },
     royal: { pip: '★', parts: ['✨', '⭐', '💛', '👑'] },
+    thunder: { pip: '⚡', parts: ['⚡', '⚡', '✦', '💥'], rise: 0 },
+    fire: { pip: '●', parts: ['🔥', '🔥', '✦', '•'], rise: 1.1 },
+    laser: { pip: '◆', parts: ['━', '┃', '✦', '◆'], rise: 0 },
+    gem: { pip: '◆', parts: ['💎', '✦', '✧', '💠'] },
+    cosmos: { pip: '★', parts: ['🪐', '⭐', '☄️', '✨', '🌙'] },
+    storm: { pip: '●', parts: ['💨', '🌀', '💧', '⚡'], rise: 0, swirl: true },
+    bubble: { pip: '●', parts: ['🫧', '🫧', '○', '◦'], rise: 1.3 },
+    wonder: { pip: ['🎩', '♥', '♠', '♦', '♣', '🕰'], parts: ['🃏', '🎩', '🍄', '🕰️', '🐇', '🫖', '♥', '♠'] },
   };
   var PIPS = { 1: [[50, 50]], 2: [[27, 27], [73, 73]], 3: [[25, 25], [50, 50], [75, 75]], 4: [[27, 27], [73, 27], [27, 73], [73, 73]], 5: [[25, 25], [75, 25], [50, 50], [25, 75], [75, 75]], 6: [[28, 22], [72, 22], [28, 50], [72, 50], [28, 78], [72, 78]] };
   function skinFx(tint) { if (!tint) return null; var k = /^fx:/.test(tint) ? tint.slice(3) : (DICE_SKINS.find(function (d) { return d.id === tint; }) || {}).fx; return k && DFX[k] ? k : null; }
@@ -537,15 +545,19 @@
     var fx = skinFx(tint);
     if (fx) {
       var h2 = size / 2, ps = size * (fx === 'sakura' ? 0.2 : 0.22);
-      var ff = function (n, tr) { return '<div class="fc sk" style="transform:' + tr + ' translateZ(' + h2 + 'px)">' + PIPS[n].map(function (q) { return '<i style="left:' + q[0] + '%;top:' + q[1] + '%;font-size:' + (n === 1 ? ps * 1.8 : ps) + 'px">' + DFX[fx].pip + '</i>'; }).join('') + '</div>'; };
+      var ff = function (n, tr) { var pp = DFX[fx].pip, pc = Array.isArray(pp) ? pp[n - 1] : pp; return '<div class="fc sk sk' + n + '" style="transform:' + tr + ' translateZ(' + h2 + 'px)">' + PIPS[n].map(function (q) { return '<i style="left:' + q[0] + '%;top:' + q[1] + '%;font-size:' + (n === 1 ? ps * 1.8 : ps) + 'px">' + pc + '</i>'; }).join('') + '</div>'; };
       var inn = ['rotateY(0)', 'rotateY(180deg)', 'rotateY(90deg)', 'rotateY(-90deg)', 'rotateX(90deg)', 'rotateX(-90deg)'].map(function (tr) { return '<div class="in" style="transform:' + tr + ' translateZ(' + (h2 - 3) + 'px)"></div>'; }).join('');
-      return '<div class="dicewrap dfx dfx-' + fx + '"><div class="daura" style="width:' + size * 1.9 + 'px;height:' + size * 1.9 + 'px;top:' + (-size * 0.45) + 'px"></div><div class="cube ' + (still ? 'still' : 'spin') + '" style="width:' + size + 'px;height:' + size + 'px">' + inn + ff(1, 'rotateY(0)') + ff(6, 'rotateY(180deg)') + ff(2, 'rotateY(90deg)') + ff(5, 'rotateY(-90deg)') + ff(3, 'rotateX(90deg)') + ff(4, 'rotateX(-90deg)') + '</div>' + (still ? '' : '<div class="diceshadow"></div>') + '</div>';
+      return '<div class="dicewrap dfx dfx-' + fx + '"><div class="daura" style="--R:' + Math.round(size * 0.85) + 'px;--E:' + Math.max(14, Math.round(size * 0.3)) + 'px;width:' + size * 1.9 + 'px;height:' + size * 1.9 + 'px;top:' + (-size * 0.45) + 'px"></div><div class="cube ' + (still ? 'still' : 'spin') + '" style="width:' + size + 'px;height:' + size + 'px">' + inn + ff(1, 'rotateY(0)') + ff(6, 'rotateY(180deg)') + ff(2, 'rotateY(90deg)') + ff(5, 'rotateY(-90deg)') + ff(3, 'rotateX(90deg)') + ff(4, 'rotateX(-90deg)') + '</div>' + (still ? '' : '<div class="diceshadow"></div>') + '</div>';
     }
     if (tint && TINT[tint]) tint = TINT[tint];
     var h = size / 2, f = function (n, tr) { return '<div class="fc" style="background-position:' + (n - 1) * 20 + '% 0;transform:' + tr + ' translateZ(' + h + 'px)' + (tint ? ';--tint:' + tint : '') + '"></div>'; };
     var inner = ['rotateY(0)', 'rotateY(180deg)', 'rotateY(90deg)', 'rotateY(-90deg)', 'rotateX(90deg)', 'rotateX(-90deg)'].map(function (tr) { return '<div class="in" style="transform:' + tr + ' translateZ(' + (h - 3) + 'px)"></div>'; }).join('');
     return '<div class="dicewrap"><div class="cube spin" style="width:' + size + 'px;height:' + size + 'px">' + inner + f(1, 'rotateY(0)') + f(6, 'rotateY(180deg)') + f(2, 'rotateY(90deg)') + f(5, 'rotateY(-90deg)') + f(3, 'rotateX(90deg)') + f(4, 'rotateX(-90deg)') + '</div><div class="diceshadow"></div></div>';
   }
+  function dicePreview(el, id) {
+    if (!el) return; var run = function () { if (!el.isConnected) return; var r = spinner(el, 110, id); setTimeout(function () { if (!el.isConnected) return; r.stop(); setTimeout(run, 2100); }, 1500); }; run();
+  }
+  U.dicePreview = dicePreview;
   function spinner(el, size, tint) {
     el.innerHTML = cubeHTML(size, tint); var cube = el.querySelector('.cube'), stopped = false, snd = setInterval(function () { sfx('dice'); }, 140);
     var fx = skinFx(tint), wrap = el.querySelector('.dicewrap'), pt = null;
@@ -553,7 +565,7 @@
       if (!wrap || !wrap.isConnected) { clearInterval(pt); return; }
       var e = document.createElement('span'), a = Math.random() * Math.PI * 2, r0 = size * (burst ? 0.3 : 0.55), r1 = size * (burst ? 1.4 + Math.random() * 0.6 : 0.9);
       e.className = 'dpart'; e.textContent = DFX[fx].parts[Math.floor(Math.random() * DFX[fx].parts.length)];
-      e.style.cssText = 'left:50%;top:' + size * 0.5 + 'px;font-size:' + (size * (0.14 + Math.random() * 0.12)) + 'px;--x0:' + Math.cos(a) * r0 + 'px;--y0:' + Math.sin(a) * r0 + 'px;--x1:' + Math.cos(a) * r1 + 'px;--y1:' + (Math.sin(a) * r1 - (fx === 'sakura' ? -size * 0.4 : size * 0.3)) + 'px;animation-duration:' + (burst ? 0.9 : 1.2 + Math.random() * 0.6) + 's';
+      e.style.cssText = 'left:50%;top:' + size * 0.5 + 'px;font-size:' + (size * (0.14 + Math.random() * 0.12)) + 'px;--x0:' + Math.cos(a) * r0 + 'px;--y0:' + Math.sin(a) * r0 + 'px;--x1:' + Math.cos(a) * r1 + 'px;--y1:' + (Math.sin(a) * r1 - (fx === 'sakura' ? -size * 0.4 : size * (DFX[fx].rise === undefined ? 0.3 : DFX[fx].rise))) + 'px;--rot:' + (fx === 'laser' ? Math.round(a * 57.3) + 'deg' : DFX[fx].swirl ? '540deg' : '160deg') + ';animation-duration:' + (burst ? 0.9 : 1.2 + Math.random() * 0.6) + 's';
       wrap.appendChild(e); setTimeout(function () { e.remove(); }, 2000);
     }
     if (fx) pt = setInterval(function () { part(false); }, 90);
@@ -2117,7 +2129,7 @@
   // SHOP (7 categories) — real purchases into Inventory, atomic, with history
   // =====================================================================
   var SH = { cat: 'rec', sort: 'popular' };
-  var SHOP_CATS = [['rec', '⭐ ไอเทมแนะนำ'], ['chars', '🐻 ตัวละคร'], ['equip', '🎲 อุปกรณ์เกม'], ['cards', '🃏 การ์ดพิเศษ'], ['packs', '🎁 แพ็กเกจพิเศษ'], ['exch', '💱 แลกเปลี่ยน'], ['hist', '🧾 ประวัติ']];
+  var SHOP_CATS = [['rec', '⭐ ไอเทมแนะนำ'], ['dice', '🎲 ลูกเต๋า'], ['chars', '🐻 ตัวละคร'], ['equip', '🎲 อุปกรณ์เกม'], ['cards', '🃏 การ์ดพิเศษ'], ['packs', '🎁 แพ็กเกจพิเศษ'], ['exch', '💱 แลกเปลี่ยน'], ['hist', '🧾 ประวัติ']];
   function openShop(cat) { SH.cat = cat || 'rec'; renderShop(); show('shop'); }
   function renderShop() {
     var P = Meta.p;
@@ -2140,7 +2152,8 @@
         if (srt === 'notown') list = list.filter(function (i) { return !Meta.owned(i.id); });
         if (srt === 'popular') list.sort(function (a, b) { return (Meta.tags(b.id).indexOf('hot') >= 0) - (Meta.tags(a.id).indexOf('hot') >= 0); });
         body += '<div class="tabs" style="margin-bottom:10px">' + [['popular', '🔥 ยอดนิยม'], ['new', '🆕 ใหม่'], ['sale', '💸 ลดราคา'], ['limited', '⏰ จำกัดเวลา'], ['notown', '🎒 ที่ยังไม่มี']].map(function (x) { return '<div class="tab ' + (SH.sort === x[0] ? 'on' : '') + '" data-srt="' + x[0] + '" style="font-size:13px;padding:5px 10px">' + x[1] + '</div>'; }).join('') + '</div>';
-      } else list = Meta.all().filter(function (i) { return i.cat === SH.cat && !i.eggOnly; }).sort(function (a, b) { return (b.type === 'Dice Skins' ? 1 : 0) - (a.type === 'Dice Skins' ? 1 : 0); });
+      } else if (SH.cat === 'dice') list = Meta.all().filter(function (i) { return i.type === 'Dice Skins'; }).sort(function (a, b) { return (/^dice_(1[3-9]|20)$/.test(b.id) ? 1 : 0) - (/^dice_(1[3-9]|20)$/.test(a.id) ? 1 : 0); });
+      else list = Meta.all().filter(function (i) { return i.cat === SH.cat && !i.eggOnly; }).sort(function (a, b) { return (b.type === 'Dice Skins' ? 1 : 0) - (a.type === 'Dice Skins' ? 1 : 0); });
       body += '<div class="shopgrid">' + list.map(function (it) {
         var q = Meta.owned(it.id), tg = Meta.tags(it.id), price = Meta.priceOf(it), own = it.uniq && q;
         return '<div class="sitem">' + (tg.length ? '<span class="tag">' + tg.map(function (x) { return { hot: 'HOT', new: 'NEW', sale: '-20%', limited: 'LIMITED' }[x]; }).join(' ') + '</span>' : '') + (q ? '<span class="own">' + (it.uniq ? 'มีแล้ว' : 'x' + q) + '</span>' : '') + '<div style="height:110px;display:flex;align-items:center">' + spr(it.spr, 130, 105) + '</div><div class="nm">' + it.name + '</div><div class="ds">' + it.desc + '</div><button class="small ' + (it.cur === 'gold' ? '' : 'blue') + '" data-buy="' + it.id + '" ' + (own ? 'disabled' : '') + '>' + (own ? 'มีแล้ว' : (it.cur === 'gold' ? '<span class="coin"></span>' : '💎 ') + fmt(price) + (price !== it.price ? ' <s style="font-size:11px">' + fmt(it.price) + '</s>' : '')) + '</button></div>';
@@ -2154,7 +2167,8 @@
     document.querySelectorAll('#shop [data-buy]').forEach(function (e) {
       e.onclick = function () {
         var it = Meta.item(e.dataset.buy), price = Meta.priceOf(it);
-        modal({ title: 'ยืนยันการซื้อ', body: '<div class="col" style="align-items:center;min-width:420px">' + spr(it.spr, 150, 120) + '<div style="font-weight:900;font-size:20px">' + it.name + '</div><div style="font-weight:700">' + it.desc + '</div><div class="chip">ราคา ' + fmt(price) + (it.cur === 'gold' ? ' Gold Coin' : ' Diamond') + '</div></div>', buttons: [{ t: 'ซื้อ', v: 1, cls: 'green' }, { t: 'ยกเลิก', v: 0 }] })
+        var isD = it.type === 'Dice Skins' && it.spr && it.spr[0] === 'cdice';
+        modal({ title: 'ยืนยันการซื้อ', mount: isD ? function (box) { dicePreview(box.querySelector('.diceprev'), it.id); } : null, body: '<div class="col" style="align-items:center;min-width:420px">' + (isD ? '<div class="diceprev"></div><div class="muted" style="font-size:12px;font-weight:700">👀 ตัวอย่างเอฟเฟกต์ตอนทอย</div>' : spr(it.spr, 150, 120)) + '<div style="font-weight:900;font-size:20px">' + it.name + '</div><div style="font-weight:700">' + it.desc + '</div><div class="chip">ราคา ' + fmt(price) + (it.cur === 'gold' ? ' Gold Coin' : ' Diamond') + '</div></div>', buttons: [{ t: 'ซื้อ', v: 1, cls: 'green' }, { t: 'ยกเลิก', v: 0 }] })
           .then(function (ok) { if (!ok) return; var r = Meta.buy(it.id); toast((r.ok ? '✅ ' : '⚠️ ') + r.msg); if (r.ok) sfx('coin'); renderShop(); });
       };
     });

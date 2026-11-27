@@ -861,6 +861,14 @@ var DICE_SKINS = [
   { id: 'dice_10', name: 'ลูกเต๋ากาแล็กซี่ 🌌', spr: ['cdice', 'galaxy'], price: 40, cur: 'diamond', fx: 'galaxy', desc: 'ลายอวกาศ จุดทองเรืองแสง ดาวระยิบรอบลูกเต๋า' },
   { id: 'dice_11', name: 'ลูกเต๋าสีรุ้งเรืองแสง 🌈', spr: ['cdice', 'rainbow'], price: 50, cur: 'diamond', fx: 'rainbow', desc: 'สีรุ้งไหลเปลี่ยนสีตลอดเวลา เรืองแสงรอบตัว มีประกายรุ้งตอนทอย' },
   { id: 'dice_12', name: 'ลูกเต๋าทองคำราชวงศ์ 👑', spr: ['cdice', 'royal'], price: 60, cur: 'diamond', fx: 'royal', desc: 'ทองคำมีแสงวิ่งผ่าน จุดเป็นดาว มีประกายทองระเบิดตอนหยุด' },
+  { id: 'dice_13', name: 'ลูกเต๋าสายฟ้า ⚡', spr: ['cdice', 'thunder'], price: 45, cur: 'diamond', fx: 'thunder', desc: 'หน้าลูกเต๋าสีม่วงเข้มมีลายไฟฟ้าวิ่ง ฟ้าผ่าแลบรอบตัวตอนทอย' },
+  { id: 'dice_14', name: 'ลูกเต๋าไฟ 🔥', spr: ['cdice', 'fire'], price: 45, cur: 'diamond', fx: 'fire', desc: 'ลาวาร้อนแรงไหลวน เปลวไฟลุกท่วมและประกายไฟพุ่งขึ้นตอนทอย' },
+  { id: 'dice_15', name: 'ลูกเต๋าเลเซอร์ 🔴', spr: ['cdice', 'laser'], price: 55, cur: 'diamond', fx: 'laser', desc: 'ลายกริดนีออนไซเบอร์ ลำแสงเลเซอร์หมุนกวาดรอบตัวตอนทอย' },
+  { id: 'dice_16', name: 'ลูกเต๋าคริสตัลเพชร 💎', spr: ['cdice', 'gem'], price: 50, cur: 'diamond', fx: 'gem', desc: 'เจียระไนเป็นเหลี่ยมเพชร สะท้อนแสงหลากสี เพชรระยิบกระจายตอนทอย' },
+  { id: 'dice_17', name: 'ลูกเต๋าจักรวาล 🪐', spr: ['cdice', 'cosmos'], price: 70, cur: 'diamond', fx: 'cosmos', desc: 'เนบิวลาชมพูฟ้า มีวงแหวนดาวเคราะห์โคจรรอบลูกเต๋า ดาวหางพุ่งตอนทอย' },
+  { id: 'dice_18', name: 'ลูกเต๋าพายุ 🌪️', spr: ['cdice', 'storm'], price: 55, cur: 'diamond', fx: 'storm', desc: 'เมฆพายุหมุนวน ลมกรรโชกพัดหมุนรอบตัว มีสายฟ้าแลบตอนทอย' },
+  { id: 'dice_19', name: 'ลูกเต๋าบับเบิ้ล 🫧', spr: ['cdice', 'bubble'], price: 8000, cur: 'gold', fx: 'bubble', desc: 'ใสเหมือนฟองสบู่ สีรุ้งวาววับ ฟองลอยฟุ้งขึ้นฟ้าตอนทอย' },
+  { id: 'dice_20', name: 'ลูกเต๋าวันเดอร์แลนด์ 🎩', spr: ['cdice', 'wonder'], price: 80, cur: 'diamond', fx: 'wonder', desc: 'ลายตารางไพ่ จุดเป็นหัวใจ/โพดำ/ข้าวหลามตัด/ดอกจิก หมวก นาฬิกา และไพ่ปลิวว่อนตอนทอย' },
 ];
 var DAILY_REWARDS = [{ gold: 500 }, { diamond: 5 }, { item: 'eq_move' }, { gold: 1000 }, { diamond: 10 }, { item: 'eq_lucky', n: 2 }, { gold: 2000, diamond: 10, item: 'SC_cash' }];
 

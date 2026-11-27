@@ -49,7 +49,7 @@ var Meta = (function () {
   function item(id) { if (!CAT) CAT = catalog(); return CAT.find(function (x) { return x.id === id; }); }
   function all() { if (!CAT) CAT = catalog(); return CAT; }
   // tags for "Recommended" sorting
-  var TAGS = { pk_begin: ['hot', 'new'], eq_golden: ['hot'], SC_upg: ['hot'], pk_lucky: ['sale', 'limited'], x3: ['new'], eq_rent: ['hot'], deco_40: ['new'], g2: ['new', 'limited'], j11: ['new'], dice_7: ['new'], dice_11: ['new', 'hot'], pk_deco: ['limited'], SC_cash: ['hot'], eq_travel: ['new'], dice_2: ['sale'] };
+  var TAGS = { dice_13: ['new'], dice_14: ['new'], dice_15: ['new'], dice_16: ['new'], dice_17: ['new', 'hot'], dice_18: ['new'], dice_19: ['new'], dice_20: ['new', 'hot'], pk_begin: ['hot', 'new'], eq_golden: ['hot'], SC_upg: ['hot'], pk_lucky: ['sale', 'limited'], x3: ['new'], eq_rent: ['hot'], deco_40: ['new'], g2: ['new', 'limited'], j11: ['new'], dice_7: ['new'], dice_11: ['new', 'hot'], pk_deco: ['limited'], SC_cash: ['hot'], eq_travel: ['new'], dice_2: ['sale'] };
   function tags(id) { return TAGS[id] || []; }
   function priceOf(it) { return tags(it.id).indexOf('sale') >= 0 ? Math.round(it.price * 0.8) : it.price; }
 
